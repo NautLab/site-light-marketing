@@ -1,3 +1,10 @@
+// Garantir que a página sempre inicie no topo
+window.addEventListener('load', () => {
+    setTimeout(() => {
+        window.scrollTo(0, 0);
+    }, 0);
+});
+
 // Menu hambúrguer toggle
 // Versão: 5.0 - Slide from right
 const menuToggle = document.querySelector('.menu-toggle');
