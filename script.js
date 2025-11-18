@@ -1,10 +1,3 @@
-// Garantir que a página sempre inicie no topo
-window.addEventListener('load', () => {
-    setTimeout(() => {
-        window.scrollTo(0, 0);
-    }, 0);
-});
-
 // Menu hambúrguer toggle
 // Versão: 5.0 - Slide from right
 const menuToggle = document.querySelector('.menu-toggle');
@@ -69,8 +62,8 @@ navLinks.forEach(link => {
 // Efeito de digitação no título com destaque
 const typingElement = document.querySelector('.typing-text');
 if (typingElement) {
-    const normalText = 'Lorem Ipsum Dolor ';
-    const highlightText = 'Sit Amet';
+    const normalText = 'Formatador de Etiquetas ';
+    const highlightText = 'Shopee';
     let i = 0;
     let j = 0;
     let highlightSpan = null;
