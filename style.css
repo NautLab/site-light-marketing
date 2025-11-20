@@ -128,6 +128,23 @@ body {
     width: 100%;
 }
 
+.logout-btn {
+    padding: 8px 20px;
+    background: rgba(12, 126, 146, 0.15);
+    border: 1px solid rgba(12, 126, 146, 0.4);
+    border-radius: 50px;
+    transition: all 0.3s ease;
+}
+
+.logout-btn:hover {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.logout-btn::after {
+    display: none;
+}
+
 /* Menu Hambúrguer */
 .menu-toggle {
     display: none;

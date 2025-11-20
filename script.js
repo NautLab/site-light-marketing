@@ -1,3 +1,32 @@
+// Check authentication
+window.addEventListener('DOMContentLoaded', () => {
+    const isLoggedIn = sessionStorage.getItem('isLoggedIn') || localStorage.getItem('isLoggedIn');
+    
+    if (isLoggedIn !== 'true') {
+        // User is not logged in, redirect to login page
+        window.location.href = 'index.html';
+    }
+});
+
+// Logout functionality
+const logoutBtn = document.getElementById('logout-btn');
+if (logoutBtn) {
+    logoutBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        
+        // Clear session and local storage
+        sessionStorage.removeItem('isLoggedIn');
+        sessionStorage.removeItem('userEmail');
+        sessionStorage.removeItem('userName');
+        localStorage.removeItem('isLoggedIn');
+        localStorage.removeItem('userEmail');
+        localStorage.removeItem('userName');
+        
+        // Redirect to login page
+        window.location.href = 'index.html';
+    });
+}
+
 // Menu hambúrguer toggle
 // Versão: 5.0 - Slide from right
 const menuToggle = document.querySelector('.menu-toggle');

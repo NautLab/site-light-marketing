@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="Formatador automático de etiquetas Shopee. Processe PDFs e planilhas XLSX para gerar etiquetas Correios e Xpress prontas para impressão.">
+    <meta name="keywords" content="shopee, etiquetas, correios, xpress, formatador, automação, impressão, e-commerce">
+    <meta name="author" content="Light Marketing">
+    <meta name="robots" content="index, follow">
+    <meta property="og:title" content="Light Marketing - Formatador de Etiquetas Shopee">
+    <meta property="og:description" content="Automatize o processamento de etiquetas Shopee com nossa ferramenta gratuita. Suporte para Correios e Xpress.">
+    <meta property="og:type" content="website">
+    <meta property="og:image" content="image.png">
+    <title>Light Marketing - Formatador de Etiquetas Shopee</title>
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="style.css?v=21.0">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <div class="logo">
+                <img src="favicon.ico" alt="Light Marketing Logo" class="logo-icon" width="36" height="36">
+                <span class="logo-text"><span class="logo-light">LIGHT</span> <span class="logo-marketing">MARKETING</span></span>
+            </div>
+            <button class="menu-toggle" aria-label="Menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            <nav class="nav">
+                <a href="#inicio">Início</a>
+                <a href="#como-usar">Como Usar</a>
+                <a href="#contato">Contato</a>
+                <a href="#" id="logout-btn" class="logout-btn">Sair</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Hero Section com Ferramenta -->
+    <section class="hero" id="inicio">
+        <div class="container">
+            <div class="hero-content">
+                <!-- Lado Esquerdo - Imagem e Texto -->
+                <div class="hero-left">
+                    <div class="hero-image">
+                        <img src="image.png" alt="Light Marketing - Formatador de Etiquetas Shopee" loading="lazy" width="250" height="250">
+                    </div>
+                    <h1 class="hero-title">
+                        <span class="typing-text"></span>
+                    </h1>
+                    <p class="hero-subtitle">
+                        Automatize o processamento de suas etiquetas Shopee em poucos cliques. 
+                        Suporte completo para Correios e Xpress com formatação perfeita.
+                    </p>
+                    <div class="features-badges">
+                        <div class="badge">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M12 15V17M6 21H18C19.1046 21 20 20.1046 20 19V13C20 11.8954 19.1046 11 18 11H6C4.89543 11 4 11.8954 4 13V19C4 20.1046 4.89543 21 6 21ZM16 11V7C16 4.79086 14.2091 3 12 3C9.79086 3 8 4.79086 8 7V11H16Z" stroke="#0C7E92" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            <span>Seguro e Privado</span>
+                        </div>
+                        <div class="badge">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M7 8H17M7 12H17M7 16H12M3 5C3 3.89543 3.89543 3 5 3H19C20.1046 3 21 3.89543 21 5V19C21 20.1046 20.1046 21 19 21H5C3.89543 21 3 20.1046 3 19V5Z" stroke="#0C7E92" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            <span>Formato Otimizado</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Lado Direito - Ferramenta -->
+                <div class="hero-right">
+                    <div class="tool-card">
+                        <div class="tool-header">
+                            <h2>Processar Etiquetas</h2>
+                            <p>Shopee (Correios/Xpress)</p>
+                        </div>
+                        
+                        <div class="tool-body">
+                            <div class="upload-section">
+                                <div class="file-upload">
+                                    <div class="upload-icon">
+                                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M7 18C5.17107 18.4117 4 19.0443 4 19.7537C4 20.9943 7.58172 22 12 22C16.4183 22 20 20.9943 20 19.7537C20 19.0443 18.8289 18.4117 17 18M12 15V3M12 3L8 7M12 3L16 7" stroke="#0C7E92" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                        </svg>
+                                    </div>
+                                    <label for="pdf-file" class="upload-label">
+                                        <span class="upload-text">Selecionar Arquivo PDF</span>
+                                        <span class="file-name" id="pdf-name">Nenhum arquivo selecionado</span>
+                                    </label>
+                                    <input type="file" id="pdf-file" accept=".pdf" class="file-input">
+                                </div>
+
+                                <div class="file-upload">
+                                    <div class="upload-icon">
+                                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M7 18C5.17107 18.4117 4 19.0443 4 19.7537C4 20.9943 7.58172 22 12 22C16.4183 22 20 20.9943 20 19.7537C20 19.0443 18.8289 18.4117 17 18M12 15V3M12 3L8 7M12 3L16 7" stroke="#0C7E92" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                        </svg>
+                                    </div>
+                                    <label for="xlsx-file" class="upload-label">
+                                        <span class="upload-text">Selecionar Arquivo XLSX</span>
+                                        <span class="file-name" id="xlsx-name">Nenhum arquivo selecionado</span>
+                                    </label>
+                                    <input type="file" id="xlsx-file" accept=".xlsx,.xls" class="file-input">
+                                </div>
+                            </div>
+
+                            <button class="process-btn" id="process-btn">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M5 13L9 17L19 7" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                                PROCESSAR ARQUIVOS
+                            </button>
+
+                            <div class="progress-bar" id="progress-container" style="display: none;">
+                                <div class="progress-fill" id="progress-fill"></div>
+                                <span class="progress-text" id="progress-text">0%</span>
+                            </div>
+
+                            <div class="success-message" id="success-message" style="display: none;">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M9 12L11 14L15 10M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="#0C7E92" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                                <span>Arquivos processados com sucesso!</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Como Usar -->
+    <section class="how-to-use" id="como-usar" aria-label="Como usar a ferramenta">
+        <div class="container">
+            <h2 class="section-title">Como Funciona?</h2>
+            <p class="section-subtitle">Processe suas etiquetas em apenas 3 passos simples</p>
+            
+            <div class="steps">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <div class="step-icon">
+                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                            <path d="M9 12H15M9 16H15M17 21H7C5.89543 21 5 20.1046 5 19V5C5 3.89543 5.89543 3 7 3H12.5858C12.851 3 13.1054 3.10536 13.2929 3.29289L18.7071 8.70711C18.8946 8.89464 19 9.149 19 9.41421V19C19 20.1046 18.1046 21 17 21Z" stroke="#0C7E92" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </div>
+                    <h3>Selecione os Arquivos:</h3>
+                    <p>Faça upload do PDF de etiquetas e da planilha XLSX da Shopee</p>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <div class="step-icon">
+                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M13 10V3L4 14H11V21L20 10H13Z" stroke="#0C7E92" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </div>
+                    <h3>Processe Automaticamente:</h3>
+                    <p>Nossa ferramenta faz a combinação e formatação perfeita</p>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <div class="step-icon">
+                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M9 12L11 14L15 10M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="#0C7E92" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </div>
+                    <h3>Baixe e Imprima!</h3>
+                    <p>Receba suas etiquetas prontas no formato ideal para impressão!</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer" id="contato">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>LIGHT MARKETING</h3>
+                    <p>Soluções inteligentes para e-commerce</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Entre em Contato</h4>
+                    <a href="https://wa.link/m1vm4f" target="_blank" class="contact-link">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M3 8L10.8906 13.2604C11.5624 13.7083 12.4376 13.7083 13.1094 13.2604L21 8M5 19H19C20.1046 19 21 18.1046 21 17V7C21 5.89543 20.1046 5 19 5H5C3.89543 5 3 5.89543 3 7V17C3 18.1046 3.89543 19 5 19Z" stroke="#0C7E92" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        Fale Conosco
+                    </a>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 Light Marketing. Todos os direitos reservados.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="script.js?v=13.0" defer></script>
+</body>
+</html>
