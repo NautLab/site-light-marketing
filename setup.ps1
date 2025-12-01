@@ -1,16 +1,16 @@
 # =============================================
 # SCRIPT DE SETUP AUTOMATIZADO
-# Light Marketing - Sistema de Autenticação
+# Light Marketing - Sistema de Autenticacao
 # =============================================
 
-Write-Host "🚀 Iniciando setup do projeto Light Marketing..." -ForegroundColor Cyan
+Write-Host "Iniciando setup do projeto Light Marketing..." -ForegroundColor Cyan
 Write-Host ""
 
 # =============================================
-# 1. VERIFICAR DEPENDÊNCIAS
+# 1. VERIFICAR DEPENDENCIAS
 # =============================================
 
-Write-Host "📦 Verificando dependências..." -ForegroundColor Yellow
+Write-Host "Verificando dependencias..." -ForegroundColor Yellow
 
 # Verificar Node.js
 if (Get-Command node -ErrorAction SilentlyContinue) {
@@ -42,10 +42,10 @@ if (Get-Command git -ErrorAction SilentlyContinue) {
 Write-Host ""
 
 # =============================================
-# 2. INSTALAR DEPENDÊNCIAS DAS FUNCTIONS
+# 2. INSTALAR DEPENDENCIAS DAS FUNCTIONS
 # =============================================
 
-Write-Host "📦 Instalando dependências do Cloudflare Functions..." -ForegroundColor Yellow
+Write-Host "Instalando dependencias do Cloudflare Functions..." -ForegroundColor Yellow
 
 if (Test-Path "functions") {
     Set-Location functions
@@ -75,7 +75,7 @@ Write-Host ""
 # 3. VERIFICAR ARQUIVO .env
 # =============================================
 
-Write-Host "🔐 Verificando configuração de ambiente..." -ForegroundColor Yellow
+Write-Host "Verificando configuracao de ambiente..." -ForegroundColor Yellow
 
 if (Test-Path ".env") {
     Write-Host "✅ Arquivo .env encontrado" -ForegroundColor Green
@@ -84,13 +84,13 @@ if (Test-Path ".env") {
     $envContent = Get-Content .env -Raw
     
     if ($envContent -match "YOUR_PROJECT" -or $envContent -match "YOUR_KEY") {
-        Write-Host "⚠️ ATENÇÃO: Variáveis de ambiente ainda não configuradas!" -ForegroundColor Yellow
+        Write-Host "ATENCAO: Variaveis de ambiente ainda nao configuradas!" -ForegroundColor Yellow
         Write-Host "   Edite o arquivo .env com suas credenciais reais." -ForegroundColor Yellow
     } else {
-        Write-Host "✅ Variáveis de ambiente configuradas" -ForegroundColor Green
+        Write-Host "Variaveis de ambiente configuradas" -ForegroundColor Green
     }
 } else {
-    Write-Host "⚠️ Arquivo .env não encontrado. Criando a partir de .env.example..." -ForegroundColor Yellow
+    Write-Host "Arquivo .env nao encontrado. Criando a partir de .env.example..." -ForegroundColor Yellow
     
     if (Test-Path ".env.example") {
         Copy-Item .env.example .env
@@ -107,7 +107,7 @@ Write-Host ""
 # 4. VERIFICAR SUPABASE
 # =============================================
 
-Write-Host "🗄️ Verificando configuração do Supabase..." -ForegroundColor Yellow
+Write-Host "Verificando configuracao do Supabase..." -ForegroundColor Yellow
 
 if (Test-Path ".env") {
     $envContent = Get-Content .env -Raw
@@ -137,7 +137,7 @@ Write-Host ""
 # 5. VERIFICAR SQL SCRIPT
 # =============================================
 
-Write-Host "🗄️ Verificando script SQL do banco de dados..." -ForegroundColor Yellow
+Write-Host "Verificando script SQL do banco de dados..." -ForegroundColor Yellow
 
 if (Test-Path "supabase-setup.sql") {
     Write-Host "✅ Script SQL encontrado: supabase-setup.sql" -ForegroundColor Green
@@ -155,7 +155,7 @@ Write-Host ""
 # 6. VERIFICAR STRIPE
 # =============================================
 
-Write-Host "💳 Verificando configuração do Stripe..." -ForegroundColor Yellow
+Write-Host "Verificando configuracao do Stripe..." -ForegroundColor Yellow
 
 if (Test-Path ".env") {
     $envContent = Get-Content .env -Raw
@@ -192,7 +192,7 @@ Write-Host ""
 # 7. VERIFICAR ESTRUTURA DO PROJETO
 # =============================================
 
-Write-Host "📁 Verificando estrutura do projeto..." -ForegroundColor Yellow
+Write-Host "Verificando estrutura do projeto..." -ForegroundColor Yellow
 
 $requiredFiles = @(
     "index.html",
@@ -232,47 +232,47 @@ Write-Host ""
 # 8. TESTE DE SERVIDOR LOCAL
 # =============================================
 
-Write-Host "🌐 Informações de desenvolvimento..." -ForegroundColor Yellow
+Write-Host "Informacoes de desenvolvimento..." -ForegroundColor Yellow
 
-Write-Host "Para testar localmente, você pode usar:" -ForegroundColor Cyan
-Write-Host "  • Python: python -m http.server 8000" -ForegroundColor White
-Write-Host "  • Node.js: npx serve" -ForegroundColor White
-Write-Host "  • Wrangler (Cloudflare): npx wrangler pages dev ." -ForegroundColor White
+Write-Host "Para testar localmente, voce pode usar:" -ForegroundColor Cyan
+Write-Host "  - Python: python -m http.server 8000" -ForegroundColor White
+Write-Host "  - Node.js: npx serve" -ForegroundColor White
+Write-Host "  - Wrangler (Cloudflare): npx wrangler pages dev ." -ForegroundColor White
 Write-Host ""
 Write-Host "Acesse: http://localhost:8000 (ou porta indicada)" -ForegroundColor Cyan
 
 Write-Host ""
 
 # =============================================
-# 9. PRÓXIMOS PASSOS
+# 9. PROXIMOS PASSOS
 # =============================================
 
-Write-Host "📋 PRÓXIMOS PASSOS:" -ForegroundColor Cyan
+Write-Host "PROXIMOS PASSOS:" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "1. Configure o arquivo .env com suas credenciais" -ForegroundColor White
-Write-Host "   📄 Edite: .env" -ForegroundColor Gray
+Write-Host "   Edite: .env" -ForegroundColor Gray
 Write-Host ""
 Write-Host "2. Execute o script SQL no Supabase" -ForegroundColor White
-Write-Host "   🗄️ Arquivo: supabase-setup.sql" -ForegroundColor Gray
+Write-Host "   Arquivo: supabase-setup.sql" -ForegroundColor Gray
 Write-Host ""
 Write-Host "3. Crie os produtos no Stripe (Basic e Premium)" -ForegroundColor White
-Write-Host "   💳 Dashboard: https://dashboard.stripe.com/products" -ForegroundColor Gray
+Write-Host "   Dashboard: https://dashboard.stripe.com/products" -ForegroundColor Gray
 Write-Host ""
 Write-Host "4. Configure environment variables no Cloudflare Pages" -ForegroundColor White
-Write-Host "   ⚙️ Settings > Environment variables" -ForegroundColor Gray
+Write-Host "   Settings > Environment variables" -ForegroundColor Gray
 Write-Host ""
-Write-Host "5. Faça deploy no Cloudflare Pages" -ForegroundColor White
-Write-Host "   🚀 git push origin main" -ForegroundColor Gray
+Write-Host "5. Faca deploy no Cloudflare Pages" -ForegroundColor White
+Write-Host "   git push origin main" -ForegroundColor Gray
 Write-Host ""
 Write-Host "6. Configure o webhook do Stripe" -ForegroundColor White
-Write-Host "   🔗 URL: https://seu-site.pages.dev/api/stripe-webhook" -ForegroundColor Gray
+Write-Host "   URL: https://seu-site.pages.dev/api/stripe-webhook" -ForegroundColor Gray
 Write-Host ""
 
-Write-Host "📚 Documentação completa:" -ForegroundColor Cyan
-Write-Host "   • QUICK-START.md - Guia rápido (5 min)" -ForegroundColor White
-Write-Host "   • README-AUTH.md - Documentação detalhada" -ForegroundColor White
-Write-Host "   • TODO.md - Checklist completo" -ForegroundColor White
+Write-Host "Documentacao completa:" -ForegroundColor Cyan
+Write-Host "   - QUICK-START.md - Guia rapido (5 min)" -ForegroundColor White
+Write-Host "   - README-AUTH.md - Documentacao detalhada" -ForegroundColor White
+Write-Host "   - TODO.md - Checklist completo" -ForegroundColor White
 Write-Host ""
 
-Write-Host "✨ Setup concluído! Boa sorte com o projeto! 🚀" -ForegroundColor Green
+Write-Host "Setup concluido! Boa sorte com o projeto!" -ForegroundColor Green
 Write-Host ""
