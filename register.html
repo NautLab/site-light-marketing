@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Crie sua conta na Light Marketing e comece a usar o formatador de etiquetas Shopee">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Criar Conta - Light Marketing</title>
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/auth.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <a href="index.html" class="logo">
+                <img src="favicon.ico" alt="Light Marketing Logo" class="logo-icon" width="36" height="36">
+                <span class="logo-text">
+                    <span class="logo-light">LIGHT</span>
+                    <span class="logo-marketing">MARKETING</span>
+                </span>
+            </a>
+            <nav class="nav">
+                <a href="index.html">Início</a>
+                <a href="login.html">Fazer Login</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Auth Section -->
+    <section class="auth-section">
+        <div class="auth-container">
+            <div class="auth-header">
+                <div class="auth-icon">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M18 9V7C18 5.34315 16.6569 4 15 4H5C3.34315 4 2 5.34315 2 7V15C2 16.6569 3.34315 18 5 18H7" stroke="#0C7E92" stroke-width="2" stroke-linecap="round"/>
+                        <rect x="9" y="9" width="13" height="13" rx="2" stroke="#0C7E92" stroke-width="2"/>
+                        <path d="M15.5 15L18 17.5L22 13.5" stroke="#0C7E92" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+                <h1 class="auth-title">Criar Conta</h1>
+                <p class="auth-subtitle">Comece gratuitamente agora mesmo</p>
+            </div>
+
+            <div id="auth-message" class="message"></div>
+
+            <form id="register-form" class="auth-form">
+                <div class="form-group">
+                    <label for="fullname" class="form-label">Nome Completo</label>
+                    <input 
+                        type="text" 
+                        id="fullname" 
+                        name="fullname" 
+                        class="form-input" 
+                        placeholder="Seu nome completo"
+                        required
+                        autocomplete="name"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="email" class="form-label">Email</label>
+                    <input 
+                        type="email" 
+                        id="email" 
+                        name="email" 
+                        class="form-input" 
+                        placeholder="seu@email.com"
+                        required
+                        autocomplete="email"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="password" class="form-label">Senha</label>
+                    <div class="password-group">
+                        <input 
+                            type="password" 
+                            id="password" 
+                            name="password" 
+                            class="form-input" 
+                            placeholder="Mínimo 6 caracteres"
+                            required
+                            autocomplete="new-password"
+                            minlength="6"
+                        >
+                        <button type="button" class="password-toggle" id="toggle-password" aria-label="Mostrar senha">
+                            <svg class="eye-open" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M15 12C15 13.6569 13.6569 15 12 15C10.3431 15 9 13.6569 9 12C9 10.3431 10.3431 9 12 9C13.6569 9 15 10.3431 15 12Z" stroke="currentColor" stroke-width="2"/>
+                                <path d="M12 5C7.58172 5 3.82843 7.93554 2.45801 12C3.82843 16.0645 7.58172 19 12 19C16.4183 19 20.1716 16.0645 21.542 12C20.1716 7.93554 16.4183 5 12 5Z" stroke="currentColor" stroke-width="2"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="confirm-password" class="form-label">Confirmar Senha</label>
+                    <div class="password-group">
+                        <input 
+                            type="password" 
+                            id="confirm-password" 
+                            name="confirm-password" 
+                            class="form-input" 
+                            placeholder="Repita sua senha"
+                            required
+                            autocomplete="new-password"
+                            minlength="6"
+                        >
+                        <button type="button" class="password-toggle" id="toggle-confirm-password" aria-label="Mostrar senha">
+                            <svg class="eye-open" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M15 12C15 13.6569 13.6569 15 12 15C10.3431 15 9 13.6569 9 12C9 10.3431 10.3431 9 12 9C13.6569 9 15 10.3431 15 12Z" stroke="currentColor" stroke-width="2"/>
+                                <path d="M12 5C7.58172 5 3.82843 7.93554 2.45801 12C3.82843 16.0645 7.58172 19 12 19C16.4183 19 20.1716 16.0645 21.542 12C20.1716 7.93554 16.4183 5 12 5Z" stroke="currentColor" stroke-width="2"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn" id="register-btn">
+                    CRIAR CONTA GRÁTIS
+                </button>
+
+                <p style="font-size: 12px; color: rgba(255, 255, 255, 0.6); text-align: center; margin-top: -10px;">
+                    Ao criar uma conta, você concorda com nossos Termos de Uso e Política de Privacidade.
+                </p>
+            </form>
+
+            <div class="auth-links">
+                <div class="divider">OU</div>
+                <a href="login.html" class="auth-link">
+                    Já tem uma conta? <span class="auth-link-primary">Faça login</span>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2025 Light Marketing. Todos os direitos reservados.</p>
+        </div>
+    </footer>
+
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- Scripts -->
+    <script src="config/supabase-config.js"></script>
+    <script src="js/auth.js"></script>
+    <script>
+        // Verificar se já está autenticado
+        Auth.redirectIfAuthenticated();
+
+        // Toggle mostrar/ocultar senha
+        const passwordInput = document.getElementById('password');
+        const togglePassword = document.getElementById('toggle-password');
+        const confirmPasswordInput = document.getElementById('confirm-password');
+        const toggleConfirmPassword = document.getElementById('toggle-confirm-password');
+
+        togglePassword.addEventListener('click', () => {
+            const type = passwordInput.type === 'password' ? 'text' : 'password';
+            passwordInput.type = type;
+        });
+
+        toggleConfirmPassword.addEventListener('click', () => {
+            const type = confirmPasswordInput.type === 'password' ? 'text' : 'password';
+            confirmPasswordInput.type = type;
+        });
+
+        // Handle form submission
+        const registerForm = document.getElementById('register-form');
+        const registerBtn = document.getElementById('register-btn');
+
+        registerForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            // Limpar mensagens anteriores
+            Auth.clearMessage('auth-message');
+
+            // Obter valores
+            const fullname = document.getElementById('fullname').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirm-password').value;
+
+            // Validação
+            if (!fullname || fullname.length < 3) {
+                Auth.showError('auth-message', 'Por favor, insira seu nome completo.');
+                return;
+            }
+
+            if (!Auth.isValidEmail(email)) {
+                Auth.showError('auth-message', 'Por favor, insira um email válido.');
+                return;
+            }
+
+            if (!Auth.isValidPassword(password)) {
+                Auth.showError('auth-message', 'A senha deve ter pelo menos 6 caracteres.');
+                return;
+            }
+
+            if (password !== confirmPassword) {
+                Auth.showError('auth-message', 'As senhas não coincidem.');
+                return;
+            }
+
+            // Desabilitar formulário
+            Auth.disableForm('register-form', true);
+            registerBtn.innerHTML = '<span class="spinner"></span> CRIANDO CONTA...';
+
+            // Registrar
+            const result = await Auth.register(email, password, fullname);
+
+            if (result.success) {
+                Auth.showSuccess('auth-message', result.message);
+                
+                // Limpar formulário
+                registerForm.reset();
+                
+                // Mostrar mensagem por mais tempo
+                setTimeout(() => {
+                    window.location.href = 'login.html';
+                }, 3000);
+            } else {
+                Auth.showError('auth-message', result.message);
+                Auth.disableForm('register-form', false);
+                registerBtn.innerHTML = 'CRIAR CONTA GRÁTIS';
+            }
+        });
+    </script>
+</body>
+</html>

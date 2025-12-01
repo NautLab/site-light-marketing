@@ -1,0 +1,10 @@
+{
+  "name": "light-marketing-functions",
+  "version": "1.0.0",
+  "description": "Cloudflare Pages Functions for Light Marketing",
+  "type": "module",
+  "dependencies": {
+    "stripe": "^14.0.0",
+    "@supabase/supabase-js": "^2.38.0"
+  }
+}

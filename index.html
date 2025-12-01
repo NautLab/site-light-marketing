@@ -17,6 +17,9 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="style.css?v=21.0">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Supabase & Stripe -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
     <!-- Header -->
@@ -31,10 +34,12 @@
                 <span></span>
                 <span></span>
             </button>
-            <nav class="nav">
+            <nav class="nav" id="main-nav">
                 <a href="#inicio">Início</a>
                 <a href="#como-usar">Como Usar</a>
                 <a href="#contato">Contato</a>
+                <a href="login.html" id="nav-login" style="display: none;">Login</a>
+                <a href="dashboard.html" id="nav-dashboard" style="display: none;">Dashboard</a>
             </nav>
         </div>
     </header>
@@ -108,6 +113,8 @@
                                 </div>
                             </div>
 
+                            <div class="usage-info" id="usage-info" style="display: none; text-align: center; padding: 15px; background: rgba(12, 126, 146, 0.1); border: 1px solid rgba(12, 126, 146, 0.3); border-radius: 10px; margin-bottom: 20px;">
+                                <p style="margin: 0; color: var(--primary-color); font-weight: 600; font-size: 14px;">
                             <button class="process-btn" id="process-btn">
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                     <path d="M5 13L9 17L19 7" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -126,8 +133,6 @@
                                 </svg>
                                 <span>Arquivos processados com sucesso!</span>
                             </div>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>
@@ -182,24 +187,27 @@
             <div class="footer-content">
                 <div class="footer-section">
                     <h3>LIGHT MARKETING</h3>
-                    <p>Soluções inteligentes para e-commerce</p>
-                </div>
-                <div class="footer-section">
-                    <h4>Entre em Contato</h4>
-                    <a href="https://wa.link/m1vm4f" target="_blank" class="contact-link">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js"></script>
+    <script src="auth.js"></script>
+    <script src="script.js?v=13.0" defer></script>
+</body>
+</html>                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M3 8L10.8906 13.2604C11.5624 13.7083 12.4376 13.7083 13.1094 13.2604L21 8M5 19H19C20.1046 19 21 18.1046 21 17V7C21 5.89543 20.1046 5 19 5H5C3.89543 5 3 5.89543 3 7V17C3 18.1046 3.89543 19 5 19Z" stroke="#0C7E92" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
                         Fale Conosco
                     </a>
                 </div>
             </div>
-            <div class="footer-bottom">
-                <p>&copy; 2025 Light Marketing. Todos os direitos reservados.</p>
-            </div>
         </div>
     </footer>
 
-    <script src="script.js?v=13.0" defer></script>
+    <!-- Auth & Config Scripts -->
+    <script src="config/supabase-config.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="script.js?v=14.0" defer></script>
 </body>
 </html>

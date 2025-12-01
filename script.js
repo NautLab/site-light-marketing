@@ -1,3 +1,147 @@
+// =============================================
+// AUTH & USER STATE
+// =============================================
+let currentUser = null;
+let userProfile = null;
+let canProcess = false;
+
+// Verificar autenticação ao carregar página
+async function checkAuthStatus() {
+    try {
+        const session = await window.SupabaseClient?.checkAuth();
+        
+        if (session) {
+            currentUser = await window.SupabaseClient.getCurrentUser();
+            userProfile = await window.SupabaseClient.getUserProfile(currentUser.id);
+            
+            // Atualizar navegação
+            document.getElementById('nav-login').style.display = 'none';
+            document.getElementById('nav-dashboard').style.display = 'inline-block';
+            
+            // Verificar limites de uso
+            await checkUsageLimits();
+        } else {
+            // Usuário não autenticado - redirecionar para login
+            document.getElementById('nav-login').style.display = 'inline-block';
+            document.getElementById('nav-dashboard').style.display = 'none';
+            
+            // Desabilitar ferramenta e mostrar aviso
+            showLoginRequired();
+        }
+    } catch (error) {
+        console.error('Erro ao verificar autenticação:', error);
+    }
+}
+
+// Verificar limites de uso
+async function checkUsageLimits() {
+    try {
+        const limitData = await window.SupabaseClient.checkUsageLimit(currentUser.id);
+        
+        if (limitData && !limitData.can_process) {
+            canProcess = false;
+            showLimitReached(limitData);
+        } else {
+            canProcess = true;
+        }
+    } catch (error) {
+        console.error('Erro ao verificar limites:', error);
+        canProcess = true; // Em caso de erro, permitir uso
+    }
+}
+
+// Mostrar aviso de login necessário
+function showLoginRequired() {
+    const toolCard = document.querySelector('.tool-card');
+    if (toolCard) {
+        toolCard.style.opacity = '0.6';
+        toolCard.style.pointerEvents = 'none';
+        
+        // Adicionar overlay de bloqueio
+        const overlay = document.createElement('div');
+        overlay.style.cssText = `
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            z-index: 100;
+        `;
+        
+        overlay.innerHTML = `
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin-bottom: 20px;">
+                <path d="M12 15V17M6 21H18C19.1046 21 20 20.1046 20 19V13C20 11.8954 19.1046 11 18 11H6C4.89543 11 4 11.8954 4 13V19C4 20.1046 4.89543 21 6 21ZM16 11V7C16 4.79086 14.2091 3 12 3C9.79086 3 8 4.79086 8 7V11H16Z" stroke="#0C7E92" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <h3 style="color: white; font-size: 24px; margin-bottom: 10px;">Login Necessário</h3>
+            <p style="color: rgba(255, 255, 255, 0.8); margin-bottom: 25px;">Faça login para usar a ferramenta de formatação</p>
+            <a href="login.html" style="background: #0C7E92; color: white; padding: 15px 40px; border-radius: 50px; text-decoration: none; font-weight: 700;">
+                FAZER LOGIN
+            </a>
+        `;
+        
+        const heroRight = document.querySelector('.hero-right');
+        if (heroRight) {
+            heroRight.style.position = 'relative';
+            heroRight.appendChild(overlay);
+        }
+    }
+}
+
+// Mostrar aviso de limite atingido
+function showLimitReached(limitData) {
+    const toolCard = document.querySelector('.tool-card');
+    if (toolCard) {
+        toolCard.style.opacity = '0.6';
+        toolCard.style.pointerEvents = 'none';
+        
+        const overlay = document.createElement('div');
+        overlay.style.cssText = `
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            z-index: 100;
+        `;
+        
+        overlay.innerHTML = `
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin-bottom: 20px;">
+                <path d="M12 9V13M12 17H12.01M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="#ffbb33" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <h3 style="color: white; font-size: 24px; margin-bottom: 10px;">Limite Atingido</h3>
+            <p style="color: rgba(255, 255, 255, 0.8); margin-bottom: 25px;">
+                Você usou ${limitData.current_usage} de ${limitData.monthly_limit} processamentos este mês.
+                <br>Faça upgrade para continuar usando!
+            </p>
+            <a href="dashboard.html" style="background: #0C7E92; color: white; padding: 15px 40px; border-radius: 50px; text-decoration: none; font-weight: 700;">
+                VER PLANOS
+            </a>
+        `;
+        
+        const heroRight = document.querySelector('.hero-right');
+        if (heroRight) {
+            heroRight.style.position = 'relative';
+            heroRight.appendChild(overlay);
+        }
+    }
+}
+
 // Menu hambúrguer toggle
 // Versão: 5.0 - Slide from right
 const menuToggle = document.querySelector('.menu-toggle');
@@ -140,10 +284,24 @@ document.querySelectorAll('.file-upload').forEach((upload, index) => {
 });
 
 // Process button handler
-processBtn.addEventListener('click', function() {
+processBtn.addEventListener('click', async function() {
+    // Verificar autenticação
+    if (!currentUser) {
+        alert('Você precisa fazer login para usar a ferramenta.');
+        window.location.href = 'login.html';
+        return;
+    }
+    
+    // Verificar limites
+    if (!canProcess) {
+        alert('Você atingiu o limite de processamentos do seu plano. Faça upgrade para continuar!');
+        window.location.href = 'dashboard.html';
+        return;
+    }
+    
     const pdfFile = pdfInput.files[0];
     const xlsxFile = xlsxInput.files[0];
-    const processType = document.querySelector('input[name="process-type"]:checked').value;
+    const processType = 'correios'; // Ou obter de um seletor se você adicionar
     
     // Validation
     if (!pdfFile) {
@@ -169,6 +327,8 @@ processBtn.addEventListener('click', function() {
     processBtn.style.opacity = '0.6';
     processBtn.style.cursor = 'not-allowed';
     
+    const startTime = Date.now();
+    
     // Simulate processing with progress
     let progress = 0;
     const interval = setInterval(() => {
@@ -179,7 +339,21 @@ processBtn.addEventListener('click', function() {
             clearInterval(interval);
             
             // Show success message after a short delay
-            setTimeout(() => {
+            setTimeout(async () => {
+                const processingTime = Date.now() - startTime;
+                
+                // Registrar uso no Supabase
+                const logged = await window.SupabaseClient.logUsage(
+                    currentUser.id,
+                    processType,
+                    pdfFile.name,
+                    xlsxFile.name
+                );
+                
+                if (!logged) {
+                    console.error('Erro ao registrar uso');
+                }
+                
                 progressContainer.style.display = 'none';
                 successMessage.style.display = 'flex';
                 
@@ -193,6 +367,10 @@ processBtn.addEventListener('click', function() {
                 console.log('Process type:', processType);
                 console.log('PDF file:', pdfFile.name);
                 console.log('XLSX file:', xlsxFile.name);
+                console.log('Processing time:', processingTime, 'ms');
+                
+                // Atualizar limites
+                await checkUsageLimits();
                 
                 // Hide success message after 5 seconds
                 setTimeout(() => {
@@ -225,6 +403,23 @@ processBtn.addEventListener('click', function() {
 // document.querySelectorAll('.step').forEach(step => {
 //     observer.observe(step);
 // });
+
+// =============================================
+// INITIALIZE AUTH CHECK
+// =============================================
+// Verificar autenticação quando a página carregar
+if (window.SupabaseClient) {
+    checkAuthStatus();
+} else {
+    // Aguardar o carregamento do Supabase
+    window.addEventListener('load', () => {
+        setTimeout(() => {
+            if (window.SupabaseClient) {
+                checkAuthStatus();
+            }
+        }, 500);
+    });
+}
 
 // Prevent default drag and drop on upload areas
 document.querySelectorAll('.file-upload').forEach(upload => {
