@@ -20,7 +20,7 @@
                     <img src="favicon.ico" alt="Light Marketing Logo" class="logo-icon" width="48" height="48">
                     <span class="logo-text"><span class="logo-light">LIGHT</span> <span class="logo-marketing">MARKETING</span></span>
                 </a>
-                <h1>Bem-vindo de volta!</h1>
+                <h1>Bem-vindo!</h1>
                 <p>Entre na sua conta para continuar</p>
             </div>
 
@@ -107,11 +107,12 @@
                 
                 const email = document.getElementById('email').value.trim();
                 const password = document.getElementById('password').value;
+                const rememberMe = document.getElementById('remember').checked;
 
                 setLoading(submitBtn, true);
                 hideAlert(alert);
 
-                const result = await signIn(email, password);
+                const result = await signIn(email, password, rememberMe);
 
                 if (result.success) {
                     showAlert(alert, 'Login realizado com sucesso! Redirecionando...', 'success');

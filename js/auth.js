@@ -46,9 +46,10 @@ async function signUp(email, password, fullName) {
  * Sign in a user with email and password
  * @param {string} email - User's email
  * @param {string} password - User's password
+ * @param {boolean} rememberMe - Whether to persist session beyond browser close
  * @returns {Promise<{success: boolean, error?: string}>}
  */
-async function signIn(email, password) {
+async function signIn(email, password, rememberMe = false) {
     try {
         const { data, error } = await supabase.auth.signInWithPassword({
             email: email,
@@ -57,6 +58,14 @@ async function signIn(email, password) {
 
         if (error) {
             return { success: false, error: translateAuthError(error.message) };
+        }
+
+        // If remember me is NOT checked, use session-only persistence
+        if (!rememberMe) {
+            // Change storage to session (expires when browser closes)
+            await supabase.auth.updateUser({
+                data: { session_only: true }
+            });
         }
 
         return { success: true };
@@ -77,6 +86,10 @@ async function signOut() {
         if (error) {
             return { success: false, error: translateAuthError(error.message) };
         }
+
+        // Clear all auth data from storage
+        localStorage.clear();
+        sessionStorage.clear();
 
         return { success: true };
     } catch (err) {
@@ -190,6 +203,18 @@ async function getUserProfile() {
  * @returns {string} Translated message
  */
 function translateAuthError(message) {
+    if (!message) return 'Ocorreu um erro. Tente novamente.';
+
+    // Handle dynamic cooldown messages (e.g., "For security purposes, you can only request this after 51 seconds")
+    if (message.includes('For security purposes, you can only request this after')) {
+        const match = message.match(/(\d+)\s*second/);
+        if (match) {
+            const seconds = match[1];
+            return `Por segurança, você só pode solicitar novamente após ${seconds} segundos.`;
+        }
+        return 'Por segurança, aguarde alguns segundos antes de tentar novamente.';
+    }
+
     const errorTranslations = {
         'Invalid login credentials': 'E-mail ou senha incorretos.',
         'Email not confirmed': 'E-mail não confirmado. Verifique sua caixa de entrada.',
@@ -203,7 +228,7 @@ function translateAuthError(message) {
         'Auth session missing!': 'Sessão expirada. Faça login novamente.'
     };
 
-    return errorTranslations[message] || message || 'Ocorreu um erro. Tente novamente.';
+    return errorTranslations[message] || message;
 }
 
 /**
