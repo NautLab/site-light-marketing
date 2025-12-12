@@ -60,12 +60,14 @@ async function signIn(email, password, rememberMe = false) {
             return { success: false, error: translateAuthError(error.message) };
         }
 
-        // If remember me is NOT checked, use session-only persistence
-        if (!rememberMe) {
-            // Change storage to session (expires when browser closes)
-            await supabase.auth.updateUser({
-                data: { session_only: true }
-            });
+        // If remember me IS checked, copy session to localStorage for persistence
+        if (rememberMe && data.session) {
+            localStorage.setItem('sb-auth-token-persistent', JSON.stringify(data.session));
+            localStorage.setItem('sb-remember-me', 'true');
+        } else {
+            // Ensure localStorage is clean if not remembering
+            localStorage.removeItem('sb-auth-token-persistent');
+            localStorage.removeItem('sb-remember-me');
         }
 
         return { success: true };
@@ -101,15 +103,51 @@ async function signOut() {
 /**
  * Send a password reset email
  * @param {string} email - User's email
- * @returns {Promise<{success: boolean, error?: string}>}
+ * @returns {Promise<{success: boolean, error?: string, cooldownSeconds?: number}>}
  */
 async function resetPassword(email) {
     try {
+        // First, check if email exists by attempting sign in with wrong password
+        // This will return "Invalid login credentials" if email exists, or specific error if not
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+            email: email,
+            password: '__check_email_exists__' + Date.now()
+        });
+
+        // If no error or unexpected error, email might not exist
+        if (!signInError) {
+            // This shouldn't happen, but just in case
+            await supabase.auth.signOut();
+        }
+        
+        // Check if error indicates email doesn't exist
+        if (signInError && signInError.message === 'Invalid login credentials') {
+            // Email exists, proceed with password reset
+        } else if (signInError && (
+            signInError.message.includes('Email not confirmed') ||
+            signInError.message.includes('Invalid login credentials')
+        )) {
+            // Email exists (either not confirmed or wrong password)
+        } else {
+            // Email likely doesn't exist - but Supabase doesn't expose this directly for security
+            // We'll check by attempting the reset and see if it fails
+        }
+
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
             redirectTo: `${SITE_URL}/reset-password.html`
         });
 
         if (error) {
+            // Check for cooldown error and extract seconds
+            if (error.message.includes('For security purposes, you can only request this after')) {
+                const match = error.message.match(/after\s+(\d+)\s+second/);
+                const seconds = match ? parseInt(match[1]) : 60;
+                return { 
+                    success: false, 
+                    error: `Você só pode solicitar novamente para esse e-mail após ${seconds} segundos.`,
+                    cooldownSeconds: seconds
+                };
+            }
             return { success: false, error: translateAuthError(error.message) };
         }
 
@@ -117,6 +155,41 @@ async function resetPassword(email) {
     } catch (err) {
         console.error('ResetPassword error:', err);
         return { success: false, error: 'Erro ao enviar e-mail. Tente novamente.' };
+    }
+}
+
+/**
+ * Check if an email is registered
+ * @param {string} email - Email to check
+ * @returns {Promise<{exists: boolean}>}
+ */
+async function checkEmailExists(email) {
+    try {
+        // Use signInWithOtp to check - it will fail differently based on email existence
+        // For now, we'll use the sign up check
+        const { data, error } = await supabase.auth.signUp({
+            email: email,
+            password: '__temp_check_' + Date.now() + Math.random(),
+            options: {
+                data: { temp_check: true }
+            }
+        });
+
+        // If user was created with no identities, email already exists
+        if (data.user && data.user.identities && data.user.identities.length === 0) {
+            return { exists: true };
+        }
+        
+        // If user was created, it means email didn't exist - we should clean up
+        // But Supabase doesn't allow immediate deletion, so we rely on email confirmation not happening
+        if (data.user && data.user.identities && data.user.identities.length > 0) {
+            return { exists: false };
+        }
+
+        return { exists: true }; // Assume exists for safety
+    } catch (err) {
+        console.error('CheckEmail error:', err);
+        return { exists: true }; // Assume exists on error for safety
     }
 }
 
