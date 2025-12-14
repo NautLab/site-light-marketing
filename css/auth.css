@@ -817,39 +817,6 @@
     .auth-btn {
         padding: 18px 20px;
     }
-
-    /* User dropdown full width on small screens */
-    .user-dropdown {
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        top: auto;
-        border-radius: 20px 20px 0 0;
-        min-width: 100%;
-        padding: 12px 16px 24px;
-        transform: translateY(100%);
-    }
-
-    .user-dropdown.active {
-        transform: translateY(0);
-    }
-
-    .user-dropdown-header {
-        text-align: center;
-        padding: 16px;
-    }
-
-    .user-dropdown-item {
-        justify-content: center;
-        padding: 16px;
-        font-size: 15px;
-    }
-
-    .user-dropdown-item svg {
-        width: 20px;
-        height: 20px;
-    }
 }
 
 /* Safe area insets for notched devices */
@@ -860,10 +827,6 @@
             padding-bottom: max(24px, env(safe-area-inset-bottom));
             padding-left: max(20px, env(safe-area-inset-left));
             padding-right: max(20px, env(safe-area-inset-right));
-        }
-
-        .user-dropdown {
-            padding-bottom: max(24px, env(safe-area-inset-bottom));
         }
     }
 }
