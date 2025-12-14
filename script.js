@@ -1,5 +1,5 @@
 // Menu hambúrguer toggle
-// Versão: 5.0 - Slide from right
+// Versão: 6.0 - Integração com dropdown de conta
 const menuToggle = document.querySelector('.menu-toggle');
 const nav = document.querySelector('.nav');
 
@@ -11,7 +11,18 @@ if (!menuOverlay) {
     document.body.appendChild(menuOverlay);
 }
 
+// Função para fechar dropdown da conta
+function closeAccountDropdown() {
+    const dropdown = document.getElementById('user-dropdown');
+    if (dropdown) {
+        dropdown.classList.remove('active');
+    }
+}
+
 menuToggle.addEventListener('click', () => {
+    // Fechar dropdown da conta antes de abrir menu
+    closeAccountDropdown();
+    
     menuToggle.classList.toggle('active');
     nav.classList.toggle('active');
     menuOverlay.classList.toggle('active');
