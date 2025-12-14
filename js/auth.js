@@ -113,15 +113,15 @@ async function checkEmailExists(email) {
         });
 
         if (error) {
-            console.error('CheckEmail error:', error);
-            // On error, proceed with reset attempt (let Supabase handle it)
-            return { exists: true };
+            console.error('CheckEmail RPC error:', error);
+            throw error; // Throw error instead of silently returning true
         }
 
+        console.log('Email check result:', { email, exists: data });
         return { exists: data === true };
     } catch (err) {
         console.error('CheckEmail error:', err);
-        return { exists: true }; // Assume exists on error for safety
+        throw err; // Propagate error to caller
     }
 }
 
