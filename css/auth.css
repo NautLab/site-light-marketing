@@ -454,18 +454,7 @@
     visibility: hidden;
     transform: translateY(-10px);
     transition: all 0.3s ease;
-    z-index: 998; /* Abaixo do header (1000) */
-}
-
-/* Mobile: dropdown aparece abaixo do header fixo */
-@media (max-width: 768px) {
-    .user-dropdown {
-        position: fixed;
-        top: 77px; /* Altura do header */
-        right: 10px;
-        left: auto;
-        border-radius: 12px;
-    }
+    z-index: 1001;
 }
 
 .user-dropdown.active {
