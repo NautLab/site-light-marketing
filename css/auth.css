@@ -571,47 +571,365 @@
 
 /* Mobile Responsive */
 @media (max-width: 768px) {
+    .auth-page {
+        padding: 16px;
+        align-items: flex-start;
+        padding-top: 40px;
+    }
+
+    .auth-container {
+        max-width: 100%;
+    }
+
     .auth-card {
-        padding: 30px 24px;
+        padding: 28px 24px;
+        border-radius: 24px;
+        box-shadow: 0 15px 50px rgba(0, 0, 0, 0.4),
+                    0 0 0 1px rgba(12, 126, 146, 0.15);
+    }
+
+    .auth-header {
+        margin-bottom: 28px;
+    }
+
+    .auth-logo {
+        margin-bottom: 20px;
+        gap: 10px;
+    }
+
+    .auth-logo .logo-icon {
+        width: 40px;
+        height: 40px;
+    }
+
+    .auth-logo .logo-text {
+        font-size: 16px;
+        letter-spacing: 1.5px;
     }
 
     .auth-header h1 {
-        font-size: 24px;
+        font-size: 22px;
+        margin-bottom: 6px;
+    }
+
+    .auth-header p {
+        font-size: 14px;
+    }
+
+    .auth-form {
+        gap: 18px;
+    }
+
+    .form-group {
+        gap: 6px;
+    }
+
+    .form-group label {
+        font-size: 13px;
+    }
+
+    .input-wrapper input {
+        padding: 14px 14px 14px 44px;
+        font-size: 16px; /* Prevents zoom on iOS */
+        border-radius: 12px;
+    }
+
+    .input-wrapper svg {
+        left: 14px;
+        width: 18px;
+        height: 18px;
+    }
+
+    .toggle-password {
+        right: 10px;
+        padding: 10px;
+    }
+
+    .toggle-password svg {
+        width: 18px;
+        height: 18px;
     }
 
     .form-options {
         flex-direction: column;
         align-items: flex-start;
+        gap: 14px;
     }
 
-    .user-account-btn span:not(.user-avatar) {
+    .checkbox-wrapper {
+        font-size: 13px;
+    }
+
+    .checkmark {
+        width: 22px;
+        height: 22px;
+    }
+
+    .forgot-link {
+        font-size: 13px;
+    }
+
+    .alert {
+        padding: 12px 14px;
+        font-size: 13px;
+        border-radius: 10px;
+    }
+
+    .auth-btn {
+        padding: 16px 20px;
+        font-size: 15px;
+        border-radius: 12px;
+    }
+
+    .auth-footer {
+        margin-top: 24px;
+        padding-top: 20px;
+    }
+
+    .auth-footer p {
+        font-size: 13px;
+    }
+
+    /* Back button mobile */
+    .back-button {
+        font-size: 13px;
+        padding: 10px 14px;
+        margin-bottom: 16px;
+    }
+
+    /* Password strength mobile */
+    .password-strength {
+        gap: 10px;
+        margin-top: 6px;
+    }
+
+    .strength-text {
+        font-size: 11px;
+        min-width: 80px;
+    }
+
+    /* User Account Button Mobile */
+    .user-account-btn {
+        padding: 6px 12px 6px 6px;
+        font-size: 13px;
+        gap: 6px;
+    }
+
+    .user-account-btn > span:not(.user-avatar) {
+        display: none;
+    }
+
+    .user-account-btn > svg {
         display: none;
     }
 
     .user-account-btn {
-        padding: 8px;
+        padding: 6px;
         border-radius: 50%;
     }
 
+    .user-avatar {
+        width: 36px;
+        height: 36px;
+        font-size: 14px;
+    }
+
+    .user-dropdown {
+        min-width: 220px;
+        right: -10px;
+        top: calc(100% + 8px);
+    }
+
+    .user-dropdown-header {
+        padding: 14px 16px;
+    }
+
+    .user-dropdown-header .user-name {
+        font-size: 15px;
+    }
+
+    .user-dropdown-header .user-email {
+        font-size: 12px;
+    }
+
+    .user-dropdown-item {
+        padding: 14px 16px;
+        font-size: 14px;
+    }
+
+    /* Auth buttons in header mobile */
+    .auth-buttons {
+        gap: 8px;
+    }
+
     .auth-buttons .btn-login {
-        padding: 8px 14px;
+        padding: 10px 14px;
+        font-size: 13px;
     }
 
     .auth-buttons .btn-register {
-        padding: 8px 14px;
+        padding: 10px 14px;
+        font-size: 13px;
     }
 }
 
 @media (max-width: 480px) {
+    .auth-page {
+        padding: 0;
+        align-items: stretch;
+    }
+
     .auth-container {
         padding: 0;
+        max-width: 100%;
     }
 
     .auth-card {
         border-radius: 0;
         min-height: 100vh;
+        min-height: 100dvh; /* Dynamic viewport height for mobile browsers */
         display: flex;
         flex-direction: column;
         justify-content: center;
+        padding: 24px 20px;
+        box-shadow: none;
+    }
+
+    .auth-header {
+        margin-bottom: 24px;
+    }
+
+    .auth-logo .logo-text {
+        font-size: 15px;
+    }
+
+    .auth-header h1 {
+        font-size: 20px;
+    }
+
+    .auth-header p {
+        font-size: 13px;
+    }
+
+    .input-wrapper input {
+        padding: 16px 14px 16px 44px;
+    }
+
+    .auth-btn {
+        padding: 18px 20px;
+    }
+
+    /* User dropdown full width on small screens */
+    .user-dropdown {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        top: auto;
+        border-radius: 20px 20px 0 0;
+        min-width: 100%;
+        padding: 12px 16px 24px;
+        transform: translateY(100%);
+    }
+
+    .user-dropdown.active {
+        transform: translateY(0);
+    }
+
+    .user-dropdown-header {
+        text-align: center;
+        padding: 16px;
+    }
+
+    .user-dropdown-item {
+        justify-content: center;
+        padding: 16px;
+        font-size: 15px;
+    }
+
+    .user-dropdown-item svg {
+        width: 20px;
+        height: 20px;
     }
 }
+
+/* Safe area insets for notched devices */
+@supports (padding: max(0px)) {
+    @media (max-width: 480px) {
+        .auth-card {
+            padding-top: max(24px, env(safe-area-inset-top));
+            padding-bottom: max(24px, env(safe-area-inset-bottom));
+            padding-left: max(20px, env(safe-area-inset-left));
+            padding-right: max(20px, env(safe-area-inset-right));
+        }
+
+        .user-dropdown {
+            padding-bottom: max(24px, env(safe-area-inset-bottom));
+        }
+    }
+}
+
+/* Touch-friendly improvements */
+@media (hover: none) and (pointer: coarse) {
+    .auth-btn:hover {
+        transform: none;
+    }
+
+    .auth-btn:active {
+        transform: scale(0.98);
+        opacity: 0.9;
+    }
+
+    .input-wrapper input:focus {
+        transform: none;
+    }
+
+    .toggle-password {
+        padding: 12px;
+    }
+
+    .checkbox-wrapper {
+        padding: 4px 0;
+    }
+
+    .checkmark {
+        width: 24px;
+        height: 24px;
+    }
+
+    .user-account-btn:active {
+        transform: scale(0.95);
+    }
+
+    .user-dropdown-item:active {
+        background: rgba(12, 126, 146, 0.25);
+    }
+}
+
+/* Landscape mode on mobile */
+@media (max-width: 768px) and (orientation: landscape) {
+    .auth-page {
+        padding: 16px;
+        align-items: center;
+    }
+
+    .auth-card {
+        min-height: auto;
+        border-radius: 20px;
+        padding: 24px 32px;
+    }
+
+    .auth-header {
+        margin-bottom: 20px;
+    }
+
+    .auth-form {
+        gap: 14px;
+    }
+
+    .auth-footer {
+        margin-top: 20px;
+        padding-top: 16px;
+    }
+}
+

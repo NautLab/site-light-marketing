@@ -101,38 +101,37 @@ async function signOut() {
 }
 
 /**
+ * Check if an email is registered using the secure database function
+ * @param {string} email - Email to check
+ * @returns {Promise<{exists: boolean}>}
+ */
+async function checkEmailExists(email) {
+    try {
+        // Use the secure SQL function to check email existence
+        const { data, error } = await supabase.rpc('check_email_exists', {
+            email_to_check: email.toLowerCase().trim()
+        });
+
+        if (error) {
+            console.error('CheckEmail error:', error);
+            // On error, proceed with reset attempt (let Supabase handle it)
+            return { exists: true };
+        }
+
+        return { exists: data === true };
+    } catch (err) {
+        console.error('CheckEmail error:', err);
+        return { exists: true }; // Assume exists on error for safety
+    }
+}
+
+/**
  * Send a password reset email
  * @param {string} email - User's email
  * @returns {Promise<{success: boolean, error?: string, cooldownSeconds?: number}>}
  */
 async function resetPassword(email) {
     try {
-        // First, check if email exists by attempting sign in with wrong password
-        // This will return "Invalid login credentials" if email exists, or specific error if not
-        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-            email: email,
-            password: '__check_email_exists__' + Date.now()
-        });
-
-        // If no error or unexpected error, email might not exist
-        if (!signInError) {
-            // This shouldn't happen, but just in case
-            await supabase.auth.signOut();
-        }
-        
-        // Check if error indicates email doesn't exist
-        if (signInError && signInError.message === 'Invalid login credentials') {
-            // Email exists, proceed with password reset
-        } else if (signInError && (
-            signInError.message.includes('Email not confirmed') ||
-            signInError.message.includes('Invalid login credentials')
-        )) {
-            // Email exists (either not confirmed or wrong password)
-        } else {
-            // Email likely doesn't exist - but Supabase doesn't expose this directly for security
-            // We'll check by attempting the reset and see if it fails
-        }
-
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
             redirectTo: `${SITE_URL}/reset-password.html`
         });
@@ -155,41 +154,6 @@ async function resetPassword(email) {
     } catch (err) {
         console.error('ResetPassword error:', err);
         return { success: false, error: 'Erro ao enviar e-mail. Tente novamente.' };
-    }
-}
-
-/**
- * Check if an email is registered
- * @param {string} email - Email to check
- * @returns {Promise<{exists: boolean}>}
- */
-async function checkEmailExists(email) {
-    try {
-        // Use signInWithOtp to check - it will fail differently based on email existence
-        // For now, we'll use the sign up check
-        const { data, error } = await supabase.auth.signUp({
-            email: email,
-            password: '__temp_check_' + Date.now() + Math.random(),
-            options: {
-                data: { temp_check: true }
-            }
-        });
-
-        // If user was created with no identities, email already exists
-        if (data.user && data.user.identities && data.user.identities.length === 0) {
-            return { exists: true };
-        }
-        
-        // If user was created, it means email didn't exist - we should clean up
-        // But Supabase doesn't allow immediate deletion, so we rely on email confirmation not happening
-        if (data.user && data.user.identities && data.user.identities.length > 0) {
-            return { exists: false };
-        }
-
-        return { exists: true }; // Assume exists for safety
-    } catch (err) {
-        console.error('CheckEmail error:', err);
-        return { exists: true }; // Assume exists on error for safety
     }
 }
 

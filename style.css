@@ -56,6 +56,7 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    position: relative;
 }
 
 .logo {
@@ -825,6 +826,14 @@ section *, .hero *, .how-to-use *, .footer * {
         display: flex;
     }
     
+    /* Auth section positioning */
+    #auth-section {
+        position: absolute;
+        right: 70px;
+        top: 50%;
+        transform: translateY(-50%);
+    }
+    
     .nav {
         position: fixed;
         top: 77px;
@@ -894,6 +903,11 @@ section *, .hero *, .how-to-use *, .footer * {
         letter-spacing: 1px;
     }
     
+    /* Auth section smaller screens */
+    #auth-section {
+        right: 60px;
+    }
+    
     .hero-title {
         font-size: 24px;
         min-height: 80px;
@@ -932,6 +946,10 @@ section *, .hero *, .how-to-use *, .footer * {
 
 /* Media query adicional para zoom out */
 @media (max-width: 360px) {
+    #auth-section {
+        right: 55px;
+    }
+    
     .hero-title {
         font-size: 20px;
         min-height: 70px;
