@@ -1,5 +1,7 @@
--- Create function to check if email exists in auth.users
--- This function is secure and doesn't expose user data
+-- Update function to check if email exists in auth.users
+-- This version uses COALESCE to ensure it never returns NULL
+DROP FUNCTION IF EXISTS public.check_email_exists(TEXT);
+
 CREATE OR REPLACE FUNCTION public.check_email_exists(email_to_check TEXT)
 RETURNS BOOLEAN
 LANGUAGE plpgsql
@@ -26,4 +28,4 @@ GRANT EXECUTE ON FUNCTION public.check_email_exists(TEXT) TO anon;
 GRANT EXECUTE ON FUNCTION public.check_email_exists(TEXT) TO authenticated;
 
 -- Add comment for documentation
-COMMENT ON FUNCTION public.check_email_exists(TEXT) IS 'Checks if an email is registered in the system without exposing user data';
+COMMENT ON FUNCTION public.check_email_exists(TEXT) IS 'Checks if an email is registered in auth.users without exposing user data. Returns false if email does not exist.';
