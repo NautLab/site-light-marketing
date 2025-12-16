@@ -17,6 +17,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="style.css?v=21.0">
     <link rel="stylesheet" href="css/auth.css?v=1.0">
+    <link rel="stylesheet" href="css/label-processor.css?v=1.0">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -132,6 +133,43 @@
                                 </svg>
                                 <span>Arquivos processados com sucesso!</span>
                             </div>
+
+                            <!-- Mensagem de Erro -->
+                            <div class="error-message" id="error-message" style="display: none;">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M12 8V12M12 16H12.01M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="#dc3545" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                                <span id="error-text">Erro ao processar arquivos</span>
+                            </div>
+
+                            <!-- Relatório de Processamento -->
+                            <div class="processing-report" id="processing-report" style="display: none;">
+                                <h4>Relatório de Processamento</h4>
+                                <div class="report-stats">
+                                    <div class="stat-item">
+                                        <span class="stat-label">Total de Etiquetas:</span>
+                                        <span class="stat-value" id="stat-total">0</span>
+                                    </div>
+                                    <div class="stat-item success">
+                                        <span class="stat-label">Com Dados Associados:</span>
+                                        <span class="stat-value" id="stat-with-data">0</span>
+                                    </div>
+                                    <div class="stat-item warning">
+                                        <span class="stat-label">Sem Correspondência:</span>
+                                        <span class="stat-value" id="stat-without-data">0</span>
+                                    </div>
+                                </div>
+                                <div class="missing-list" id="missing-list" style="display: none;">
+                                    <h5>Tracking Numbers sem Correspondência:</h5>
+                                    <ul id="missing-tracking-numbers"></ul>
+                                </div>
+                                <button class="download-btn" id="download-btn">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M21 15V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V15M7 10L12 15M12 15L17 10M12 15V3" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                    BAIXAR PDF FORMATADO
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -206,6 +244,15 @@
         </div>
     </footer>
 
+    <!-- Bibliotecas para processamento de PDF e XLSX (100% client-side) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script>
+        // Configuração do PDF.js worker
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
+    
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase-config.js?v=1.0"></script>
     <script src="js/auth.js?v=1.0"></script>
@@ -312,6 +359,7 @@
             }
         })();
     </script>
-    <script src="script.js?v=13.0" defer></script>
+    <script src="js/label-processor.js?v=1.0"></script>
+    <script src="script.js?v=14.0" defer></script>
 </body>
 </html>

@@ -1,5 +1,5 @@
 // Menu hambúrguer toggle
-// Versão: 6.0 - Integração com dropdown de conta
+// Versão: 7.0 - Integração com processador de etiquetas
 const menuToggle = document.querySelector('.menu-toggle');
 const nav = document.querySelector('.nav');
 
@@ -117,27 +117,112 @@ const progressContainer = document.getElementById('progress-container');
 const progressFill = document.getElementById('progress-fill');
 const progressText = document.getElementById('progress-text');
 const successMessage = document.getElementById('success-message');
+const errorMessage = document.getElementById('error-message');
+const errorText = document.getElementById('error-text');
+const processingReport = document.getElementById('processing-report');
+const downloadBtn = document.getElementById('download-btn');
+
+// Variável para armazenar o PDF gerado
+let generatedPdfBlob = null;
 
 // File selection handlers
 pdfInput.addEventListener('change', function(e) {
     if (this.files && this.files[0]) {
         pdfName.textContent = this.files[0].name;
         pdfName.style.color = '#0C7E92';
+        // Configura o arquivo no processador
+        if (typeof labelProcessor !== 'undefined') {
+            labelProcessor.setPdfFile(this.files[0]);
+        }
     } else {
         pdfName.textContent = 'Nenhum arquivo selecionado';
         pdfName.style.color = 'rgba(255, 255, 255, 0.6)';
     }
+    // Esconde mensagens anteriores
+    hideAllMessages();
 });
 
 xlsxInput.addEventListener('change', function(e) {
     if (this.files && this.files[0]) {
         xlsxName.textContent = this.files[0].name;
         xlsxName.style.color = '#0C7E92';
+        // Configura o arquivo no processador
+        if (typeof labelProcessor !== 'undefined') {
+            labelProcessor.setXlsxFile(this.files[0]);
+        }
     } else {
         xlsxName.textContent = 'Nenhum arquivo selecionado';
         xlsxName.style.color = 'rgba(255, 255, 255, 0.6)';
     }
+    // Esconde mensagens anteriores
+    hideAllMessages();
 });
+
+// Função para esconder todas as mensagens
+function hideAllMessages() {
+    if (successMessage) successMessage.style.display = 'none';
+    if (errorMessage) errorMessage.style.display = 'none';
+    if (processingReport) processingReport.style.display = 'none';
+    if (progressContainer) progressContainer.style.display = 'none';
+}
+
+// Função para mostrar erro
+function showError(message) {
+    hideAllMessages();
+    if (errorMessage && errorText) {
+        errorText.textContent = message;
+        errorMessage.style.display = 'flex';
+    } else {
+        alert(message);
+    }
+}
+
+// Função para mostrar relatório
+function showReport(report) {
+    if (!processingReport) return;
+    
+    document.getElementById('stat-total').textContent = report.total;
+    document.getElementById('stat-with-data').textContent = report.withData;
+    document.getElementById('stat-without-data').textContent = report.withoutData;
+    
+    const missingList = document.getElementById('missing-list');
+    const missingTrackingNumbers = document.getElementById('missing-tracking-numbers');
+    
+    if (report.missingTrackingNumbers && report.missingTrackingNumbers.length > 0) {
+        missingTrackingNumbers.innerHTML = report.missingTrackingNumbers
+            .map(tn => `<li>${tn}</li>`)
+            .join('');
+        missingList.style.display = 'block';
+    } else {
+        missingList.style.display = 'none';
+    }
+    
+    processingReport.style.display = 'block';
+}
+
+// Função para atualizar progresso
+function updateProgress(progress) {
+    if (progressFill && progressText) {
+        progressFill.style.width = progress + '%';
+        progressText.textContent = Math.round(progress) + '%';
+    }
+}
+
+// Download do PDF gerado
+if (downloadBtn) {
+    downloadBtn.addEventListener('click', function() {
+        if (generatedPdfBlob) {
+            const url = URL.createObjectURL(generatedPdfBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'etiquetas-formatadas.pdf';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    });
+}
 
 // Click on upload area to trigger file input
 document.querySelectorAll('.file-upload').forEach((upload, index) => {
@@ -151,70 +236,75 @@ document.querySelectorAll('.file-upload').forEach((upload, index) => {
 });
 
 // Process button handler
-processBtn.addEventListener('click', function() {
+processBtn.addEventListener('click', async function() {
     const pdfFile = pdfInput.files[0];
     const xlsxFile = xlsxInput.files[0];
-    const processType = document.querySelector('input[name="process-type"]:checked').value;
     
     // Validation
     if (!pdfFile) {
-        alert('Por favor, selecione um arquivo PDF.');
+        showError('Por favor, selecione um arquivo PDF.');
         return;
     }
     
     if (!xlsxFile) {
-        alert('Por favor, selecione um arquivo XLSX.');
+        showError('Por favor, selecione um arquivo XLSX.');
         return;
     }
     
-    // Hide success message if visible
-    successMessage.style.display = 'none';
+    // Verifica se o processador está disponível
+    if (typeof labelProcessor === 'undefined') {
+        showError('Erro: Processador de etiquetas não carregado. Por favor, recarregue a página.');
+        return;
+    }
+    
+    // Hide all messages and reset
+    hideAllMessages();
+    generatedPdfBlob = null;
     
     // Show progress bar
     progressContainer.style.display = 'block';
-    progressFill.style.width = '0%';
-    progressText.textContent = '0%';
+    updateProgress(0);
     
     // Disable button
     processBtn.disabled = true;
     processBtn.style.opacity = '0.6';
     processBtn.style.cursor = 'not-allowed';
     
-    // Simulate processing with progress
-    let progress = 0;
-    const interval = setInterval(() => {
-        progress += Math.random() * 15;
+    try {
+        // Reset e configura os arquivos
+        labelProcessor.reset();
+        labelProcessor.setPdfFile(pdfFile);
+        labelProcessor.setXlsxFile(xlsxFile);
         
-        if (progress >= 100) {
-            progress = 100;
-            clearInterval(interval);
+        // Processa os arquivos
+        const result = await labelProcessor.process(updateProgress);
+        
+        if (result.success) {
+            // Armazena o blob gerado
+            generatedPdfBlob = result.blob;
             
-            // Show success message after a short delay
-            setTimeout(() => {
-                progressContainer.style.display = 'none';
-                successMessage.style.display = 'flex';
-                
-                // Re-enable button
-                processBtn.disabled = false;
-                processBtn.style.opacity = '1';
-                processBtn.style.cursor = 'pointer';
-                
-                // Simulate download (in a real implementation, this would download the processed files)
-                console.log('Processing complete!');
-                console.log('Process type:', processType);
-                console.log('PDF file:', pdfFile.name);
-                console.log('XLSX file:', xlsxFile.name);
-                
-                // Hide success message after 5 seconds
-                setTimeout(() => {
-                    successMessage.style.display = 'none';
-                }, 5000);
-            }, 500);
+            // Mostra mensagem de sucesso
+            progressContainer.style.display = 'none';
+            successMessage.style.display = 'flex';
+            
+            // Mostra o relatório
+            showReport(result.results);
+            
+            console.log('Processamento concluído!');
+            console.log('Total:', result.results.total);
+            console.log('Com dados:', result.results.withData);
+            console.log('Sem dados:', result.results.withoutData);
         }
-        
-        progressFill.style.width = progress + '%';
-        progressText.textContent = Math.round(progress) + '%';
-    }, 200);
+    } catch (error) {
+        console.error('Erro no processamento:', error);
+        progressContainer.style.display = 'none';
+        showError(error.message || 'Erro desconhecido ao processar arquivos');
+    } finally {
+        // Re-enable button
+        processBtn.disabled = false;
+        processBtn.style.opacity = '1';
+        processBtn.style.cursor = 'pointer';
+    }
 });
 
 // Add animation on scroll for steps - Desabilitado temporariamente para melhor performance

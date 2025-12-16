@@ -1,0 +1,260 @@
+/**
+ * Light Marketing - Estilos do Processador de Etiquetas
+ * Versão: 1.0.0
+ */
+
+/* Mensagem de Erro */
+.error-message {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 20px;
+    background: rgba(220, 53, 69, 0.15);
+    border: 1px solid #dc3545;
+    border-radius: 15px;
+    animation: slideIn 0.5s ease;
+}
+
+.error-message svg {
+    flex-shrink: 0;
+}
+
+.error-message span {
+    font-weight: 600;
+    color: #dc3545;
+    word-break: break-word;
+}
+
+/* Relatório de Processamento */
+.processing-report {
+    background: rgba(12, 126, 146, 0.08);
+    border: 1px solid rgba(12, 126, 146, 0.3);
+    border-radius: 15px;
+    padding: 25px;
+    margin-top: 20px;
+    animation: slideIn 0.5s ease;
+}
+
+.processing-report h4 {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-light);
+    margin-bottom: 20px;
+    text-align: center;
+    border-bottom: 1px solid rgba(12, 126, 146, 0.3);
+    padding-bottom: 15px;
+}
+
+.report-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.stat-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    transition: all 0.3s ease;
+}
+
+.stat-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.stat-label {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.8);
+    font-weight: 500;
+}
+
+.stat-value {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-light);
+}
+
+.stat-item.success .stat-value {
+    color: #28a745;
+}
+
+.stat-item.warning .stat-value {
+    color: #ffc107;
+}
+
+/* Lista de Tracking Numbers Faltantes */
+.missing-list {
+    background: rgba(255, 193, 7, 0.1);
+    border: 1px solid rgba(255, 193, 7, 0.3);
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 20px;
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+.missing-list h5 {
+    font-size: 14px;
+    font-weight: 600;
+    color: #ffc107;
+    margin-bottom: 10px;
+}
+
+.missing-list ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.missing-list li {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.7);
+    padding: 5px 0;
+    border-bottom: 1px solid rgba(255, 193, 7, 0.2);
+    font-family: monospace;
+}
+
+.missing-list li:last-child {
+    border-bottom: none;
+}
+
+/* Scrollbar customizada para lista */
+.missing-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.missing-list::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+}
+
+.missing-list::-webkit-scrollbar-thumb {
+    background: rgba(255, 193, 7, 0.5);
+    border-radius: 3px;
+}
+
+.missing-list::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 193, 7, 0.7);
+}
+
+/* Botão de Download */
+.download-btn {
+    width: 100%;
+    background: linear-gradient(135deg, var(--primary-color) 0%, #0a5f6f 100%);
+    color: var(--text-light);
+    border: none;
+    padding: 18px 40px;
+    font-size: 16px;
+    font-weight: 700;
+    border-radius: 50px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    transition: all 0.3s ease;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    box-shadow: 0 4px 15px rgba(12, 126, 146, 0.3);
+}
+
+.download-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(12, 126, 146, 0.4);
+    background: linear-gradient(135deg, #0a9bb2 0%, #0a6d80 100%);
+}
+
+.download-btn:active {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 15px rgba(12, 126, 146, 0.3);
+}
+
+.download-btn svg {
+    flex-shrink: 0;
+}
+
+/* Animação de pulse para botão de download */
+@keyframes downloadPulse {
+    0%, 100% {
+        box-shadow: 0 4px 15px rgba(12, 126, 146, 0.3);
+    }
+    50% {
+        box-shadow: 0 4px 25px rgba(12, 126, 146, 0.5);
+    }
+}
+
+.download-btn {
+    animation: downloadPulse 2s ease-in-out infinite;
+}
+
+.download-btn:hover {
+    animation: none;
+}
+
+/* Responsivo */
+@media (max-width: 768px) {
+    .processing-report {
+        padding: 20px 15px;
+    }
+    
+    .processing-report h4 {
+        font-size: 16px;
+    }
+    
+    .stat-item {
+        padding: 10px 12px;
+    }
+    
+    .stat-label {
+        font-size: 12px;
+    }
+    
+    .stat-value {
+        font-size: 16px;
+    }
+    
+    .download-btn {
+        padding: 15px 30px;
+        font-size: 14px;
+    }
+    
+    .missing-list {
+        max-height: 120px;
+    }
+}
+
+@media (max-width: 480px) {
+    .processing-report h4 {
+        font-size: 14px;
+    }
+    
+    .stat-label {
+        font-size: 11px;
+    }
+    
+    .stat-value {
+        font-size: 14px;
+    }
+    
+    .download-btn {
+        padding: 12px 20px;
+        font-size: 13px;
+    }
+    
+    .error-message {
+        flex-direction: column;
+        text-align: center;
+        padding: 15px;
+    }
+    
+    .error-message span {
+        font-size: 13px;
+    }
+}
