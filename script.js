@@ -225,15 +225,8 @@ if (downloadBtn) {
 }
 
 // Click on upload area to trigger file input
-document.querySelectorAll('.file-upload').forEach((upload, index) => {
-    upload.addEventListener('click', function() {
-        if (index === 0) {
-            pdfInput.click();
-        } else {
-            xlsxInput.click();
-        }
-    });
-});
+// REMOVIDO: Estava causando duplo clique porque o label já faz isso
+// Os labels com atributo 'for' já acionam o input automaticamente
 
 // Process button handler
 processBtn.addEventListener('click', async function() {
@@ -297,8 +290,15 @@ processBtn.addEventListener('click', async function() {
         }
     } catch (error) {
         console.error('Erro no processamento:', error);
+        console.error('Stack:', error.stack);
         progressContainer.style.display = 'none';
-        showError(error.message || 'Erro desconhecido ao processar arquivos');
+        
+        // Mostra erro detalhado
+        let errorMsg = error.message || 'Erro desconhecido ao processar arquivos';
+        if (errorMsg.includes('ArrayBuffer')) {
+            errorMsg = 'Erro ao processar PDF: O arquivo pode estar corrompido ou em formato inválido. Tente exportar o PDF novamente.';
+        }
+        showError(errorMsg);
     } finally {
         // Re-enable button
         processBtn.disabled = false;

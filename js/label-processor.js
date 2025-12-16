@@ -32,6 +32,7 @@ class LabelProcessor {
             xlsxFile: null,
             xlsxData: null,
             extractedLabels: [],
+            pdfArrayBuffer: null, // Cache do ArrayBuffer do PDF
             results: {
                 total: 0,
                 withData: 0,
@@ -55,6 +56,7 @@ class LabelProcessor {
             xlsxFile: null,
             xlsxData: null,
             extractedLabels: [],
+            pdfArrayBuffer: null,
             results: {
                 total: 0,
                 withData: 0,
@@ -259,14 +261,21 @@ class LabelProcessor {
             }
 
             try {
-                const arrayBuffer = await this.state.pdfFile.arrayBuffer();
+                // Lê o arquivo uma vez e armazena no cache
+                if (!this.state.pdfArrayBuffer) {
+                    this.state.pdfArrayBuffer = await this.state.pdfFile.arrayBuffer();
+                }
+                
+                // Cria cópias do buffer para cada biblioteca
+                const bufferForPdfJs = this.state.pdfArrayBuffer.slice(0);
+                const bufferForPdfLib = this.state.pdfArrayBuffer.slice(0);
                 
                 // Carrega o PDF com PDF.js para extrair texto
-                const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+                const loadingTask = pdfjsLib.getDocument({ data: bufferForPdfJs });
                 const pdfDoc = await loadingTask.promise;
                 
                 // Carrega o PDF com pdf-lib para manipulação
-                const pdfLibDoc = await PDFLib.PDFDocument.load(arrayBuffer);
+                const pdfLibDoc = await PDFLib.PDFDocument.load(bufferForPdfLib);
                 
                 const numPages = pdfDoc.numPages;
                 const labels = [];
@@ -353,7 +362,13 @@ class LabelProcessor {
             throw new Error('Processamento incompleto. Execute processPdf() primeiro.');
         }
 
-        const arrayBuffer = await this.state.pdfFile.arrayBuffer();
+        // Usa o buffer em cache ou lê novamente
+        if (!this.state.pdfArrayBuffer) {
+            this.state.pdfArrayBuffer = await this.state.pdfFile.arrayBuffer();
+        }
+        
+        // Cria cópia do buffer para esta operação
+        const arrayBuffer = this.state.pdfArrayBuffer.slice(0);
         const srcDoc = await PDFLib.PDFDocument.load(arrayBuffer);
         const outputDoc = await PDFLib.PDFDocument.create();
 
