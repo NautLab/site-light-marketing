@@ -628,7 +628,7 @@ class LabelProcessor {
                         });
                         
                         // Linhas verticais
-                        colX = tableX;
+                        let colX = tableX;
                         for (let c = 0; c <= 3; c++) {
                             page.drawLine({
                                 start: { x: colX, y: currentY },
