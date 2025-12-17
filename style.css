@@ -428,7 +428,6 @@ section *, .hero *, .how-to-use *, .footer * {
     display: flex;
     flex-direction: column;
     gap: 8px;
-    cursor: pointer;
 }
 
 .upload-text {

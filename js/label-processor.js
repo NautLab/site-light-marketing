@@ -22,7 +22,7 @@ class LabelProcessor {
             fontSize: 8,
             fontFamily: 'Helvetica',
             // Fator de escala para renderização (maior = melhor qualidade)
-            renderScale: 3,
+            renderScale: 4,
         };
 
         // Estado do processamento
@@ -467,15 +467,15 @@ class LabelProcessor {
         const tableConfig = {
             minHeight: 35,           // Altura mínima da área de tabela
             maxHeight: 80,           // Altura máxima antes de criar página extra
-            headerHeight: 12,        // Altura do cabeçalho
-            rowHeight: 10,           // Altura base da linha
-            rowHeightWithWrap: 18,   // Altura da linha com quebra
+            headerHeight: 0,         // Altura do cabeçalho (sem cabeçalho)
+            rowHeight: 12,           // Altura base da linha
+            rowHeightWithWrap: 20,   // Altura da linha com quebra
             padding: 5,              // Padding interno
-            colWidths: [75, 130, 35], // SKU, Variação, Qtd
-            fontSize: 6,
+            colWidths: [160, 160, 25], // SKU, Variação, Qtd
+            fontSize: 7,
             headerFontSize: 7,
-            maxSkuChars: 14,         // Máx caracteres SKU por linha
-            maxVarChars: 24,         // Máx caracteres variação por linha
+            maxSkuChars: 28,         // Máx caracteres SKU por linha
+            maxVarChars: 28,         // Máx caracteres variação por linha
         };
 
         // Escala de renderização para qualidade (maior = melhor)
@@ -612,41 +612,6 @@ class LabelProcessor {
                         color: PDFLib.rgb(1, 1, 1),
                     });
                     
-                    // Cabeçalho da tabela
-                    page.drawRectangle({
-                        x: tableX, y: currentY - tableConfig.headerHeight,
-                        width: tableWidth, height: tableConfig.headerHeight,
-                        color: PDFLib.rgb(0.95, 0.95, 0.95),
-                        borderColor: PDFLib.rgb(0, 0, 0), borderWidth: 0.5,
-                    });
-                    
-                    // Textos do cabeçalho
-                    page.drawText('SKU', {
-                        x: tableX + 3, y: currentY - tableConfig.headerHeight + 3,
-                        size: tableConfig.headerFontSize, font: boldFont, color: PDFLib.rgb(0, 0, 0),
-                    });
-                    page.drawText('Variação', {
-                        x: tableX + tableConfig.colWidths[0] + 3, y: currentY - tableConfig.headerHeight + 3,
-                        size: tableConfig.headerFontSize, font: boldFont, color: PDFLib.rgb(0, 0, 0),
-                    });
-                    page.drawText('Qtd', {
-                        x: tableX + tableConfig.colWidths[0] + tableConfig.colWidths[1] + 8, y: currentY - tableConfig.headerHeight + 3,
-                        size: tableConfig.headerFontSize, font: boldFont, color: PDFLib.rgb(0, 0, 0),
-                    });
-                    
-                    // Linhas verticais do cabeçalho
-                    let colX = tableX;
-                    for (let c = 0; c <= 3; c++) {
-                        page.drawLine({
-                            start: { x: colX, y: currentY },
-                            end: { x: colX, y: currentY - tableConfig.headerHeight },
-                            color: PDFLib.rgb(0, 0, 0), thickness: 0.5,
-                        });
-                        if (c < 3) colX += tableConfig.colWidths[c];
-                    }
-                    
-                    currentY -= tableConfig.headerHeight;
-                    
                     // Linhas de produtos
                     for (let pIdx = 0; pIdx < prods.length; pIdx++) {
                         const prod = prods[pIdx];
@@ -694,7 +659,7 @@ class LabelProcessor {
                         
                         // Quantidade (centralizado)
                         page.drawText(String(prod.quantity), {
-                            x: tableX + tableConfig.colWidths[0] + tableConfig.colWidths[1] + 12,
+                            x: tableX + tableConfig.colWidths[0] + tableConfig.colWidths[1] + 8,
                             y: currentY - (rowH / 2) - 2,
                             size: tableConfig.fontSize, font: boldFont, color: PDFLib.rgb(0, 0, 0),
                         });
