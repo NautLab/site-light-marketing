@@ -469,12 +469,12 @@ class LabelProcessor {
             maxHeight: 80,           // Altura máxima antes de criar página extra
             headerHeight: 0,         // Altura do cabeçalho (sem cabeçalho)
             rowHeight: 10,           // Altura base da linha (reduzida)
-            rowHeightWithWrap: 18,   // Altura da linha com quebra (reduzida)
+            rowHeightWithWrap: 16,   // Altura da linha com quebra (reduzida)
             padding: 5,              // Padding interno
-            colWidths: [185, 80, 20], // SKU (aumentado), Variação, Qtd
+            colWidths: [170, 80, 10], // SKU (aumentado), Variação, Qtd (reduzido)
             fontSize: 7,
             headerFontSize: 7,
-            maxSkuChars: 32,         // Máx caracteres SKU por linha (aumentado)
+            maxSkuChars: 30,         // Máx caracteres SKU por linha (aumentado)
             maxVarChars: 14,         // Máx caracteres variação por linha
         };
 
@@ -603,7 +603,7 @@ class LabelProcessor {
                 // Função para desenhar tabela em uma página
                 const drawTable = (page, prods, startY, areaHeight) => {
                     const tableWidth = tableConfig.colWidths.reduce((a, b) => a + b, 0);
-                    const tableX = (outputWidth - tableWidth) / 2; // Centraliza horizontalmente
+                    const tableX = (outputWidth - tableWidth) / 2;  // Centraliza horizontalmente
                     let currentY = startY;
                     
                     // Fundo branco
@@ -659,7 +659,7 @@ class LabelProcessor {
                         
                         // Quantidade (centralizado)
                         page.drawText(String(prod.quantity), {
-                            x: tableX + tableConfig.colWidths[0] + tableConfig.colWidths[1] + 8,
+                            x: tableX + tableConfig.colWidths[0] + tableConfig.colWidths[1] + 3,
                             y: currentY - (rowH / 2) - 2,
                             size: tableConfig.fontSize, font: boldFont, color: PDFLib.rgb(0, 0, 0),
                         });
