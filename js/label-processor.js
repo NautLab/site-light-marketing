@@ -471,11 +471,11 @@ class LabelProcessor {
             rowHeight: 10,           // Altura base da linha (reduzida)
             rowHeightWithWrap: 16,   // Altura da linha com quebra (reduzida)
             padding: 5,              // Padding interno
-            colWidths: [180, 80, 10], // SKU (aumentado +10), Variação, Qtd (reduzido)
+            colWidths: [175, 90, 20], // SKU (-5pts), Variação (+10pts), Qtd (+10pts)
             fontSize: 7,
             headerFontSize: 7,
-            maxSkuChars: 32,         // Máx caracteres SKU por linha (aumentado)
-            maxVarChars: 14,         // Máx caracteres variação por linha
+            maxSkuChars: 31,         // Máx caracteres SKU por linha
+            maxVarChars: 16,         // Máx caracteres variação por linha (aumentado)
         };
 
         // Escala de renderização para qualidade (maior = melhor)
@@ -659,7 +659,7 @@ class LabelProcessor {
                         
                         // Quantidade (centralizado)
                         page.drawText(String(prod.quantity), {
-                            x: tableX + tableConfig.colWidths[0] + tableConfig.colWidths[1] + 3,
+                            x: tableX + tableConfig.colWidths[0] + tableConfig.colWidths[1] + 7,
                             y: currentY - (rowH / 2) - 2,
                             size: tableConfig.fontSize, font: boldFont, color: PDFLib.rgb(0, 0, 0),
                         });
