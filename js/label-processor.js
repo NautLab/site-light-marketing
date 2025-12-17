@@ -468,14 +468,15 @@ class LabelProcessor {
             minHeight: 35,           // Altura mínima da área de tabela
             maxHeight: 80,           // Altura máxima antes de criar página extra
             headerHeight: 0,         // Altura do cabeçalho (sem cabeçalho)
-            rowHeight: 10,           // Altura base da linha (reduzida)
-            rowHeightWithWrap: 16,   // Altura da linha com quebra (reduzida)
+            lineHeight: 7,           // Altura por linha de texto
+            rowPadding: 4,           // Padding vertical da linha
             padding: 5,              // Padding interno
-            colWidths: [175, 90, 20], // SKU (-5pts), Variação (+10pts), Qtd (+10pts)
+            colWidths: [175, 80, 20], // SKU, Variação, Qtd
             fontSize: 7,
             headerFontSize: 7,
-            maxSkuChars: 31,         // Máx caracteres SKU por linha
-            maxVarChars: 16,         // Máx caracteres variação por linha (aumentado)
+            maxSkuChars: 39,         // Máx caracteres SKU por linha (+8)
+            maxVarChars: 22,         // Máx caracteres variação por linha (+6)
+            maxQtyChars: 3,          // Máx caracteres quantidade por linha
         };
 
         // Escala de renderização para qualidade (maior = melhor)
@@ -567,12 +568,14 @@ class LabelProcessor {
                     return lines;
                 };
                 
-                // Calcula altura necessária para cada produto (considerando quebra de linha)
+                // Calcula altura necessária para cada produto (considerando quebra de linha em todas as colunas)
                 const productHeights = products.map(p => {
                     const skuLines = wrapText(p.sku, tableConfig.maxSkuChars).length;
                     const varLines = wrapText(p.variation, tableConfig.maxVarChars).length;
-                    const maxLines = Math.max(skuLines, varLines, 1);
-                    return maxLines > 1 ? tableConfig.rowHeightWithWrap : tableConfig.rowHeight;
+                    const qtyLines = wrapText(String(p.quantity), tableConfig.maxQtyChars).length;
+                    const maxLines = Math.max(skuLines, varLines, qtyLines, 1);
+                    // Altura dinâmica: padding + (número de linhas * altura da linha)
+                    return tableConfig.rowPadding + (maxLines * tableConfig.lineHeight);
                 });
                 
                 const totalProductsHeight = productHeights.reduce((a, b) => a + b, 0);
@@ -617,8 +620,10 @@ class LabelProcessor {
                         const prod = prods[pIdx];
                         const skuLines = wrapText(prod.sku, tableConfig.maxSkuChars);
                         const varLines = wrapText(prod.variation, tableConfig.maxVarChars);
-                        const maxLines = Math.max(skuLines.length, varLines.length, 1);
-                        const rowH = maxLines > 1 ? tableConfig.rowHeightWithWrap : tableConfig.rowHeight;
+                        const qtyLines = wrapText(String(prod.quantity), tableConfig.maxQtyChars);
+                        const maxLines = Math.max(skuLines.length, varLines.length, qtyLines.length, 1);
+                        // Altura dinâmica baseada no número de linhas
+                        const rowH = tableConfig.rowPadding + (maxLines * tableConfig.lineHeight);
                         
                         // Retângulo da linha
                         page.drawRectangle({
@@ -657,12 +662,14 @@ class LabelProcessor {
                             });
                         }
                         
-                        // Quantidade (centralizado)
-                        page.drawText(String(prod.quantity), {
-                            x: tableX + tableConfig.colWidths[0] + tableConfig.colWidths[1] + 7,
-                            y: currentY - (rowH / 2) - 2,
-                            size: tableConfig.fontSize, font: boldFont, color: PDFLib.rgb(0, 0, 0),
-                        });
+                        // Quantidade (com quebra de linha se necessário)
+                        for (let l = 0; l < qtyLines.length; l++) {
+                            page.drawText(qtyLines[l], {
+                                x: tableX + tableConfig.colWidths[0] + tableConfig.colWidths[1] + 5,
+                                y: currentY - 7 - (l * lineSpacing),
+                                size: tableConfig.fontSize, font: boldFont, color: PDFLib.rgb(0, 0, 0),
+                            });
+                        }
                         
                         currentY -= rowH;
                     }
