@@ -380,8 +380,8 @@ class LabelProcessor {
                 product.sku = skuMatch[1].trim();
             }
             
-            // Extrai Variation Name
-            const variationMatch = block.match(/Variation Name:?\s*([^;,]+)/i);
+            // Extrai Variation Name (até o ponto e vírgula)
+            const variationMatch = block.match(/Variation Name:?\s*([^;]+)/i);
             if (variationMatch) {
                 product.variation = variationMatch[1].trim();
             }
@@ -405,7 +405,7 @@ class LabelProcessor {
             const skuMatch = str.match(/SKU Reference No\.?:\s*([^;,]+)/i);
             if (skuMatch) product.sku = skuMatch[1].trim();
             
-            const variationMatch = str.match(/Variation Name:?\s*([^;,]+)/i);
+            const variationMatch = str.match(/Variation Name:?\s*([^;]+)/i);
             if (variationMatch) product.variation = variationMatch[1].trim();
             
             const quantityMatch = str.match(/Quantity:?\s*(\d+)/i);
@@ -471,10 +471,10 @@ class LabelProcessor {
             rowHeight: 10,           // Altura base da linha (reduzida)
             rowHeightWithWrap: 16,   // Altura da linha com quebra (reduzida)
             padding: 5,              // Padding interno
-            colWidths: [170, 80, 10], // SKU (aumentado), Variação, Qtd (reduzido)
+            colWidths: [180, 80, 10], // SKU (aumentado +10), Variação, Qtd (reduzido)
             fontSize: 7,
             headerFontSize: 7,
-            maxSkuChars: 30,         // Máx caracteres SKU por linha (aumentado)
+            maxSkuChars: 32,         // Máx caracteres SKU por linha (aumentado)
             maxVarChars: 14,         // Máx caracteres variação por linha
         };
 
