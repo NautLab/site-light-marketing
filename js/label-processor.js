@@ -475,7 +475,7 @@ class LabelProcessor {
             fontSize: 7,
             headerFontSize: 7,
             maxSkuChars: 28,         // Máx caracteres SKU por linha
-            maxVarChars: 28,         // Máx caracteres variação por linha
+            maxVarChars: 14,         // Máx caracteres variação por linha (ajustado para coluna menor)
         };
 
         // Escala de renderização para qualidade (maior = melhor)
