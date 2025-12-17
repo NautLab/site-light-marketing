@@ -22,7 +22,7 @@ class LabelProcessor {
             fontSize: 8,
             fontFamily: 'Helvetica',
             // Fator de escala para renderização (maior = melhor qualidade)
-            renderScale: 2,
+            renderScale: 3,
         };
 
         // Estado do processamento
@@ -357,25 +357,66 @@ class LabelProcessor {
      * @param {string} productInfo - String com informações do produto
      * @returns {Object} Objeto com sku e variation
      */
+    /**
+     * Extrai todos os produtos do campo product_info
+     * @param {string} productInfo - String com informações dos produtos
+     * @returns {Array} Array de objetos com sku, variation e quantity
+     */
     extractProductDetails(productInfo) {
-        const result = { sku: '', variation: '' };
-        if (!productInfo) return result;
+        if (!productInfo) return [];
         
         const str = String(productInfo);
+        const products = [];
         
-        // Extrai SKU Reference No.
-        const skuMatch = str.match(/SKU Reference No\.?:\s*([^;]+)/i);
-        if (skuMatch) {
-            result.sku = skuMatch[1].trim();
+        // Divide por [número] que indica múltiplos produtos
+        const productBlocks = str.split(/\[\d+\]/).filter(block => block.trim());
+        
+        for (const block of productBlocks) {
+            const product = { sku: '', variation: '', quantity: 1 };
+            
+            // Extrai SKU Reference No.
+            const skuMatch = block.match(/SKU Reference No\.?:\s*([^;,]+)/i);
+            if (skuMatch) {
+                product.sku = skuMatch[1].trim();
+            }
+            
+            // Extrai Variation Name
+            const variationMatch = block.match(/Variation Name:?\s*([^;,]+)/i);
+            if (variationMatch) {
+                product.variation = variationMatch[1].trim();
+            }
+            
+            // Extrai Quantity
+            const quantityMatch = block.match(/Quantity:?\s*(\d+)/i);
+            if (quantityMatch) {
+                product.quantity = parseInt(quantityMatch[1]);
+            }
+            
+            // Só adiciona se tiver pelo menos SKU ou variação
+            if (product.sku || product.variation) {
+                products.push(product);
+            }
         }
         
-        // Extrai Variation Name
-        const variationMatch = str.match(/Variation Name:?\s*([^;]+)/i);
-        if (variationMatch) {
-            result.variation = variationMatch[1].trim();
+        // Se não encontrou produtos no formato esperado, tenta extrair como item único
+        if (products.length === 0) {
+            const product = { sku: '', variation: '', quantity: 1 };
+            
+            const skuMatch = str.match(/SKU Reference No\.?:\s*([^;,]+)/i);
+            if (skuMatch) product.sku = skuMatch[1].trim();
+            
+            const variationMatch = str.match(/Variation Name:?\s*([^;,]+)/i);
+            if (variationMatch) product.variation = variationMatch[1].trim();
+            
+            const quantityMatch = str.match(/Quantity:?\s*(\d+)/i);
+            if (quantityMatch) product.quantity = parseInt(quantityMatch[1]);
+            
+            if (product.sku || product.variation) {
+                products.push(product);
+            }
         }
         
-        return result;
+        return products;
     }
 
     /**
@@ -422,12 +463,23 @@ class LabelProcessor {
         const font = await outputDoc.embedFont(PDFLib.StandardFonts.Helvetica);
         const boldFont = await outputDoc.embedFont(PDFLib.StandardFonts.HelveticaBold);
 
-        // Área reservada para texto na parte inferior
-        const textAreaHeight = 30;
-        const availableHeight = outputHeight - textAreaHeight;
+        // Configurações da tabela
+        const tableConfig = {
+            minHeight: 35,           // Altura mínima da área de tabela
+            maxHeight: 80,           // Altura máxima antes de criar página extra
+            headerHeight: 12,        // Altura do cabeçalho
+            rowHeight: 10,           // Altura base da linha
+            rowHeightWithWrap: 18,   // Altura da linha com quebra
+            padding: 5,              // Padding interno
+            colWidths: [75, 130, 35], // SKU, Variação, Qtd
+            fontSize: 6,
+            headerFontSize: 7,
+            maxSkuChars: 14,         // Máx caracteres SKU por linha
+            maxVarChars: 24,         // Máx caracteres variação por linha
+        };
 
-        // Escala de renderização para qualidade
-        const renderScale = 2;
+        // Escala de renderização para qualidade (maior = melhor)
+        const renderScale = this.config.renderScale || 3;
 
         // Cache de páginas renderizadas
         const renderedPages = {};
@@ -489,74 +541,194 @@ class LabelProcessor {
             // Cria nova página
             const newPage = outputDoc.addPage([outputWidth, outputHeight]);
 
-            // Calcula escala para ajustar a imagem na página
-            const imgScaleX = outputWidth / quadWidth;
-            const imgScaleY = availableHeight / quadHeight;
-            const imgScale = Math.min(imgScaleX, imgScaleY);
-
-            const imgWidth = quadWidth * imgScale;
-            const imgHeight = quadHeight * imgScale;
-            
-            // Centraliza horizontalmente e posiciona no topo
-            const imgX = (outputWidth - imgWidth) / 2;
-            const imgY = textAreaHeight; // Deixa espaço para texto embaixo
-
-            // Desenha a imagem da etiqueta
-            newPage.drawImage(pngImage, {
-                x: imgX,
-                y: imgY,
-                width: imgWidth,
-                height: imgHeight,
-            });
-
-            // Busca dados do XLSX
+            // Busca dados do XLSX primeiro para calcular altura necessária
             const xlsxData = this.findXlsxData(label.trackingNumber);
             this.state.results.total++;
 
             if (xlsxData) {
                 this.state.results.withData++;
                 
-                // Extrai SKU e Variação do product_info
+                // Extrai produtos do product_info
                 const productInfoKey = Object.keys(xlsxData).find(k => 
                     k.toLowerCase().includes('product') || k.toLowerCase().includes('produto')
                 );
-                const productDetails = this.extractProductDetails(xlsxData[productInfoKey]);
+                const products = this.extractProductDetails(xlsxData[productInfoKey]);
                 
-                // Desenha fundo branco para o texto
-                newPage.drawRectangle({
-                    x: 0,
-                    y: 0,
-                    width: outputWidth,
-                    height: textAreaHeight,
-                    color: PDFLib.rgb(1, 1, 1),
+                // Função auxiliar para quebrar texto em linhas
+                const wrapText = (text, maxChars) => {
+                    if (!text || text.length <= maxChars) return [text || ''];
+                    const lines = [];
+                    let remaining = text;
+                    while (remaining.length > maxChars) {
+                        lines.push(remaining.substring(0, maxChars));
+                        remaining = remaining.substring(maxChars);
+                    }
+                    if (remaining) lines.push(remaining);
+                    return lines;
+                };
+                
+                // Calcula altura necessária para cada produto (considerando quebra de linha)
+                const productHeights = products.map(p => {
+                    const skuLines = wrapText(p.sku, tableConfig.maxSkuChars).length;
+                    const varLines = wrapText(p.variation, tableConfig.maxVarChars).length;
+                    const maxLines = Math.max(skuLines, varLines, 1);
+                    return maxLines > 1 ? tableConfig.rowHeightWithWrap : tableConfig.rowHeight;
                 });
                 
-                // Adiciona informações na parte inferior
-                let textY = textAreaHeight - 10;
-                const textX = 5;
-                const lineHeight = 10;
+                const totalProductsHeight = productHeights.reduce((a, b) => a + b, 0);
+                let calculatedTableHeight = tableConfig.headerHeight + totalProductsHeight + tableConfig.padding * 2;
                 
-                // SKU
-                if (productDetails.sku) {
-                    newPage.drawText(productDetails.sku, {
-                        x: textX,
-                        y: textY,
-                        size: 8,
-                        font: boldFont,
-                        color: PDFLib.rgb(0, 0, 0),
-                    });
-                    textY -= lineHeight;
-                }
+                // Verifica se precisa de página extra
+                const needsExtraPage = calculatedTableHeight > tableConfig.maxHeight;
+                const textAreaHeight = needsExtraPage ? tableConfig.minHeight : Math.max(tableConfig.minHeight, calculatedTableHeight);
                 
-                // Variação
-                if (productDetails.variation) {
-                    newPage.drawText(productDetails.variation, {
-                        x: textX,
-                        y: textY,
-                        size: 8,
-                        font: font,
-                        color: PDFLib.rgb(0, 0, 0),
+                // Reposiciona a imagem da etiqueta
+                const availableHeightForImage = outputHeight - textAreaHeight;
+                const imgScaleXNew = outputWidth / quadWidth;
+                const imgScaleYNew = availableHeightForImage / quadHeight;
+                const imgScaleNew = Math.min(imgScaleXNew, imgScaleYNew);
+                const imgWidthNew = quadWidth * imgScaleNew;
+                const imgHeightNew = quadHeight * imgScaleNew;
+                const imgXNew = (outputWidth - imgWidthNew) / 2;
+                
+                // Redesenha a imagem com novo posicionamento
+                newPage.drawRectangle({ x: 0, y: 0, width: outputWidth, height: outputHeight, color: PDFLib.rgb(1, 1, 1) });
+                newPage.drawImage(pngImage, {
+                    x: imgXNew,
+                    y: textAreaHeight,
+                    width: imgWidthNew,
+                    height: imgHeightNew,
+                });
+                
+                // Função para desenhar tabela em uma página
+                const drawTable = (page, prods, startY, areaHeight) => {
+                    const tableX = tableConfig.padding;
+                    const tableWidth = tableConfig.colWidths.reduce((a, b) => a + b, 0);
+                    let currentY = startY;
+                    
+                    // Fundo branco
+                    page.drawRectangle({
+                        x: 0, y: 0, width: outputWidth, height: areaHeight,
+                        color: PDFLib.rgb(1, 1, 1),
                     });
+                    
+                    // Cabeçalho da tabela
+                    page.drawRectangle({
+                        x: tableX, y: currentY - tableConfig.headerHeight,
+                        width: tableWidth, height: tableConfig.headerHeight,
+                        color: PDFLib.rgb(0.95, 0.95, 0.95),
+                        borderColor: PDFLib.rgb(0, 0, 0), borderWidth: 0.5,
+                    });
+                    
+                    // Textos do cabeçalho
+                    page.drawText('SKU', {
+                        x: tableX + 3, y: currentY - tableConfig.headerHeight + 3,
+                        size: tableConfig.headerFontSize, font: boldFont, color: PDFLib.rgb(0, 0, 0),
+                    });
+                    page.drawText('Variação', {
+                        x: tableX + tableConfig.colWidths[0] + 3, y: currentY - tableConfig.headerHeight + 3,
+                        size: tableConfig.headerFontSize, font: boldFont, color: PDFLib.rgb(0, 0, 0),
+                    });
+                    page.drawText('Qtd', {
+                        x: tableX + tableConfig.colWidths[0] + tableConfig.colWidths[1] + 8, y: currentY - tableConfig.headerHeight + 3,
+                        size: tableConfig.headerFontSize, font: boldFont, color: PDFLib.rgb(0, 0, 0),
+                    });
+                    
+                    // Linhas verticais do cabeçalho
+                    let colX = tableX;
+                    for (let c = 0; c <= 3; c++) {
+                        page.drawLine({
+                            start: { x: colX, y: currentY },
+                            end: { x: colX, y: currentY - tableConfig.headerHeight },
+                            color: PDFLib.rgb(0, 0, 0), thickness: 0.5,
+                        });
+                        if (c < 3) colX += tableConfig.colWidths[c];
+                    }
+                    
+                    currentY -= tableConfig.headerHeight;
+                    
+                    // Linhas de produtos
+                    for (let pIdx = 0; pIdx < prods.length; pIdx++) {
+                        const prod = prods[pIdx];
+                        const skuLines = wrapText(prod.sku, tableConfig.maxSkuChars);
+                        const varLines = wrapText(prod.variation, tableConfig.maxVarChars);
+                        const maxLines = Math.max(skuLines.length, varLines.length, 1);
+                        const rowH = maxLines > 1 ? tableConfig.rowHeightWithWrap : tableConfig.rowHeight;
+                        
+                        // Retângulo da linha
+                        page.drawRectangle({
+                            x: tableX, y: currentY - rowH,
+                            width: tableWidth, height: rowH,
+                            borderColor: PDFLib.rgb(0, 0, 0), borderWidth: 0.5,
+                        });
+                        
+                        // Linhas verticais
+                        colX = tableX;
+                        for (let c = 0; c <= 3; c++) {
+                            page.drawLine({
+                                start: { x: colX, y: currentY },
+                                end: { x: colX, y: currentY - rowH },
+                                color: PDFLib.rgb(0, 0, 0), thickness: 0.5,
+                            });
+                            if (c < 3) colX += tableConfig.colWidths[c];
+                        }
+                        
+                        // Texto SKU (com quebra de linha)
+                        const lineSpacing = 7;
+                        for (let l = 0; l < skuLines.length; l++) {
+                            page.drawText(skuLines[l], {
+                                x: tableX + 2,
+                                y: currentY - 7 - (l * lineSpacing),
+                                size: tableConfig.fontSize, font: font, color: PDFLib.rgb(0, 0, 0),
+                            });
+                        }
+                        
+                        // Texto Variação (com quebra de linha)
+                        for (let l = 0; l < varLines.length; l++) {
+                            page.drawText(varLines[l], {
+                                x: tableX + tableConfig.colWidths[0] + 2,
+                                y: currentY - 7 - (l * lineSpacing),
+                                size: tableConfig.fontSize, font: font, color: PDFLib.rgb(0, 0, 0),
+                            });
+                        }
+                        
+                        // Quantidade (centralizado)
+                        page.drawText(String(prod.quantity), {
+                            x: tableX + tableConfig.colWidths[0] + tableConfig.colWidths[1] + 12,
+                            y: currentY - (rowH / 2) - 2,
+                            size: tableConfig.fontSize, font: boldFont, color: PDFLib.rgb(0, 0, 0),
+                        });
+                        
+                        currentY -= rowH;
+                    }
+                };
+                
+                if (needsExtraPage && products.length > 0) {
+                    // Desenha indicador na página da etiqueta
+                    newPage.drawRectangle({
+                        x: 0, y: 0, width: outputWidth, height: textAreaHeight,
+                        color: PDFLib.rgb(1, 1, 1),
+                    });
+                    newPage.drawText('→ Ver produtos na próxima página', {
+                        x: tableConfig.padding, y: textAreaHeight / 2 - 3,
+                        size: 8, font: font, color: PDFLib.rgb(0.4, 0.4, 0.4),
+                    });
+                    
+                    // Cria página extra para tabela completa
+                    const extraPage = outputDoc.addPage([outputWidth, outputHeight]);
+                    extraPage.drawRectangle({ x: 0, y: 0, width: outputWidth, height: outputHeight, color: PDFLib.rgb(1, 1, 1) });
+                    
+                    // Título
+                    extraPage.drawText(`Produtos - ${label.trackingNumber || 'S/N'}`, {
+                        x: tableConfig.padding, y: outputHeight - 15,
+                        size: 10, font: boldFont, color: PDFLib.rgb(0, 0, 0),
+                    });
+                    
+                    // Desenha tabela completa
+                    drawTable(extraPage, products, outputHeight - 25, outputHeight);
+                } else {
+                    // Desenha tabela diretamente na página
+                    drawTable(newPage, products, textAreaHeight - tableConfig.padding, textAreaHeight);
                 }
             } else {
                 this.state.results.withoutData++;
@@ -566,6 +738,26 @@ class LabelProcessor {
                     this.state.results.missingTrackingNumbers.push(`Página ${label.pageNum} - ${label.quadrant}`);
                 }
 
+                const textAreaHeight = tableConfig.minHeight;
+                
+                // Calcula posicionamento da imagem para o caso sem dados
+                const availableHeightForImage = outputHeight - textAreaHeight;
+                const imgScaleXNo = outputWidth / quadWidth;
+                const imgScaleYNo = availableHeightForImage / quadHeight;
+                const imgScaleNo = Math.min(imgScaleXNo, imgScaleYNo);
+                const imgWidthNo = quadWidth * imgScaleNo;
+                const imgHeightNo = quadHeight * imgScaleNo;
+                const imgXNo = (outputWidth - imgWidthNo) / 2;
+                
+                // Desenha fundo branco e imagem
+                newPage.drawRectangle({ x: 0, y: 0, width: outputWidth, height: outputHeight, color: PDFLib.rgb(1, 1, 1) });
+                newPage.drawImage(pngImage, {
+                    x: imgXNo,
+                    y: textAreaHeight,
+                    width: imgWidthNo,
+                    height: imgHeightNo,
+                });
+                
                 // Adiciona aviso de dados não encontrados
                 newPage.drawRectangle({
                     x: 0,
