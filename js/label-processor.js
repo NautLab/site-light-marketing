@@ -468,14 +468,14 @@ class LabelProcessor {
             minHeight: 35,           // Altura mínima da área de tabela
             maxHeight: 80,           // Altura máxima antes de criar página extra
             headerHeight: 0,         // Altura do cabeçalho (sem cabeçalho)
-            rowHeight: 12,           // Altura base da linha
-            rowHeightWithWrap: 20,   // Altura da linha com quebra
+            rowHeight: 10,           // Altura base da linha (reduzida)
+            rowHeightWithWrap: 18,   // Altura da linha com quebra (reduzida)
             padding: 5,              // Padding interno
-            colWidths: [160, 80, 20], // SKU, Variação, Qtd
+            colWidths: [185, 80, 20], // SKU (aumentado), Variação, Qtd
             fontSize: 7,
             headerFontSize: 7,
-            maxSkuChars: 28,         // Máx caracteres SKU por linha
-            maxVarChars: 14,         // Máx caracteres variação por linha (ajustado para coluna menor)
+            maxSkuChars: 32,         // Máx caracteres SKU por linha (aumentado)
+            maxVarChars: 14,         // Máx caracteres variação por linha
         };
 
         // Escala de renderização para qualidade (maior = melhor)
@@ -602,8 +602,8 @@ class LabelProcessor {
                 
                 // Função para desenhar tabela em uma página
                 const drawTable = (page, prods, startY, areaHeight) => {
-                    const tableX = tableConfig.padding;
                     const tableWidth = tableConfig.colWidths.reduce((a, b) => a + b, 0);
+                    const tableX = (outputWidth - tableWidth) / 2; // Centraliza horizontalmente
                     let currentY = startY;
                     
                     // Fundo branco
