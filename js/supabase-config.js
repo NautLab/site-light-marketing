@@ -30,8 +30,8 @@ const customStorage = {
     }
 };
 
-// Initialize Supabase client
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+// Initialize Supabase client with custom storage
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     auth: {
         persistSession: true,
         storageKey: 'sb-auth-token',
@@ -40,6 +40,9 @@ const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
         detectSessionInUrl: true
     }
 });
+
+// Expose as global variable for auth scripts
+window.supabase = supabaseClient;
 
 // Site URL for redirects (password reset, email confirmation)
 const SITE_URL = window.location.origin;
@@ -52,7 +55,7 @@ const SITE_URL = window.location.origin;
             try {
                 const session = JSON.parse(persistentSession);
                 if (session && session.access_token) {
-                    await supabase.auth.setSession({
+                    await supabaseClient.auth.setSession({
                         access_token: session.access_token,
                         refresh_token: session.refresh_token
                     });
