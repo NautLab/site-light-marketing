@@ -353,6 +353,32 @@ class LabelProcessor {
     }
 
     /**
+     * Extrai SKU e Variação do campo product_info
+     * @param {string} productInfo - String com informações do produto
+     * @returns {Object} Objeto com sku e variation
+     */
+    extractProductDetails(productInfo) {
+        const result = { sku: '', variation: '' };
+        if (!productInfo) return result;
+        
+        const str = String(productInfo);
+        
+        // Extrai SKU Reference No.
+        const skuMatch = str.match(/SKU Reference No\.?:\s*([^;]+)/i);
+        if (skuMatch) {
+            result.sku = skuMatch[1].trim();
+        }
+        
+        // Extrai Variation Name
+        const variationMatch = str.match(/Variation Name:?\s*([^;]+)/i);
+        if (variationMatch) {
+            result.variation = variationMatch[1].trim();
+        }
+        
+        return result;
+    }
+
+    /**
      * Gera o PDF de saída com etiquetas individuais
      * @param {Function} progressCallback - Callback para atualizar progresso
      * @returns {Promise<Blob>} PDF gerado como Blob
@@ -367,9 +393,14 @@ class LabelProcessor {
             this.state.pdfArrayBuffer = await this.state.pdfFile.arrayBuffer();
         }
         
-        // Cria cópia do buffer para esta operação
-        const arrayBuffer = this.state.pdfArrayBuffer.slice(0);
-        const srcDoc = await PDFLib.PDFDocument.load(arrayBuffer);
+        // Cria cópia do buffer
+        const bufferForPdfJs = this.state.pdfArrayBuffer.slice(0);
+        
+        // Carrega o PDF com PDF.js para renderizar
+        const loadingTask = pdfjsLib.getDocument({ data: bufferForPdfJs });
+        const pdfJsDoc = await loadingTask.promise;
+        
+        // Carrega com pdf-lib para criar o PDF de saída
         const outputDoc = await PDFLib.PDFDocument.create();
 
         // Tamanho de saída em pontos (1 mm = 2.83465 pontos)
@@ -391,70 +422,91 @@ class LabelProcessor {
         const font = await outputDoc.embedFont(PDFLib.StandardFonts.Helvetica);
         const boldFont = await outputDoc.embedFont(PDFLib.StandardFonts.HelveticaBold);
 
-        // Agrupa etiquetas por página para evitar múltiplas embeddings
-        const labelsByPage = {};
-        for (const label of this.state.extractedLabels) {
-            if (!labelsByPage[label.pageNum]) {
-                labelsByPage[label.pageNum] = [];
-            }
-            labelsByPage[label.pageNum].push(label);
-        }
+        // Área reservada para texto na parte inferior
+        const textAreaHeight = 30;
+        const availableHeight = outputHeight - textAreaHeight;
 
-        // Embeds das páginas
-        const embeddedPages = {};
-        for (const pageNum of Object.keys(labelsByPage)) {
-            const [embedded] = await outputDoc.embedPdf(srcDoc, [parseInt(pageNum) - 1]);
-            embeddedPages[pageNum] = embedded;
-        }
+        // Escala de renderização para qualidade
+        const renderScale = 2;
+
+        // Cache de páginas renderizadas
+        const renderedPages = {};
 
         for (let i = 0; i < totalLabels; i++) {
             const label = this.state.extractedLabels[i];
             progressCallback(50 + Math.round((i / totalLabels) * 45));
 
-            // Cria nova página com tamanho configurado
+            // Renderiza a página se ainda não foi renderizada
+            if (!renderedPages[label.pageNum]) {
+                const page = await pdfJsDoc.getPage(label.pageNum);
+                const viewport = page.getViewport({ scale: renderScale });
+                
+                const canvas = document.createElement('canvas');
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+                const ctx = canvas.getContext('2d');
+                
+                await page.render({
+                    canvasContext: ctx,
+                    viewport: viewport,
+                }).promise;
+                
+                renderedPages[label.pageNum] = {
+                    canvas,
+                    width: viewport.width,
+                    height: viewport.height,
+                    originalWidth: viewport.width / renderScale,
+                    originalHeight: viewport.height / renderScale,
+                };
+            }
+
+            const rendered = renderedPages[label.pageNum];
+            
+            // Coordenadas do quadrante no canvas (considerando a escala)
+            const quadX = label.bounds.x * renderScale;
+            const quadY = (rendered.originalHeight - label.bounds.y - label.bounds.height) * renderScale;
+            const quadWidth = label.bounds.width * renderScale;
+            const quadHeight = label.bounds.height * renderScale;
+
+            // Cria canvas para o recorte do quadrante
+            const cropCanvas = document.createElement('canvas');
+            cropCanvas.width = quadWidth;
+            cropCanvas.height = quadHeight;
+            const cropCtx = cropCanvas.getContext('2d');
+            
+            // Recorta o quadrante
+            cropCtx.drawImage(
+                rendered.canvas,
+                quadX, quadY, quadWidth, quadHeight,
+                0, 0, quadWidth, quadHeight
+            );
+
+            // Converte o canvas para PNG
+            const pngDataUrl = cropCanvas.toDataURL('image/png');
+            const pngBytes = await fetch(pngDataUrl).then(res => res.arrayBuffer());
+            const pngImage = await outputDoc.embedPng(pngBytes);
+
+            // Cria nova página
             const newPage = outputDoc.addPage([outputWidth, outputHeight]);
 
-            // Obtém a página embedada
-            const embeddedPage = embeddedPages[label.pageNum];
-            const srcPage = srcDoc.getPage(label.pageNum - 1);
-            const { width: srcWidth, height: srcHeight } = srcPage.getSize();
+            // Calcula escala para ajustar a imagem na página
+            const imgScaleX = outputWidth / quadWidth;
+            const imgScaleY = availableHeight / quadHeight;
+            const imgScale = Math.min(imgScaleX, imgScaleY);
 
-            // Calcula escala para ajustar o quadrante à página de saída
-            const labelWidth = label.bounds.width;
-            const labelHeight = label.bounds.height;
+            const imgWidth = quadWidth * imgScale;
+            const imgHeight = quadHeight * imgScale;
             
-            // Área disponível para a etiqueta (deixa espaço na parte inferior para texto)
-            const textAreaHeight = 45; // pontos reservados para texto
-            const availableHeight = outputHeight - textAreaHeight;
-            const availableWidth = outputWidth;
-            
-            // Escala para manter proporção
-            const scaleX = availableWidth / labelWidth;
-            const scaleY = availableHeight / labelHeight;
-            const scale = Math.min(scaleX, scaleY);
+            // Centraliza horizontalmente e posiciona no topo
+            const imgX = (outputWidth - imgWidth) / 2;
+            const imgY = textAreaHeight; // Deixa espaço para texto embaixo
 
-            // Calcula dimensões escaladas do quadrante
-            const scaledLabelWidth = labelWidth * scale;
-            const scaledLabelHeight = labelHeight * scale;
-
-            // Posição para centralizar horizontalmente e alinhar ao topo
-            const drawX = (outputWidth - scaledLabelWidth) / 2;
-            const drawY = textAreaHeight; // Começa acima da área de texto
-
-            // Calcula offset para mostrar apenas o quadrante correto
-            // A página embedded tem tamanho srcWidth x srcHeight
-            // Precisamos posicionar de forma que apenas o quadrante seja visível
-            
-            const offsetX = -label.bounds.x * scale + drawX;
-            const offsetY = -label.bounds.y * scale + drawY;
-
-            // Usa clipping para mostrar apenas o quadrante
-            // Desenha a página completa com offset calculado
-            newPage.drawPage(embeddedPage, {
-                x: offsetX,
-                y: offsetY,
-                xScale: scale,
-                yScale: scale,
+            // Desenha a imagem da etiqueta
+            newPage.drawImage(pngImage, {
+                x: imgX,
+                y: imgY,
+                width: imgWidth,
+                height: imgHeight,
             });
 
             // Busca dados do XLSX
@@ -464,39 +516,47 @@ class LabelProcessor {
             if (xlsxData) {
                 this.state.results.withData++;
                 
-                // Adiciona informações do XLSX na parte inferior
-                let textY = textAreaHeight - 10;
-                const textX = 10;
-                const lineHeight = 11;
+                // Extrai SKU e Variação do product_info
+                const productInfoKey = Object.keys(xlsxData).find(k => 
+                    k.toLowerCase().includes('product') || k.toLowerCase().includes('produto')
+                );
+                const productDetails = this.extractProductDetails(xlsxData[productInfoKey]);
                 
-                // Campos a serem exibidos (em ordem de prioridade)
-                const fieldsToShow = [
-                    { keys: ['order_sn', 'Order SN', 'OrderSN', 'Pedido', 'pedido', 'Número do Pedido', 'numero_pedido', 'N° do pedido', 'Nº Pedido Shopee'], label: 'Pedido' },
-                    { keys: ['product_info', 'Product Info', 'Produto', 'produto', 'Descrição', 'descricao', 'Item', 'item', 'Nome do produto', 'SKU Referência'], label: 'Produto' },
-                    { keys: ['observations', 'Observations', 'Observações', 'observacoes', 'Obs', 'obs', 'Notas', 'notas', 'Mensagem do comprador'], label: 'Obs' },
-                ];
-
-                for (const field of fieldsToShow) {
-                    let value = null;
-                    for (const key of field.keys) {
-                        if (xlsxData[key] !== undefined && xlsxData[key] !== null && xlsxData[key] !== '') {
-                            value = String(xlsxData[key]).substring(0, 60); // Limita tamanho
-                            break;
-                        }
-                    }
-                    
-                    if (value) {
-                        newPage.drawText(`${field.label}: ${value}`, {
-                            x: textX,
-                            y: textY,
-                            size: 8,
-                            font: font,
-                            color: PDFLib.rgb(0, 0, 0),
-                        });
-                        textY -= lineHeight;
-                        
-                        if (textY < 5) break; // Evita sair da página
-                    }
+                // Desenha fundo branco para o texto
+                newPage.drawRectangle({
+                    x: 0,
+                    y: 0,
+                    width: outputWidth,
+                    height: textAreaHeight,
+                    color: PDFLib.rgb(1, 1, 1),
+                });
+                
+                // Adiciona informações na parte inferior
+                let textY = textAreaHeight - 10;
+                const textX = 5;
+                const lineHeight = 10;
+                
+                // SKU
+                if (productDetails.sku) {
+                    newPage.drawText(productDetails.sku, {
+                        x: textX,
+                        y: textY,
+                        size: 8,
+                        font: boldFont,
+                        color: PDFLib.rgb(0, 0, 0),
+                    });
+                    textY -= lineHeight;
+                }
+                
+                // Variação
+                if (productDetails.variation) {
+                    newPage.drawText(productDetails.variation, {
+                        x: textX,
+                        y: textY,
+                        size: 8,
+                        font: font,
+                        color: PDFLib.rgb(0, 0, 0),
+                    });
                 }
             } else {
                 this.state.results.withoutData++;
@@ -508,10 +568,10 @@ class LabelProcessor {
 
                 // Adiciona aviso de dados não encontrados
                 newPage.drawRectangle({
-                    x: 5,
-                    y: 5,
-                    width: outputWidth - 10,
-                    height: 35,
+                    x: 0,
+                    y: 0,
+                    width: outputWidth,
+                    height: textAreaHeight,
                     color: PDFLib.rgb(1, 0.92, 0.92),
                     borderColor: PDFLib.rgb(0.86, 0.2, 0.2),
                     borderWidth: 1,
@@ -519,7 +579,7 @@ class LabelProcessor {
 
                 newPage.drawText('SEM DADOS ASSOCIADOS', {
                     x: outputWidth / 2 - 55,
-                    y: 18,
+                    y: textAreaHeight / 2 - 4,
                     size: 10,
                     font: boldFont,
                     color: PDFLib.rgb(0.86, 0.2, 0.2),
