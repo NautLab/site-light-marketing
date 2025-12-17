@@ -471,7 +471,7 @@ class LabelProcessor {
             rowHeight: 12,           // Altura base da linha
             rowHeightWithWrap: 20,   // Altura da linha com quebra
             padding: 5,              // Padding interno
-            colWidths: [160, 120, 25], // SKU, Variação, Qtd
+            colWidths: [160, 80, 20], // SKU, Variação, Qtd
             fontSize: 7,
             headerFontSize: 7,
             maxSkuChars: 28,         // Máx caracteres SKU por linha
