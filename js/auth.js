@@ -117,9 +117,7 @@ async function checkEmailExists(email) {
             throw error; // Throw error instead of silently returning true
         }
 
-        console.log('Email check result:', { email, data, type: typeof data, exists: data === true });
-        
-        // Explicitly check if data is true (boolean)
+        console.log('Email check result:', { email, exists: data });
         return { exists: data === true };
     } catch (err) {
         console.error('CheckEmail error:', err);

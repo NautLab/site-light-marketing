@@ -6,18 +6,13 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
-DECLARE
-    email_exists BOOLEAN;
 BEGIN
-    -- Check if email exists in auth.users (case-insensitive)
-    SELECT EXISTS (
+    RETURN EXISTS (
         SELECT 1 
         FROM auth.users 
-        WHERE LOWER(email) = LOWER(email_to_check)
+        WHERE email = LOWER(email_to_check)
         AND deleted_at IS NULL
-    ) INTO email_exists;
-    
-    RETURN COALESCE(email_exists, false);
+    );
 END;
 $$;
 

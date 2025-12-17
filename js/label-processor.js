@@ -475,7 +475,7 @@ class LabelProcessor {
             fontSize: 7,
             headerFontSize: 7,
             maxSkuChars: 43,         // Máx caracteres SKU por linha (+8)
-            maxVarChars: 21,         // Máx caracteres variação por linha (+6)
+            maxVarChars: 19,         // Máx caracteres variação por linha (+6)
             maxQtyChars: 3,          // Máx caracteres quantidade por linha
         };
 
@@ -575,14 +575,15 @@ class LabelProcessor {
                     const qtyLines = wrapText(String(p.quantity), tableConfig.maxQtyChars).length;
                     const maxLines = Math.max(skuLines, varLines, qtyLines, 1);
                     // Altura dinâmica: padding + (número de linhas * altura da linha)
-                    return tableConfig.rowPadding + (maxLines * tableConfig.lineHeight);
+                    return { height: tableConfig.rowPadding + (maxLines * tableConfig.lineHeight), maxLines };
                 });
                 
-                const totalProductsHeight = productHeights.reduce((a, b) => a + b, 0);
+                const totalProductsHeight = productHeights.reduce((a, b) => a + b.height, 0);
+                const maxLinesInAnyProduct = Math.max(...productHeights.map(ph => ph.maxLines));
                 let calculatedTableHeight = tableConfig.headerHeight + totalProductsHeight + tableConfig.padding * 2;
                 
-                // Verifica se precisa de página extra
-                const needsExtraPage = calculatedTableHeight > tableConfig.maxHeight;
+                // Verifica se precisa de página extra (altura > 80 OU qualquer produto com 4+ linhas)
+                const needsExtraPage = calculatedTableHeight > tableConfig.maxHeight || maxLinesInAnyProduct >= 4;
                 const textAreaHeight = needsExtraPage ? tableConfig.minHeight : Math.max(tableConfig.minHeight, calculatedTableHeight);
                 
                 // Reposiciona a imagem da etiqueta
