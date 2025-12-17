@@ -682,7 +682,7 @@ class LabelProcessor {
                         x: 0, y: 0, width: outputWidth, height: textAreaHeight,
                         color: PDFLib.rgb(1, 1, 1),
                     });
-                    newPage.drawText('→ Ver produtos na próxima página', {
+                    newPage.drawText('>> Ver produtos na proxima pagina', {
                         x: tableConfig.padding, y: textAreaHeight / 2 - 3,
                         size: 8, font: font, color: PDFLib.rgb(0.4, 0.4, 0.4),
                     });
