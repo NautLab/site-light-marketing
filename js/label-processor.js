@@ -474,8 +474,8 @@ class LabelProcessor {
             colWidths: [175, 80, 20], // SKU, Variação, Qtd
             fontSize: 7,
             headerFontSize: 7,
-            maxSkuChars: 39,         // Máx caracteres SKU por linha (+8)
-            maxVarChars: 22,         // Máx caracteres variação por linha (+6)
+            maxSkuChars: 43,         // Máx caracteres SKU por linha (+8)
+            maxVarChars: 21,         // Máx caracteres variação por linha (+6)
             maxQtyChars: 3,          // Máx caracteres quantidade por linha
         };
 
