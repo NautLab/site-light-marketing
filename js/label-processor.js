@@ -323,7 +323,6 @@ class LabelProcessor {
                             console.log(`Página ${pageNum}, Quadrante ${i} (${quadrant.name}): Texto detectado mas nenhum número de pedido encontrado`);
                             console.log(`Texto completo do quadrante:`, quadrantText);
                         }
-                        }
                         
                         // Só adiciona a etiqueta se tiver número de pedido válido
                         // Ignora etiquetas em branco
