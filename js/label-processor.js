@@ -42,8 +42,8 @@ class LabelProcessor {
         };
 
         // Regex para extrair número do pedido das etiquetas Shopee
-        // Formato: 15-18 dígitos numéricos (ex: 251221XXXXXXXXX)
-        this.orderNumberRegex = /\b\d{15,18}\b/g;
+        // Formato: sequência de 12-18 dígitos numéricos (order_sn pode variar)
+        this.orderNumberRegex = /\d{12,18}/g;
     }
 
     /**
@@ -318,9 +318,11 @@ class LabelProcessor {
                         const orderNumber = uniqueMatches.length > 0 ? uniqueMatches[0] : null;
                         
                         // Log detalhado para debug
+                        console.log(`Página ${pageNum}, Quadrante ${i}: Matches encontrados:`, matches);
                         if (!orderNumber && quadrantText.trim().length > 10) {
                             console.log(`Página ${pageNum}, Quadrante ${i} (${quadrant.name}): Texto detectado mas nenhum número de pedido encontrado`);
-                            console.log(`Primeiros 100 caracteres: ${quadrantText.substring(0, 100)}`);
+                            console.log(`Texto completo do quadrante:`, quadrantText);
+                        }
                         }
                         
                         // Só adiciona a etiqueta se tiver número de pedido válido
