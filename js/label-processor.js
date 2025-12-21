@@ -311,30 +311,15 @@ class LabelProcessor {
                             height: quadrant.h
                         });
                         
-                        // Log do texto completo para debug
-                        console.log(`=== Página ${pageNum}, Quadrante ${i} ===`);
-                        console.log(`Texto extraído:`, quadrantText);
+                        // Busca número do pedido pelo padrão Shopee: 
+                        // 6 dígitos de data (AAMMDD) + código alfanumérico com letras
+                        // Ex: 251105VDG4NY6J (25=ano, 11=mês, 05=dia, VDG4NY6J=código)
+                        // O código DEVE conter pelo menos uma letra para diferenciar de outros números
+                        const pedidoMatch = quadrantText.match(/\b(2[45]\d{4}[A-Z0-9]*[A-Z][A-Z0-9]*)\b/i);
+                        const orderNumber = pedidoMatch ? pedidoMatch[1].toUpperCase() : null;
                         
-                        // Busca o campo "Pedido" de várias formas possíveis
-                        let orderNumber = null;
-                        
-                        // Tenta diferentes padrões
-                        const patterns = [
-                            /Pedido:\s*(\S+)/i,
-                            /Pedido\s+(\S+)/i,
-                            /Pedido[:\s]+([A-Z0-9]+)/i
-                        ];
-                        
-                        for (const pattern of patterns) {
-                            const match = quadrantText.match(pattern);
-                            if (match && match[1]) {
-                                orderNumber = match[1].trim();
-                                console.log(`Match encontrado com padrão ${pattern}:`, orderNumber);
-                                break;
-                            }
-                        }
-                        
-                        console.log(`Pedido final:`, orderNumber);
+                        // Log para debug
+                        console.log(`Página ${pageNum}, Quadrante ${i}: Pedido encontrado:`, orderNumber);
                         
                         // Só adiciona a etiqueta se tiver número de pedido válido
                         // Ignora etiquetas em branco
