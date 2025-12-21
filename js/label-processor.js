@@ -319,18 +319,22 @@ class LabelProcessor {
                         const uniqueMatches = [...new Set(matches.map(m => m.toUpperCase()))];
                         const trackingNumber = uniqueMatches.length > 0 ? uniqueMatches[0] : null;
                         
-                        labels.push({
-                            pageNum,
-                            quadrantIndex: i,
-                            quadrant: quadrant.name,
-                            trackingNumber,
-                            bounds: {
-                                x: quadrant.x,
-                                y: quadrant.y,
-                                width: quadrant.w,
-                                height: quadrant.h,
-                            },
-                        });
+                        // Só adiciona a etiqueta se tiver tracking number válido
+                        // Ignora etiquetas em branco
+                        if (trackingNumber) {
+                            labels.push({
+                                pageNum,
+                                quadrantIndex: i,
+                                quadrant: quadrant.name,
+                                trackingNumber,
+                                bounds: {
+                                    x: quadrant.x,
+                                    y: quadrant.y,
+                                    width: quadrant.w,
+                                    height: quadrant.h,
+                                },
+                            });
+                        }
                     }
                 }
 
