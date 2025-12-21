@@ -339,6 +339,12 @@ class LabelProcessor {
                 }
 
                 this.state.extractedLabels = labels;
+                
+                // Informa se nenhuma etiqueta válida foi encontrada
+                if (labels.length === 0) {
+                    console.warn('Aviso: Nenhuma etiqueta com tracking number válido foi encontrada no PDF.');
+                }
+                
                 resolve(labels);
             } catch (error) {
                 reject(new Error(`Erro ao processar PDF: ${error.message}`));
@@ -429,8 +435,12 @@ class LabelProcessor {
      * @returns {Promise<Blob>} PDF gerado como Blob
      */
     async generateOutputPdf(progressCallback = () => {}) {
-        if (!this.state.pdfFile || this.state.extractedLabels.length === 0) {
-            throw new Error('Processamento incompleto. Execute processPdf() primeiro.');
+        if (!this.state.pdfFile) {
+            throw new Error('Nenhum arquivo PDF foi selecionado.');
+        }
+        
+        if (this.state.extractedLabels.length === 0) {
+            throw new Error('Nenhuma etiqueta com tracking number válido foi encontrada no PDF. Verifique se o arquivo contém etiquetas Shopee com números de rastreamento.');
         }
 
         // Usa o buffer em cache ou lê novamente
