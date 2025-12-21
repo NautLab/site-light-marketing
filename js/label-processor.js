@@ -42,8 +42,9 @@ class LabelProcessor {
         };
 
         // Regex para extrair tracking number das etiquetas
-        // Formato: BR seguido de 10-15 dígitos (ex: BR2536994542389)
-        this.trackingNumberRegex = /BR\d{10,15}/gi;
+        // Padrão UPU internacional: 2 letras + 9-13 dígitos + 2 letras (código país)
+        // Exemplos: BR2536994542389BR, LP00123456789BR, NL123456789CN
+        this.trackingNumberRegex = /[A-Z]{2}\d{9,13}[A-Z]{2}/gi;
     }
 
     /**
