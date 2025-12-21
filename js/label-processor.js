@@ -44,9 +44,6 @@ class LabelProcessor {
         // Regex para extrair tracking number das etiquetas
         // Formato: BR seguido de letras maiúsculas e números (geralmente 13 caracteres)
         this.trackingNumberRegex = /BR[A-Z0-9]{9,15}BR|BR[A-Z0-9]{9,15}/gi;
-        
-        // Lista de tracking numbers a serem ignorados (etiquetas removidas/inválidas)
-        this.ignoredTrackingNumbers = new Set();
     }
 
     /**
@@ -322,9 +319,15 @@ class LabelProcessor {
                         const uniqueMatches = [...new Set(matches.map(m => m.toUpperCase()))];
                         const trackingNumber = uniqueMatches.length > 0 ? uniqueMatches[0] : null;
                         
+                        // Log detalhado para debug
+                        if (!trackingNumber && quadrantText.trim().length > 10) {
+                            console.log(`Página ${pageNum}, Quadrante ${i} (${quadrant.name}): Texto detectado mas nenhum tracking number encontrado`);
+                            console.log(`Primeiros 100 caracteres: ${quadrantText.substring(0, 100)}`);
+                        }
+                        
                         // Só adiciona a etiqueta se tiver tracking number válido
-                        // Ignora etiquetas em branco e tracking numbers na lista de ignorados
-                        if (trackingNumber && !this.ignoredTrackingNumbers.has(trackingNumber)) {
+                        // Ignora etiquetas em branco
+                        if (trackingNumber) {
                             labels.push({
                                 pageNum,
                                 quadrantIndex: i,
@@ -342,6 +345,10 @@ class LabelProcessor {
                 }
 
                 this.state.extractedLabels = labels;
+                
+                // Log do total de etiquetas encontradas
+                console.log(`Total de etiquetas encontradas: ${labels.length}`);
+                console.log(`Tracking numbers detectados:`, labels.map(l => l.trackingNumber));
                 
                 // Informa se nenhuma etiqueta válida foi encontrada
                 if (labels.length === 0) {
