@@ -311,17 +311,30 @@ class LabelProcessor {
                             height: quadrant.h
                         });
                         
-                        // Encontra números de pedido no texto do quadrante
-                        // Busca especificamente o campo "Pedido:" seguido do código
-                        const pedidoMatch = quadrantText.match(/Pedido:?\s*([A-Z0-9]{12,20})/i);
-                        const orderNumber = pedidoMatch ? pedidoMatch[1] : null;
+                        // Log do texto completo para debug
+                        console.log(`=== Página ${pageNum}, Quadrante ${i} ===`);
+                        console.log(`Texto extraído:`, quadrantText);
                         
-                        // Log detalhado para debug
-                        console.log(`Página ${pageNum}, Quadrante ${i}: Pedido encontrado:`, orderNumber);
-                        if (!orderNumber && quadrantText.trim().length > 10) {
-                            console.log(`Página ${pageNum}, Quadrante ${i} (${quadrant.name}): Texto detectado mas nenhum campo 'Pedido:' encontrado`);
-                            console.log(`Texto completo do quadrante:`, quadrantText);
+                        // Busca o campo "Pedido" de várias formas possíveis
+                        let orderNumber = null;
+                        
+                        // Tenta diferentes padrões
+                        const patterns = [
+                            /Pedido:\s*(\S+)/i,
+                            /Pedido\s+(\S+)/i,
+                            /Pedido[:\s]+([A-Z0-9]+)/i
+                        ];
+                        
+                        for (const pattern of patterns) {
+                            const match = quadrantText.match(pattern);
+                            if (match && match[1]) {
+                                orderNumber = match[1].trim();
+                                console.log(`Match encontrado com padrão ${pattern}:`, orderNumber);
+                                break;
+                            }
                         }
+                        
+                        console.log(`Pedido final:`, orderNumber);
                         
                         // Só adiciona a etiqueta se tiver número de pedido válido
                         // Ignora etiquetas em branco
