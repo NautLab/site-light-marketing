@@ -37,13 +37,13 @@ class LabelProcessor {
                 total: 0,
                 withData: 0,
                 withoutData: 0,
-                missingOrderNumbers: [],
+                missingTrackingNumbers: [],
             },
         };
 
-        // Regex para extrair número do pedido das etiquetas Shopee
-        // Busca especificamente o campo "Pedido:" seguido do código
-        this.orderNumberRegex = /Pedido:?\s*([A-Z0-9]{12,20})/gi;
+        // Regex para extrair tracking number das etiquetas
+        // Formato: BR seguido de 10-15 dígitos (ex: BR2536994542389)
+        this.trackingNumberRegex = /BR\d{10,15}/gi;
     }
 
     /**
@@ -61,7 +61,7 @@ class LabelProcessor {
                 total: 0,
                 withData: 0,
                 withoutData: 0,
-                missingOrderNumbers: [],
+                missingTrackingNumbers: [],
             },
         };
     }
@@ -110,76 +110,76 @@ class LabelProcessor {
                         return;
                     }
 
-                    // Mapa para armazenar dados por order_sn (número do pedido)
+                    // Mapa para armazenar dados por tracking_number
                     const dataMap = new Map();
                     const duplicates = [];
 
-                    // Procura pela coluna de order_sn (número do pedido)
+                    // Procura pela coluna de tracking_number
                     // Tenta diferentes nomes possíveis
-                    const orderColumns = [
-                        'order_sn',
-                        'Order SN',
-                        'OrderSN',
-                        'order_id',
-                        'Order ID',
-                        'Número do Pedido',
-                        'numero_pedido',
-                        'Pedido',
-                        'pedido',
-                        'Order Number',
-                        'order_number'
+                    const trackingColumns = [
+                        'tracking_number',
+                        'Tracking Number',
+                        'TrackingNumber',
+                        'tracking',
+                        'Tracking',
+                        'Número de Rastreio',
+                        'numero_rastreio',
+                        'Código de Rastreio',
+                        'codigo_rastreio',
+                        'rastreio',
+                        'Rastreio'
                     ];
 
-                    // Encontra a coluna de order_sn
-                    let orderColumn = null;
+                    // Encontra a coluna de tracking
+                    let trackingColumn = null;
                     const firstRow = jsonData[0];
                     
-                    for (const col of orderColumns) {
+                    for (const col of trackingColumns) {
                         if (firstRow.hasOwnProperty(col)) {
-                            orderColumn = col;
+                            trackingColumn = col;
                             break;
                         }
                     }
 
-                    // Se não encontrou, procura por coluna que contém números de pedido (15-18 dígitos)
-                    if (!orderColumn) {
+                    // Se não encontrou, procura por coluna que contém códigos BR
+                    if (!trackingColumn) {
                         for (const key of Object.keys(firstRow)) {
                             const value = String(firstRow[key] || '');
-                            if (this.orderNumberRegex.test(value)) {
-                                orderColumn = key;
+                            if (this.trackingNumberRegex.test(value)) {
+                                trackingColumn = key;
                                 break;
                             }
                         }
                     }
 
-                    if (!orderColumn) {
-                        reject(new Error('Não foi possível encontrar a coluna de número do pedido (order_sn) na planilha. Certifique-se de que existe uma coluna com números de pedido Shopee.'));
+                    if (!trackingColumn) {
+                        reject(new Error('Não foi possível encontrar a coluna de tracking number na planilha. Certifique-se de que existe uma coluna com códigos de rastreio (ex: BR2536994542389)'));
                         return;
                     }
 
                     // Processa cada linha
                     for (const row of jsonData) {
-                        let orderNumber = String(row[orderColumn] || '').trim();
+                        let trackingNumber = String(row[trackingColumn] || '').trim().toUpperCase();
                         
-                        // Extrai o número do pedido se estiver em um texto maior
-                        const matches = orderNumber.match(this.orderNumberRegex);
+                        // Extrai o código BR se estiver em um texto maior
+                        const matches = trackingNumber.match(this.trackingNumberRegex);
                         if (matches && matches.length > 0) {
-                            orderNumber = matches[0];
+                            trackingNumber = matches[0];
                         }
 
-                        if (!orderNumber) continue;
+                        if (!trackingNumber) continue;
 
                         // Verifica duplicatas
-                        if (dataMap.has(orderNumber)) {
-                            duplicates.push(orderNumber);
+                        if (dataMap.has(trackingNumber)) {
+                            duplicates.push(trackingNumber);
                         } else {
-                            dataMap.set(orderNumber, row);
+                            dataMap.set(trackingNumber, row);
                         }
                     }
 
                     // Se houver duplicatas, aborta o processamento
                     if (duplicates.length > 0) {
-                        reject(new Error(`Números de pedido duplicados encontrados na planilha:\n${duplicates.slice(0, 10).join('\n')}${duplicates.length > 10 ? `\n... e mais ${duplicates.length - 10}` : ''}`));
+                        reject(new Error(`Tracking numbers duplicados encontrados na planilha:\n${duplicates.slice(0, 10).join('\n')}${duplicates.length > 10 ? `\n... e mais ${duplicates.length - 10}` : ''}`));
                         return;
                     }
 
@@ -299,7 +299,7 @@ class LabelProcessor {
                         { name: 'Inferior Direito', x: width / 2, y: 0, w: width / 2, h: height / 2 },
                     ];
 
-                    // Para cada quadrante, extrai o texto e encontra o número do pedido
+                    // Para cada quadrante, extrai o texto e encontra o tracking number
                     for (let i = 0; i < 4; i++) {
                         const quadrant = quadrants[i];
                         
@@ -311,24 +311,20 @@ class LabelProcessor {
                             height: quadrant.h
                         });
                         
-                        // Busca número do pedido pelo padrão Shopee: 
-                        // 6 dígitos de data (AAMMDD) + código alfanumérico com letras
-                        // Ex: 251105VDG4NY6J (25=ano, 11=mês, 05=dia, VDG4NY6J=código)
-                        // O código DEVE conter pelo menos uma letra para diferenciar de outros números
-                        const pedidoMatch = quadrantText.match(/\b(2[45]\d{4}[A-Z0-9]*[A-Z][A-Z0-9]*)\b/i);
-                        const orderNumber = pedidoMatch ? pedidoMatch[1].toUpperCase() : null;
+                        // Encontra tracking numbers no texto do quadrante
+                        const matches = quadrantText.match(this.trackingNumberRegex) || [];
+                        // Remove duplicatas e pega o primeiro
+                        const uniqueMatches = [...new Set(matches.map(m => m.toUpperCase()))];
+                        const trackingNumber = uniqueMatches.length > 0 ? uniqueMatches[0] : null;
                         
-                        // Log para debug
-                        console.log(`Página ${pageNum}, Quadrante ${i}: Pedido encontrado:`, orderNumber);
-                        
-                        // Só adiciona a etiqueta se tiver número de pedido válido
+                        // Só adiciona a etiqueta se tiver tracking number válido
                         // Ignora etiquetas em branco
-                        if (orderNumber) {
+                        if (trackingNumber) {
                             labels.push({
                                 pageNum,
                                 quadrantIndex: i,
                                 quadrant: quadrant.name,
-                                orderNumber,
+                                trackingNumber,
                                 bounds: {
                                     x: quadrant.x,
                                     y: quadrant.y,
@@ -344,11 +340,11 @@ class LabelProcessor {
                 
                 // Log do total de etiquetas encontradas
                 console.log(`Total de etiquetas encontradas: ${labels.length}`);
-                console.log(`Números de pedido detectados:`, labels.map(l => l.orderNumber));
+                console.log(`Tracking numbers detectados:`, labels.map(l => l.trackingNumber));
                 
                 // Informa se nenhuma etiqueta válida foi encontrada
                 if (labels.length === 0) {
-                    console.warn('Aviso: Nenhuma etiqueta com número de pedido válido foi encontrada no PDF.');
+                    console.warn('Aviso: Nenhuma etiqueta com tracking number válido foi encontrada no PDF.');
                 }
                 
                 resolve(labels);
@@ -359,13 +355,13 @@ class LabelProcessor {
     }
 
     /**
-     * Encontra dados do XLSX para um número de pedido
-     * @param {string} orderNumber - Número do pedido
+     * Encontra dados do XLSX para um tracking number
+     * @param {string} trackingNumber - Número de rastreio
      * @returns {Object|null} Dados associados ou null
      */
-    findXlsxData(orderNumber) {
-        if (!orderNumber || !this.state.xlsxData) return null;
-        return this.state.xlsxData.get(orderNumber) || null;
+    findXlsxData(trackingNumber) {
+        if (!trackingNumber || !this.state.xlsxData) return null;
+        return this.state.xlsxData.get(trackingNumber.toUpperCase()) || null;
     }
 
     /**
@@ -446,7 +442,7 @@ class LabelProcessor {
         }
         
         if (this.state.extractedLabels.length === 0) {
-            throw new Error('Nenhuma etiqueta com número de pedido válido foi encontrada no PDF. Verifique se o arquivo contém etiquetas Shopee.');
+            throw new Error('Nenhuma etiqueta com tracking number válido foi encontrada no PDF. Verifique se o arquivo contém etiquetas Shopee.');
         }
 
         // Usa o buffer em cache ou lê novamente
@@ -474,7 +470,7 @@ class LabelProcessor {
             total: 0,
             withData: 0,
             withoutData: 0,
-            missingOrderNumbers: [],
+            missingTrackingNumbers: [],
         };
 
         const totalLabels = this.state.extractedLabels.length;
@@ -563,7 +559,7 @@ class LabelProcessor {
             const newPage = outputDoc.addPage([outputWidth, outputHeight]);
 
             // Busca dados do XLSX primeiro para calcular altura necessária
-            const xlsxData = this.findXlsxData(label.orderNumber);
+            const xlsxData = this.findXlsxData(label.trackingNumber);
             this.state.results.total++;
 
             if (xlsxData) {
@@ -725,10 +721,10 @@ class LabelProcessor {
                 }
             } else {
                 this.state.results.withoutData++;
-                if (label.orderNumber) {
-                    this.state.results.missingOrderNumbers.push(label.orderNumber);
+                if (label.trackingNumber) {
+                    this.state.results.missingTrackingNumbers.push(label.trackingNumber);
                 } else {
-                    this.state.results.missingOrderNumbers.push(`Página ${label.pageNum} - ${label.quadrant}`);
+                    this.state.results.missingTrackingNumbers.push(`Página ${label.pageNum} - ${label.quadrant}`);
                 }
 
                 const textAreaHeight = tableConfig.minHeight;
@@ -827,7 +823,7 @@ class LabelProcessor {
             total: this.state.results.total,
             withData: this.state.results.withData,
             withoutData: this.state.results.withoutData,
-            missingOrderNumbers: this.state.results.missingOrderNumbers,
+            missingTrackingNumbers: this.state.results.missingTrackingNumbers,
             percentage: this.state.results.total > 0 
                 ? Math.round((this.state.results.withData / this.state.results.total) * 100) 
                 : 0,
