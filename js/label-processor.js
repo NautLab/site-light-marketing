@@ -42,9 +42,8 @@ class LabelProcessor {
         };
 
         // Regex para extrair número do pedido das etiquetas Shopee
-        // Formato: 6 dígitos (data) + letras/números alfanuméricos (ex: 251105VDG4NY6J)
-        // Deve ter pelo menos 1 letra para não pegar códigos de barras numéricos
-        this.orderNumberRegex = /\b\d{6}[A-Z][A-Z0-9]{5,11}\b/gi;
+        // Busca especificamente o campo "Pedido:" seguido do código
+        this.orderNumberRegex = /Pedido:?\s*([A-Z0-9]{12,20})/gi;
     }
 
     /**
@@ -313,15 +312,14 @@ class LabelProcessor {
                         });
                         
                         // Encontra números de pedido no texto do quadrante
-                        const matches = quadrantText.match(this.orderNumberRegex) || [];
-                        // Remove duplicatas e pega o primeiro
-                        const uniqueMatches = [...new Set(matches)];
-                        const orderNumber = uniqueMatches.length > 0 ? uniqueMatches[0] : null;
+                        // Busca especificamente o campo "Pedido:" seguido do código
+                        const pedidoMatch = quadrantText.match(/Pedido:?\s*([A-Z0-9]{12,20})/i);
+                        const orderNumber = pedidoMatch ? pedidoMatch[1] : null;
                         
                         // Log detalhado para debug
-                        console.log(`Página ${pageNum}, Quadrante ${i}: Matches encontrados:`, matches);
+                        console.log(`Página ${pageNum}, Quadrante ${i}: Pedido encontrado:`, orderNumber);
                         if (!orderNumber && quadrantText.trim().length > 10) {
-                            console.log(`Página ${pageNum}, Quadrante ${i} (${quadrant.name}): Texto detectado mas nenhum número de pedido encontrado`);
+                            console.log(`Página ${pageNum}, Quadrante ${i} (${quadrant.name}): Texto detectado mas nenhum campo 'Pedido:' encontrado`);
                             console.log(`Texto completo do quadrante:`, quadrantText);
                         }
                         
