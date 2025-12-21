@@ -314,7 +314,8 @@
                     if (menuToggle && nav) {
                         menuToggle.classList.remove('active');
                         nav.classList.remove('active');
-                        if (menuOverlay) menuOverlay.classList.remove('active');
+                        const overlay = document.querySelector('.menu-overlay');
+                        if (overlay) overlay.classList.remove('active');
                         document.body.classList.remove('menu-open');
                     }
                 }
@@ -360,13 +361,6 @@
         })();
     </script>
     <script src="js/label-processor.js?v=1.0"></script>
-    <script>
-        // Configurar tracking numbers a serem ignorados (etiquetas removidas/inválidas)
-        if (typeof labelProcessor !== 'undefined') {
-            labelProcessor.ignoredTrackingNumbers.add('BR2536385526643');
-            labelProcessor.ignoredTrackingNumbers.add('BR2536994542389');
-        }
-    </script>
     <script src="script.js?v=14.0" defer></script>
 </body>
 </html>
