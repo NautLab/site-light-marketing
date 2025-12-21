@@ -43,7 +43,8 @@ class LabelProcessor {
 
         // Regex para extrair número do pedido das etiquetas Shopee
         // Formato: 6 dígitos (data) + letras/números alfanuméricos (ex: 251105VDG4NY6J)
-        this.orderNumberRegex = /\d{6}[A-Z0-9]{6,12}/gi;
+        // Deve ter pelo menos 1 letra para não pegar códigos de barras numéricos
+        this.orderNumberRegex = /\b\d{6}[A-Z][A-Z0-9]{5,11}\b/gi;
     }
 
     /**
