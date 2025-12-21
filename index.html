@@ -360,6 +360,13 @@
         })();
     </script>
     <script src="js/label-processor.js?v=1.0"></script>
+    <script>
+        // Configurar tracking numbers a serem ignorados (etiquetas removidas/inválidas)
+        if (typeof labelProcessor !== 'undefined') {
+            labelProcessor.ignoredTrackingNumbers.add('BR2536385526643');
+            labelProcessor.ignoredTrackingNumbers.add('BR2536994542389');
+        }
+    </script>
     <script src="script.js?v=14.0" defer></script>
 </body>
 </html>

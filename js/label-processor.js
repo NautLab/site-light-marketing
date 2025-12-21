@@ -44,6 +44,9 @@ class LabelProcessor {
         // Regex para extrair tracking number das etiquetas
         // Formato: BR seguido de letras maiúsculas e números (geralmente 13 caracteres)
         this.trackingNumberRegex = /BR[A-Z0-9]{9,15}BR|BR[A-Z0-9]{9,15}/gi;
+        
+        // Lista de tracking numbers a serem ignorados (etiquetas removidas/inválidas)
+        this.ignoredTrackingNumbers = new Set();
     }
 
     /**
@@ -320,8 +323,8 @@ class LabelProcessor {
                         const trackingNumber = uniqueMatches.length > 0 ? uniqueMatches[0] : null;
                         
                         // Só adiciona a etiqueta se tiver tracking number válido
-                        // Ignora etiquetas em branco
-                        if (trackingNumber) {
+                        // Ignora etiquetas em branco e tracking numbers na lista de ignorados
+                        if (trackingNumber && !this.ignoredTrackingNumbers.has(trackingNumber)) {
                             labels.push({
                                 pageNum,
                                 quadrantIndex: i,
