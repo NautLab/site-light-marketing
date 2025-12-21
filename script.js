@@ -186,11 +186,11 @@ function showReport(report) {
     document.getElementById('stat-without-data').textContent = report.withoutData;
     
     const missingList = document.getElementById('missing-list');
-    const missingTrackingNumbers = document.getElementById('missing-tracking-numbers');
+    const missingOrderNumbers = document.getElementById('missing-tracking-numbers');
     
-    if (report.missingTrackingNumbers && report.missingTrackingNumbers.length > 0) {
-        missingTrackingNumbers.innerHTML = report.missingTrackingNumbers
-            .map(tn => `<li>${tn}</li>`)
+    if (report.missingOrderNumbers && report.missingOrderNumbers.length > 0) {
+        missingOrderNumbers.innerHTML = report.missingOrderNumbers
+            .map(on => `<li>${on}</li>`)
             .join('');
         missingList.style.display = 'block';
     } else {
