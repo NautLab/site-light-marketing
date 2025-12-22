@@ -50,7 +50,8 @@ body {
     -moz-user-select: none;
     -ms-user-select: none;
     user-select: none;
-    height: 77px; /* Altura fixa para referência do menu mobile */
+    height: 60px; /* Altura fixa para referência do menu mobile */
+    padding: 10px 0;
 }
 
 .header .container {
@@ -70,8 +71,8 @@ body {
 }
 
 .logo-icon {
-    width: 36px;
-    height: 36px;
+    height: 32px;
+    width: auto;
     object-fit: contain;
 }
 
