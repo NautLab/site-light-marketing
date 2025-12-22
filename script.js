@@ -212,9 +212,12 @@ function updateProgress(progress) {
 if (downloadBtn) {
     downloadBtn.addEventListener('click', function() {
         if (generatedPdfBlob) {
-            // Gera nome do arquivo com data
+            // Gera nome do arquivo com data no formato brasileiro
             const now = new Date();
-            const dataFormatada = now.toISOString().slice(0, 10); // YYYY-MM-DD
+            const dia = String(now.getDate()).padStart(2, '0');
+            const mes = String(now.getMonth() + 1).padStart(2, '0');
+            const ano = now.getFullYear();
+            const dataFormatada = `${dia}-${mes}-${ano}`; // DD-MM-YYYY
             const fileName = `Light_Marketing-Shopee_${dataFormatada}.pdf`;
             
             const url = URL.createObjectURL(generatedPdfBlob);
