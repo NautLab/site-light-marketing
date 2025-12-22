@@ -49,8 +49,8 @@ body {
     -moz-user-select: none;
     -ms-user-select: none;
     user-select: none;
-    height: 70px;
-    padding: 15px 0;
+    height: 80px;
+    padding: 20px 0;
 }
 
 .header .container {
