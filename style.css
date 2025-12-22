@@ -50,13 +50,13 @@ body {
     -ms-user-select: none;
     user-select: none;
     height: 80px;
-    padding: 20px 0;
 }
 
 .header .container {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    height: 100%;
 }
 
 .logo {
