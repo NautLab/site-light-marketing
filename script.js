@@ -212,10 +212,15 @@ function updateProgress(progress) {
 if (downloadBtn) {
     downloadBtn.addEventListener('click', function() {
         if (generatedPdfBlob) {
+            // Gera nome do arquivo com data
+            const now = new Date();
+            const dataFormatada = now.toISOString().slice(0, 10); // YYYY-MM-DD
+            const fileName = `Light_Marketing-Shopee_${dataFormatada}.pdf`;
+            
             const url = URL.createObjectURL(generatedPdfBlob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'etiquetas-formatadas.pdf';
+            a.download = fileName;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
