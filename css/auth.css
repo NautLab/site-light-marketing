@@ -736,8 +736,10 @@
     }
 
     .user-dropdown {
-        min-width: 220px;
-        right: -10px;
+        min-width: calc(100vw - 40px);
+        max-width: 320px;
+        right: 20px;
+        left: auto;
         top: calc(100% + 8px);
     }
 
