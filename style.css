@@ -129,6 +129,13 @@ body {
     width: 100%;
 }
 
+/* Header Right - Auth Section e Menu Toggle */
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
 /* Menu Hambúrguer */
 .menu-toggle {
     display: none;
