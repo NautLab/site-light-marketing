@@ -70,33 +70,19 @@ navLinks.forEach(link => {
     });
 });
 
-// Efeito de digitação no título com destaque
+// Efeito de digitação no título sem destaque
 const typingElement = document.querySelector('.typing-text');
 if (typingElement) {
-    const normalText = 'Formatador de Etiquetas ';
-    const highlightText = 'Shopee';
+    const fullText = 'Formatador de Etiquetas';
     let i = 0;
-    let j = 0;
-    let highlightSpan = null;
     
     function typeWriter() {
-        if (i < normalText.length) {
-            typingElement.textContent += normalText.charAt(i);
+        if (i < fullText.length) {
+            typingElement.textContent += fullText.charAt(i);
             i++;
-            setTimeout(typeWriter, 80);
-        } else if (j < highlightText.length) {
-            // Criar o span na primeira letra de "Sit Amet"
-            if (j === 0) {
-                highlightSpan = document.createElement('span');
-                highlightSpan.className = 'highlight';
-                typingElement.appendChild(highlightSpan);
-            }
-            // Adicionar letra por letra dentro do span
-            highlightSpan.textContent += highlightText.charAt(j);
-            j++;
             
-            // Se for a última letra, remover o cursor imediatamente
-            if (j === highlightText.length) {
+            // Se for a última letra, remover o cursor
+            if (i === fullText.length) {
                 typingElement.style.setProperty('--cursor-display', 'none');
             }
             
@@ -380,5 +366,31 @@ document.querySelectorAll('.file-upload').forEach(upload => {
                 xlsxName.style.color = '#0C7E92';
             }
         }
+    });
+});
+
+// Marketplace Tabs - Alternância de abas
+const marketplaceTabs = document.querySelectorAll('.marketplace-tab');
+const marketplaceContents = document.querySelectorAll('.marketplace-content');
+
+marketplaceTabs.forEach(tab => {
+    tab.addEventListener('click', function() {
+        const targetMarketplace = this.getAttribute('data-marketplace');
+        
+        // Desativa todas as abas
+        marketplaceTabs.forEach(t => t.classList.remove('active'));
+        // Esconde todos os conteúdos
+        marketplaceContents.forEach(c => c.classList.remove('active'));
+        
+        // Ativa a aba clicada
+        this.classList.add('active');
+        // Mostra o conteúdo correspondente
+        const targetContent = document.querySelector(`.marketplace-content[data-marketplace="${targetMarketplace}"]`);
+        if (targetContent) {
+            targetContent.classList.add('active');
+        }
+        
+        // Esconde mensagens ao trocar de aba
+        hideAllMessages();
     });
 });

@@ -3,15 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="description" content="Formatador automático de etiquetas Shopee. Processe PDFs e planilhas XLSX para gerar etiquetas Correios e Xpress prontas para impressão.">
-    <meta name="keywords" content="shopee, etiquetas, correios, xpress, formatador, automação, impressão, e-commerce">
+    <meta name="description" content="Formatador automático de etiquetas para e-commerce. Processe PDFs e planilhas XLSX para gerar etiquetas prontas para impressão.">
+    <meta name="keywords" content="etiquetas, correios, xpress, formatador, automação, impressão, e-commerce, shopee, tiktok, shein">
     <meta name="author" content="Light Marketing">
     <meta name="robots" content="index, follow">
-    <meta property="og:title" content="Light Marketing - Formatador de Etiquetas Shopee">
-    <meta property="og:description" content="Automatize o processamento de etiquetas Shopee com nossa ferramenta gratuita. Suporte para Correios e Xpress.">
+    <meta property="og:title" content="Light Marketing - Formatador de Etiquetas">
+    <meta property="og:description" content="Automatize o processamento de etiquetas para e-commerce com nossa ferramenta. Suporte para Shopee, TikTok e Shein.">
     <meta property="og:type" content="website">
     <meta property="og:image" content="image.png">
-    <title>Light Marketing - Formatador de Etiquetas Shopee</title>
+    <title>Light Marketing - Formatador de Etiquetas</title>
     <link rel="icon" type="image/x-icon" href="favicon.ico">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -54,14 +54,14 @@
                 <!-- Lado Esquerdo - Imagem e Texto -->
                 <div class="hero-left">
                     <div class="hero-image">
-                        <img src="image.png" alt="Light Marketing - Formatador de Etiquetas Shopee" width="250" height="250">
+                        <img src="image.png" alt="Light Marketing - Formatador de Etiquetas" width="250" height="250">
                     </div>
                     <h1 class="hero-title">
                         <span class="typing-text"></span>
                     </h1>
                     <p class="hero-subtitle">
-                        Automatize o processamento de suas etiquetas Shopee em poucos cliques. 
-                        Suporte completo para Correios e Xpress com formatação perfeita.
+                        Automatize o processamento de suas etiquetas de e-commerce em poucos cliques. 
+                        Suporte para múltiplos marketplaces com formatação perfeita.
                     </p>
                     <div class="features-badges">
                         <div class="badge">
@@ -82,46 +82,81 @@
                 <!-- Lado Direito - Ferramenta -->
                 <div class="hero-right">
                     <div class="tool-card">
+                        <!-- Logo acima do bloco -->
+                        <div class="tool-logo">
+                            <img src="logo-light-marketing.png?v=3" alt="Light Marketing" height="40">
+                        </div>
+
                         <div class="tool-header">
                             <h2>Processar Etiquetas</h2>
-                            <p>Shopee (Correios/Xpress)</p>
+                        </div>
+
+                        <!-- Abas de Marketplace -->
+                        <div class="marketplace-tabs">
+                            <button class="marketplace-tab active" data-marketplace="shopee">
+                                <span>Shopee</span>
+                            </button>
+                            <button class="marketplace-tab" data-marketplace="tiktok">
+                                <span>TikTok</span>
+                            </button>
+                            <button class="marketplace-tab" data-marketplace="shein">
+                                <span>Shein</span>
+                            </button>
                         </div>
                         
-                        <div class="tool-body">
-                            <div class="upload-section">
-                                <label for="pdf-file" class="file-upload">
-                                    <div class="upload-icon">
-                                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                            <path d="M7 18C5.17107 18.4117 4 19.0443 4 19.7537C4 20.9943 7.58172 22 12 22C16.4183 22 20 20.9943 20 19.7537C20 19.0443 18.8289 18.4117 17 18M12 15V3M12 3L8 7M12 3L16 7" stroke="#0C7E92" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                                        </svg>
-                                    </div>
-                                    <div class="upload-label">
-                                        <span class="upload-text">Selecionar Arquivo PDF</span>
-                                        <span class="file-name" id="pdf-name">Nenhum arquivo selecionado</span>
-                                    </div>
-                                    <input type="file" id="pdf-file" accept=".pdf" class="file-input">
-                                </label>
+                        <!-- Conteúdo Shopee -->
+                        <div class="marketplace-content active" data-marketplace="shopee">
+                            <div class="tool-body">
+                                <p class="marketplace-subtitle">Correios / Xpress</p>
+                                <div class="upload-section">
+                                    <label for="pdf-file" class="file-upload">
+                                        <div class="upload-icon">
+                                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                <path d="M7 18C5.17107 18.4117 4 19.0443 4 19.7537C4 20.9943 7.58172 22 12 22C16.4183 22 20 20.9943 20 19.7537C20 19.0443 18.8289 18.4117 17 18M12 15V3M12 3L8 7M12 3L16 7" stroke="#0C7E92" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                            </svg>
+                                        </div>
+                                        <div class="upload-label">
+                                            <span class="upload-text">Selecionar Arquivo PDF</span>
+                                            <span class="file-name" id="pdf-name">Nenhum arquivo selecionado</span>
+                                        </div>
+                                        <input type="file" id="pdf-file" accept=".pdf" class="file-input">
+                                    </label>
 
-                                <label for="xlsx-file" class="file-upload">
-                                    <div class="upload-icon">
-                                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                            <path d="M7 18C5.17107 18.4117 4 19.0443 4 19.7537C4 20.9943 7.58172 22 12 22C16.4183 22 20 20.9943 20 19.7537C20 19.0443 18.8289 18.4117 17 18M12 15V3M12 3L8 7M12 3L16 7" stroke="#0C7E92" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    <label for="xlsx-file" class="file-upload">
+                                        <div class="upload-icon">
+                                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                <path d="M7 18C5.17107 18.4117 4 19.0443 4 19.7537C4 20.9943 7.58172 22 12 22C16.4183 22 20 20.9943 20 19.7537C20 19.0443 18.8289 18.4117 17 18M12 15V3M12 3L8 7M12 3L16 7" stroke="#0C7E92" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                                         </svg>
-                                    </div>
-                                    <div class="upload-label">
-                                        <span class="upload-text">Selecionar Arquivo XLSX</span>
-                                        <span class="file-name" id="xlsx-name">Nenhum arquivo selecionado</span>
-                                    </div>
-                                    <input type="file" id="xlsx-file" accept=".xlsx,.xls" class="file-input">
-                                </label>
-                            </div>
+                                        </div>
+                                        <div class="upload-label">
+                                            <span class="upload-text">Selecionar Arquivo XLSX</span>
+                                            <span class="file-name" id="xlsx-name">Nenhum arquivo selecionado</span>
+                                        </div>
+                                        <input type="file" id="xlsx-file" accept=".xlsx,.xls" class="file-input">
+                                    </label>
+                                </div>
 
-                            <button class="process-btn" id="process-btn">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M5 13L9 17L19 7" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                                </svg>
-                                PROCESSAR ARQUIVOS
-                            </button>
+                                <!-- Seletor de Tipo de Texto -->
+                                <div class="text-type-selector">
+                                    <span class="text-type-label">Tipo de texto na etiqueta:</span>
+                                    <div class="text-type-options">
+                                        <label class="radio-label">
+                                            <input type="radio" name="text-type" value="sku" checked>
+                                            <span>Referência SKU</span>
+                                        </label>
+                                        <label class="radio-label">
+                                            <input type="radio" name="text-type" value="product-name">
+                                            <span>Nome do Produto</span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <button class="process-btn" id="process-btn">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M5 13L9 17L19 7" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                    PROCESSAR ARQUIVOS
+                                </button>
 
                             <div class="progress-bar" id="progress-container" style="display: none;">
                                 <div class="progress-fill" id="progress-fill"></div>
@@ -170,6 +205,29 @@
                                     </svg>
                                     BAIXAR PDF FORMATADO
                                 </button>
+                            </div>
+                            </div>
+                        </div>
+
+                        <!-- Conteúdo TikTok -->
+                        <div class="marketplace-content" data-marketplace="tiktok">
+                            <div class="marketplace-coming-soon">
+                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M12 8V12L15 15M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="#0C7E92" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                                <h3>Disponível em breve!</h3>
+                                <p>O formatador de etiquetas TikTok está em desenvolvimento.</p>
+                            </div>
+                        </div>
+
+                        <!-- Conteúdo Shein -->
+                        <div class="marketplace-content" data-marketplace="shein">
+                            <div class="marketplace-coming-soon">
+                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M12 8V12L15 15M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="#0C7E92" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                                <h3>Disponível em breve!</h3>
+                                <p>O formatador de etiquetas Shein está em desenvolvimento.</p>
                             </div>
                         </div>
                     </div>
@@ -227,20 +285,27 @@
             <div class="footer-content">
                 <div class="footer-section">
                     <img src="logo-light-marketing.png?v=3" alt="Light Marketing" height="70" style="margin-bottom: 10px;">
-                    <p>Soluções inteligentes para e-commerce</p>
+                    <p data-config="site.descricao">Soluções inteligentes para e-commerce</p>
                 </div>
                 <div class="footer-section">
                     <h4>Entre em Contato</h4>
-                    <a href="https://wa.link/m1vm4f" target="_blank" class="contact-link">
+                    <a href="https://wa.link/m1vm4f" target="_blank" class="contact-link" data-config-href="contato.whatsappLink">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M3 8L10.8906 13.2604C11.5624 13.7083 12.4376 13.7083 13.1094 13.2604L21 8M5 19H19C20.1046 19 21 18.1046 21 17V7C21 5.89543 20.1046 5 19 5H5C3.89543 5 3 5.89543 3 7V17C3 18.1046 3.89543 19 5 19Z" stroke="#0C7E92" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
                         Fale Conosco
                     </a>
                 </div>
+                <div class="footer-section">
+                    <h4>Legal</h4>
+                    <div class="footer-links">
+                        <a href="termos-de-uso.html">Termos de Uso</a>
+                        <a href="politica-de-privacidade.html">Política de Privacidade</a>
+                    </div>
+                </div>
             </div>
             <div class="footer-bottom">
-                <p>&copy; 2025 Light Marketing. Todos os direitos reservados.</p>
+                <p data-copyright>&copy; 2025 Light Marketing. Todos os direitos reservados.</p>
             </div>
         </div>
     </footer>
@@ -255,6 +320,7 @@
     </script>
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/site-config.js?v=1.0"></script>
     <script src="js/supabase-config.js?v=1.0"></script>
     <script src="js/auth.js?v=1.0"></script>
     <script>

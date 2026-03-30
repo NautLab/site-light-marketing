@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body { margin: 0; padding: 0; background-color: #0a0a0a; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .container { max-width: 560px; margin: 0 auto; padding: 40px 20px; }
+        .card { background: #1a1a1a; border: 1px solid rgba(12, 126, 146, 0.3); border-radius: 16px; padding: 40px 30px; text-align: center; }
+        .logo { margin-bottom: 25px; }
+        .logo img { height: 50px; width: auto; }
+        h1 { color: #ffffff; font-size: 22px; font-weight: 600; margin: 0 0 15px 0; }
+        p { color: rgba(255, 255, 255, 0.75); font-size: 15px; line-height: 1.7; margin: 0 0 12px 0; }
+        .btn { display: inline-block; background: #0C7E92; color: #ffffff !important; text-decoration: none; padding: 14px 40px; border-radius: 50px; font-size: 16px; font-weight: 600; margin: 20px 0; }
+        .divider { border: none; border-top: 1px solid rgba(12, 126, 146, 0.15); margin: 25px 0; }
+        .footer { text-align: center; margin-top: 25px; }
+        .footer p { color: rgba(255, 255, 255, 0.4); font-size: 12px; }
+        .footer a { color: #0C7E92; text-decoration: none; }
+        .small { font-size: 13px; color: rgba(255, 255, 255, 0.5); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="logo">
+                <strong style="color: #0C7E92; font-size: 20px; letter-spacing: 2px;">LIGHT</strong>
+                <strong style="color: #ffffff; font-size: 20px; letter-spacing: 2px;"> MARKETING</strong>
+            </div>
+            <h1>Confirme seu e-mail</h1>
+            <p>Olá! Obrigado por se cadastrar na Light Marketing.</p>
+            <p>Para ativar sua conta, clique no botão abaixo:</p>
+            <a href="{{ .ConfirmationURL }}" class="btn">Confirmar E-mail</a>
+            <hr class="divider">
+            <p class="small">Se você não criou uma conta na Light Marketing, ignore este e-mail.</p>
+            <p class="small">Este link expira em 24 horas.</p>
+        </div>
+        <div class="footer">
+            <p>Light Marketing Gestão de Marketplace LTDA</p>
+            <p>CNPJ: 54.910.242/0001-41</p>
+            <p><a href="mailto:llightmarketingoficial@gmail.com">llightmarketingoficial@gmail.com</a></p>
+        </div>
+    </div>
+</body>
+</html>

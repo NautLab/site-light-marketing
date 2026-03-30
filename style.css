@@ -378,9 +378,21 @@ section *, .hero *, .how-to-use *, .footer * {
     box-shadow: var(--shadow);
 }
 
+/* Tool Logo */
+.tool-logo {
+    text-align: center;
+    margin-bottom: 15px;
+}
+
+.tool-logo img {
+    height: 40px;
+    width: auto;
+    opacity: 0.9;
+}
+
 .tool-header {
     text-align: center;
-    margin-bottom: 40px;
+    margin-bottom: 10px;
 }
 
 .tool-header h2 {
@@ -393,6 +405,119 @@ section *, .hero *, .how-to-use *, .footer * {
 .tool-header p {
     color: var(--primary-color);
     font-weight: 500;
+}
+
+/* Marketplace Tabs */
+.marketplace-tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 25px;
+    border-bottom: 2px solid rgba(12, 126, 146, 0.2);
+}
+
+.marketplace-tab {
+    flex: 1;
+    background: none;
+    border: none;
+    padding: 14px 20px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.5);
+    cursor: pointer;
+    position: relative;
+    transition: all 0.3s ease;
+    user-select: none;
+}
+
+.marketplace-tab::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: transparent;
+    transition: background 0.3s ease;
+}
+
+.marketplace-tab:hover {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.marketplace-tab.active {
+    color: var(--primary-color);
+}
+
+.marketplace-tab.active::after {
+    background: var(--primary-color);
+}
+
+/* Marketplace Content */
+.marketplace-content {
+    display: none;
+}
+
+.marketplace-content.active {
+    display: block;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.marketplace-subtitle {
+    text-align: center;
+    color: var(--primary-color);
+    font-weight: 500;
+    font-size: 14px;
+    margin-bottom: 5px;
+}
+
+/* Marketplace Coming Soon */
+.marketplace-coming-soon {
+    text-align: center;
+    padding: 60px 30px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+}
+
+.marketplace-coming-soon svg {
+    opacity: 0.6;
+}
+
+.marketplace-coming-soon h3 {
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+.marketplace-coming-soon p {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.6);
+    max-width: 280px;
+}
+
+/* Text Type Selector */
+.text-type-selector {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.text-type-label {
+    font-size: 14px;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.text-type-options {
+    display: flex;
+    gap: 12px;
 }
 
 .tool-body {
@@ -683,7 +808,7 @@ section *, .hero *, .how-to-use *, .footer * {
 
 .footer-content {
     display: grid;
-    grid-template-columns: 2fr 1fr;
+    grid-template-columns: 2fr 1fr 1fr;
     gap: 60px;
     margin-bottom: 40px;
 }
@@ -733,6 +858,121 @@ section *, .hero *, .how-to-use *, .footer * {
 .footer-bottom p {
     color: rgba(255, 255, 255, 0.5);
     font-size: 14px;
+}
+
+/* Footer Links */
+.footer-links {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.footer-links a {
+    color: rgba(255, 255, 255, 0.7);
+    text-decoration: none;
+    font-size: 14px;
+    transition: color 0.3s ease;
+}
+
+.footer-links a:hover {
+    color: var(--primary-color);
+}
+
+/* Legal Pages */
+.legal-section {
+    padding: 120px 0 80px 0;
+    min-height: calc(100vh - 200px);
+}
+
+.legal-content {
+    max-width: 800px;
+    margin: 0 auto;
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(12, 126, 146, 0.15);
+    border-radius: 20px;
+    padding: 50px 40px;
+}
+
+.legal-content h1 {
+    font-size: 36px;
+    font-weight: 700;
+    color: var(--primary-color);
+    margin-bottom: 5px;
+    text-align: center;
+}
+
+.legal-date {
+    text-align: center;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.5);
+    margin-bottom: 40px;
+}
+
+.legal-content h2 {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--primary-color);
+    margin-top: 35px;
+    margin-bottom: 15px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(12, 126, 146, 0.15);
+}
+
+.legal-content h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.9);
+    margin-top: 20px;
+    margin-bottom: 10px;
+}
+
+.legal-content p {
+    font-size: 15px;
+    color: rgba(255, 255, 255, 0.8);
+    line-height: 1.8;
+    margin-bottom: 12px;
+}
+
+.legal-content ul {
+    margin: 10px 0 15px 20px;
+    padding: 0;
+}
+
+.legal-content li {
+    font-size: 15px;
+    color: rgba(255, 255, 255, 0.75);
+    line-height: 1.8;
+    margin-bottom: 6px;
+}
+
+.legal-content a {
+    color: var(--primary-color);
+    text-decoration: none;
+    transition: opacity 0.3s ease;
+}
+
+.legal-content a:hover {
+    opacity: 0.8;
+    text-decoration: underline;
+}
+
+.legal-content strong {
+    color: rgba(255, 255, 255, 0.95);
+}
+
+@media (max-width: 768px) {
+    .legal-content {
+        padding: 30px 20px;
+    }
+
+    .legal-content h1 {
+        font-size: 28px;
+    }
+
+    .legal-content h2 {
+        font-size: 18px;
+    }
 }
 
 /* Animations */
@@ -892,6 +1132,15 @@ section *, .hero *, .how-to-use *, .footer * {
     .process-options {
         flex-direction: column;
         align-items: stretch;
+    }
+
+    .text-type-options {
+        flex-direction: column;
+    }
+
+    .marketplace-tab {
+        font-size: 13px;
+        padding: 12px 10px;
     }
 }
 
