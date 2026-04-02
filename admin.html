@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Painel Admin – Light Marketing</title>
+    <meta name="robots" content="noindex, nofollow" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="css/admin.css" />
+</head>
+<body class="admin-body">
+
+<!-- Toast container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- Loading overlay -->
+<div id="authLoading" style="
+    position:fixed; inset:0; background:#0a0a0a;
+    display:flex; align-items:center; justify-content:center; z-index:9999;">
+    <div style="text-align:center;">
+        <div style="width:40px;height:40px;border:3px solid rgba(12,126,146,.3);border-top-color:#0C7E92;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px;"></div>
+        <p style="color:#888;font-size:13px;font-family:Poppins,sans-serif;">A verificar permissões…</p>
+    </div>
+</div>
+
+<style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+
+<div class="admin-wrapper" id="adminApp" style="display:none;">
+
+    <!-- ── Sidebar ────────────────────────────────── -->
+    <aside class="admin-sidebar" id="adminSidebar">
+        <div class="sidebar-brand">
+            <img src="logo-light-marketing.png" alt="Light Marketing" />
+            <span class="sidebar-brand-label">Admin</span>
+        </div>
+
+        <nav class="sidebar-nav" role="navigation">
+            <span class="nav-section-label">Gerir</span>
+
+            <button class="nav-item active" data-section="users" onclick="showSection('users')">
+                <span class="nav-icon">👥</span>
+                Usuários
+            </button>
+
+            <button class="nav-item" data-section="plans" onclick="showSection('plans')">
+                <span class="nav-icon">📦</span>
+                Planos
+            </button>
+
+            <button class="nav-item" data-section="subscriptions" onclick="showSection('subscriptions')">
+                <span class="nav-icon">💳</span>
+                Assinaturas
+            </button>
+
+            <button class="nav-item" data-section="coupons" onclick="showSection('coupons')">
+                <span class="nav-icon">🏷️</span>
+                Cupons
+            </button>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="sidebar-user-info">
+                <div class="sidebar-avatar" id="sidebarAvatar">?</div>
+                <div>
+                    <div class="sidebar-user-name" id="sidebarName">—</div>
+                    <div class="sidebar-user-role" id="sidebarRole">—</div>
+                </div>
+            </div>
+            <button class="nav-item" onclick="handleLogout()" style="color:var(--danger);">
+                <span class="nav-icon">🚪</span>
+                Sair
+            </button>
+        </div>
+    </aside>
+
+    <!-- ── Main ───────────────────────────────────── -->
+    <main class="admin-main">
+        <header class="admin-topbar">
+            <button class="mobile-menu-btn" id="mobileMenuBtn" onclick="toggleSidebar()">☰</button>
+            <h1 class="topbar-title" id="topbarTitle">Usuários</h1>
+            <div class="topbar-actions">
+                <a href="index.html" class="topbar-back-btn">← Voltar ao site</a>
+            </div>
+        </header>
+
+        <div class="admin-content">
+
+            <!-- ═══════════════════════════════════════
+                 SECTION: Usuários
+            ══════════════════════════════════════════ -->
+            <section class="admin-section active" id="section-users">
+                <div class="section-header">
+                    <div>
+                        <h2 class="section-title">Usuários</h2>
+                        <p class="section-subtitle">Gerir contas, funções e acessos gratuitos</p>
+                    </div>
+                </div>
+
+                <div class="stats-grid" id="usersStats">
+                    <div class="stat-card"><div class="stat-label">Total</div><div class="stat-value" id="statTotal">—</div></div>
+                    <div class="stat-card"><div class="stat-label">Free</div><div class="stat-value" id="statFree">—</div></div>
+                    <div class="stat-card"><div class="stat-label">Básico</div><div class="stat-value primary" id="statBasic">—</div></div>
+                    <div class="stat-card"><div class="stat-label">Premium</div><div class="stat-value success" id="statPremium">—</div></div>
+                    <div class="stat-card"><div class="stat-label">Acesso Gratuito</div><div class="stat-value warning" id="statFreeAccess">—</div></div>
+                </div>
+
+                <div class="table-toolbar">
+                    <input class="search-input" id="usersSearch" type="search" placeholder="Buscar por nome ou e-mail…" oninput="filterUsers()" />
+                    <select class="filter-select" id="usersRoleFilter" onchange="filterUsers()">
+                        <option value="">Todas as funções</option>
+                        <option value="user">Usuário</option>
+                        <option value="admin">Admin</option>
+                        <option value="super_admin">Super Admin</option>
+                    </select>
+                    <select class="filter-select" id="usersTierFilter" onchange="filterUsers()">
+                        <option value="">Todos os planos</option>
+                        <option value="free">Free</option>
+                        <option value="basic">Básico</option>
+                        <option value="premium">Premium</option>
+                    </select>
+                </div>
+
+                <div class="table-wrapper">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Usuário</th>
+                                <th>Plano</th>
+                                <th>Função</th>
+                                <th>Acesso Gratuito</th>
+                                <th>Cadastro</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usersTableBody">
+                            <tr><td colspan="6"><div class="empty-state"><span class="empty-state-icon">⏳</span><p class="empty-state-text">Carregando usuários…</p></div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="pagination">
+                    <span class="pagination-info" id="usersPaginationInfo">—</span>
+                    <div class="pagination-controls">
+                        <button class="btn btn-secondary btn-sm" id="usersPrevBtn" onclick="usersPage(-1)" disabled>← Anterior</button>
+                        <button class="btn btn-secondary btn-sm" id="usersNextBtn" onclick="usersPage(1)">Próxima →</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ═══════════════════════════════════════
+                 SECTION: Planos
+            ══════════════════════════════════════════ -->
+            <section class="admin-section" id="section-plans">
+                <div class="section-header">
+                    <div>
+                        <h2 class="section-title">Planos</h2>
+                        <p class="section-subtitle">Criar e gerir planos de assinatura no Stripe</p>
+                    </div>
+                    <button class="btn btn-primary" onclick="openModal('createPlanModal')">+ Criar Plano</button>
+                </div>
+
+                <div id="plansContainer">
+                    <div class="empty-state"><span class="empty-state-icon">⏳</span><p class="empty-state-text">Carregando planos…</p></div>
+                </div>
+            </section>
+
+            <!-- ═══════════════════════════════════════
+                 SECTION: Assinaturas
+            ══════════════════════════════════════════ -->
+            <section class="admin-section" id="section-subscriptions">
+                <div class="section-header">
+                    <div>
+                        <h2 class="section-title">Assinaturas</h2>
+                        <p class="section-subtitle">Gerenciar assinaturas ativas e status Stripe</p>
+                    </div>
+                </div>
+
+                <div class="table-toolbar">
+                    <select class="filter-select" id="subsStatusFilter" onchange="filterSubs()">
+                        <option value="">Todos os status</option>
+                        <option value="active">Ativa</option>
+                        <option value="canceled">Cancelada</option>
+                        <option value="past_due">Vencida</option>
+                    </select>
+                </div>
+
+                <div class="table-wrapper">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Usuário</th>
+                                <th>Plano</th>
+                                <th>Status</th>
+                                <th>Próx. Cobrança</th>
+                                <th>Cancelar no Fim</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="subsTableBody">
+                            <tr><td colspan="6"><div class="empty-state"><span class="empty-state-icon">⏳</span><p class="empty-state-text">Carregando assinaturas…</p></div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- ═══════════════════════════════════════
+                 SECTION: Cupons
+            ══════════════════════════════════════════ -->
+            <section class="admin-section" id="section-coupons">
+                <div class="section-header">
+                    <div>
+                        <h2 class="section-title">Cupons</h2>
+                        <p class="section-subtitle">Criar e gerir cupons de desconto no Stripe</p>
+                    </div>
+                    <button class="btn btn-primary" onclick="openModal('createCouponModal')">+ Criar Cupom</button>
+                </div>
+
+                <div id="couponsContainer">
+                    <div class="empty-state"><span class="empty-state-icon">⏳</span><p class="empty-state-text">Carregando cupons…</p></div>
+                </div>
+            </section>
+
+        </div><!-- /admin-content -->
+    </main>
+</div><!-- /admin-wrapper -->
+
+<!-- ══════════════════════════════════════════════════
+     MODAL: Acesso Gratuito
+══════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="freeAccessModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="freeAccessModalTitle">
+        <div class="modal-header">
+            <h3 class="modal-title" id="freeAccessModalTitle">Conceder Acesso Gratuito</h3>
+            <button class="modal-close-btn" onclick="closeModal('freeAccessModal')">×</button>
+        </div>
+        <div class="modal-body">
+            <p style="font-size:13px;color:var(--text-muted);">Selecione o nível de acesso gratuito para <strong id="freeAccessUserName" style="color:var(--text);">—</strong>.</p>
+            <div class="form-group">
+                <label class="form-label" for="freeAccessTierSelect">Plano</label>
+                <select class="form-control form-select" id="freeAccessTierSelect">
+                    <option value="basic">Básico</option>
+                    <option value="premium">Premium</option>
+                </select>
+            </div>
+            <div class="info-row warning">⚠️ Este acesso é permanente até que seja revogado manualmente. Não gera cobrança no Stripe.
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('freeAccessModal')">Cancelar</button>
+            <button class="btn btn-success" id="freeAccessConfirmBtn" onclick="confirmFreeAccess()">Confirmar</button>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     MODAL: Promover / Rebaixar Admin
+══════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="roleModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="roleModalTitle">
+        <div class="modal-header">
+            <h3 class="modal-title" id="roleModalTitle">Alterar Função</h3>
+            <button class="modal-close-btn" onclick="closeModal('roleModal')">×</button>
+        </div>
+        <div class="modal-body">
+            <p style="font-size:13px;color:var(--text-muted);">Selecione a nova função para <strong id="roleModalUserName" style="color:var(--text);">—</strong>.</p>
+            <div class="form-group">
+                <label class="form-label" for="roleSelectInput">Função</label>
+                <select class="form-control form-select" id="roleSelectInput">
+                    <option value="user">Usuário</option>
+                    <option value="admin">Admin</option>
+                    <option value="super_admin" id="superAdminOption">Super Admin</option>
+                </select>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('roleModal')">Cancelar</button>
+            <button class="btn btn-primary" onclick="confirmRoleChange()">Salvar</button>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     MODAL: Criar Plano
+══════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="createPlanModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="createPlanModalTitle">
+        <div class="modal-header">
+            <h3 class="modal-title" id="createPlanModalTitle">Criar Plano</h3>
+            <button class="modal-close-btn" onclick="closeModal('createPlanModal')">×</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label class="form-label" for="planName">Nome</label>
+                <input class="form-control" id="planName" type="text" placeholder="Ex: Plano Básico" />
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="planDescription">Descrição</label>
+                <input class="form-control" id="planDescription" type="text" placeholder="Breve descrição do plano" />
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+                <div class="form-group">
+                    <label class="form-label" for="planTier">Nível</label>
+                    <select class="form-control form-select" id="planTier">
+                        <option value="basic">Básico</option>
+                        <option value="premium">Premium</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="planInterval">Intervalo</label>
+                    <select class="form-control form-select" id="planInterval">
+                        <option value="month">Mensal</option>
+                        <option value="year">Anual</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="planPrice">Preço (R$)</label>
+                <input class="form-control" id="planPrice" type="number" min="0" step="0.01" placeholder="29.90" />
+                <span class="form-helper">Valor em reais (BRL)</span>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('createPlanModal')">Cancelar</button>
+            <button class="btn btn-primary" id="createPlanBtn" onclick="submitCreatePlan()">Criar no Stripe</button>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     MODAL: Criar Cupom
+══════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="createCouponModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="createCouponModalTitle">
+        <div class="modal-header">
+            <h3 class="modal-title" id="createCouponModalTitle">Criar Cupom</h3>
+            <button class="modal-close-btn" onclick="closeModal('createCouponModal')">×</button>
+        </div>
+        <div class="modal-body">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+                <div class="form-group">
+                    <label class="form-label" for="couponCode">Código</label>
+                    <input class="form-control" id="couponCode" type="text" placeholder="PROMO20" style="text-transform:uppercase" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="couponName">Nome interno</label>
+                    <input class="form-control" id="couponName" type="text" placeholder="Promoção de Maio" />
+                </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+                <div class="form-group">
+                    <label class="form-label" for="couponType">Tipo</label>
+                    <select class="form-control form-select" id="couponType" onchange="toggleCouponTypeHint()">
+                        <option value="percent">Percentual (%)</option>
+                        <option value="fixed">Valor fixo (R$)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="couponValue" id="couponValueLabel">Desconto (%)</label>
+                    <input class="form-control" id="couponValue" type="number" min="0" step="0.01" placeholder="20" />
+                </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+                <div class="form-group">
+                    <label class="form-label" for="couponDuration">Duração</label>
+                    <select class="form-control form-select" id="couponDuration" onchange="toggleDurationMonths()">
+                        <option value="once">Única vez</option>
+                        <option value="repeating">Repetido</option>
+                        <option value="forever">Para sempre</option>
+                    </select>
+                </div>
+                <div class="form-group" id="couponDurationMonthsGroup" style="display:none;">
+                    <label class="form-label" for="couponDurationMonths">Meses</label>
+                    <input class="form-control" id="couponDurationMonths" type="number" min="1" placeholder="3" />
+                </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+                <div class="form-group">
+                    <label class="form-label" for="couponMaxRedemptions">Limite de usos</label>
+                    <input class="form-control" id="couponMaxRedemptions" type="number" min="1" placeholder="Ilimitado" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="couponRedeemBy">Validade</label>
+                    <input class="form-control" id="couponRedeemBy" type="date" />
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('createCouponModal')">Cancelar</button>
+            <button class="btn btn-primary" id="createCouponBtn" onclick="submitCreateCoupon()">Criar no Stripe</button>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     MODAL: Cancelar Assinatura
+══════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="cancelSubModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="cancelSubModalTitle">
+        <div class="modal-header">
+            <h3 class="modal-title" id="cancelSubModalTitle">Cancelar Assinatura</h3>
+            <button class="modal-close-btn" onclick="closeModal('cancelSubModal')">×</button>
+        </div>
+        <div class="modal-body">
+            <p style="font-size:13px;color:var(--text-muted);">
+                Cancelar assinatura de <strong id="cancelSubUserName" style="color:var(--text);">—</strong>.
+            </p>
+            <div class="form-group" style="margin-top:6px;">
+                <label class="form-label" for="cancelSubMode">Quando cancelar</label>
+                <select class="form-control form-select" id="cancelSubMode">
+                    <option value="period_end">Ao fim do período atual</option>
+                    <option value="now">Imediatamente</option>
+                </select>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('cancelSubModal')">Voltar</button>
+            <button class="btn btn-danger" id="cancelSubBtn" onclick="confirmCancelSub()">Cancelar Assinatura</button>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     Scripts
+══════════════════════════════════════════════════ -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase-config.js"></script>
+<script src="js/admin.js"></script>
+</body>
+</html>
