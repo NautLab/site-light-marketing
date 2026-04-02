@@ -92,8 +92,8 @@ Deno.serve(async (req) => {
       mode: 'subscription',
       line_items: [{ price: plan.stripe_price_id, quantity: 1 }],
       discounts,
-      success_url: `${SITE_URL}/index.html?checkout=success`,
-      cancel_url:  `${SITE_URL}/index.html?checkout=canceled`,
+      success_url: `${SITE_URL}/planos.html?checkout=success`,
+      cancel_url:  `${SITE_URL}/planos.html?checkout=canceled`,
       metadata: {
         user_id: user.id,
         plan_id,

@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Escolha o plano ideal para automatizar suas etiquetas de marketplace." />
+    <title>Planos – Light Marketing</title>
+    <link rel="icon" type="image/x-icon" href="favicon.ico" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="style.css?v=21.0" />
+    <link rel="stylesheet" href="css/auth.css?v=1.0" />
+
+    <style>
+        /* ── Planos page styles ───────────────────────────── */
+        .plans-page {
+            min-height: calc(100vh - 70px);
+            padding: 80px 20px 100px;
+        }
+
+        .plans-header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .plans-header h1 {
+            font-size: clamp(28px, 5vw, 48px);
+            font-weight: 800;
+            color: #fff;
+            line-height: 1.15;
+            margin-bottom: 16px;
+        }
+
+        .plans-header h1 span {
+            color: #0C7E92;
+        }
+
+        .plans-header p {
+            font-size: 16px;
+            color: rgba(255,255,255,0.55);
+            max-width: 480px;
+            margin: 0 auto;
+            line-height: 1.7;
+        }
+
+        /* ── Interval toggle ─────────────────────────────── */
+        .interval-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 48px;
+        }
+
+        .interval-toggle span {
+            font-size: 14px;
+            font-weight: 500;
+            color: rgba(255,255,255,0.5);
+            transition: color 0.2s;
+        }
+
+        .interval-toggle span.active {
+            color: #fff;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 48px;
+            height: 26px;
+            background: rgba(12,126,146,0.3);
+            border: 1px solid rgba(12,126,146,0.5);
+            border-radius: 100px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .toggle-switch.year {
+            background: rgba(12,126,146,0.6);
+        }
+
+        .toggle-knob {
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 18px;
+            height: 18px;
+            background: #0C7E92;
+            border-radius: 50%;
+            transition: transform 0.25s;
+        }
+
+        .toggle-switch.year .toggle-knob {
+            transform: translateX(22px);
+        }
+
+        .discount-badge {
+            background: rgba(34,197,94,0.15);
+            color: #22c55e;
+            border: 1px solid rgba(34,197,94,0.3);
+            border-radius: 100px;
+            padding: 3px 10px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        /* ── Cards grid ──────────────────────────────────── */
+        .plans-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .plan-card {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 20px;
+            padding: 32px 28px;
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            transition: border-color 0.25s, transform 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .plan-card:hover {
+            border-color: rgba(12,126,146,0.4);
+            transform: translateY(-4px);
+        }
+
+        .plan-card.featured {
+            border-color: rgba(12,126,146,0.55);
+            background: rgba(12,126,146,0.06);
+        }
+
+        .plan-card.featured::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #0C7E92, #14b8a6);
+        }
+
+        .plan-popular-badge {
+            position: absolute;
+            top: 18px;
+            right: 18px;
+            background: linear-gradient(135deg, #0C7E92, #14b8a6);
+            color: #fff;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 100px;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+
+        .plan-tier-label {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #0C7E92;
+            margin-bottom: 10px;
+        }
+
+        .plan-name {
+            font-size: 24px;
+            font-weight: 800;
+            color: #fff;
+            margin-bottom: 8px;
+        }
+
+        .plan-description {
+            font-size: 14px;
+            color: rgba(255,255,255,0.5);
+            line-height: 1.6;
+            margin-bottom: 28px;
+        }
+
+        .plan-price-block {
+            margin-bottom: 28px;
+        }
+
+        .plan-price {
+            font-size: 42px;
+            font-weight: 800;
+            color: #fff;
+            line-height: 1;
+        }
+
+        .plan-price sup {
+            font-size: 20px;
+            font-weight: 600;
+            vertical-align: super;
+            color: rgba(255,255,255,0.7);
+        }
+
+        .plan-price sub {
+            font-size: 14px;
+            font-weight: 400;
+            color: rgba(255,255,255,0.4);
+            vertical-align: baseline;
+        }
+
+        .plan-price-annual {
+            font-size: 12px;
+            color: rgba(255,255,255,0.35);
+            margin-top: 4px;
+        }
+
+        .plan-divider {
+            height: 1px;
+            background: rgba(255,255,255,0.07);
+            margin-bottom: 24px;
+        }
+
+        .plan-features {
+            list-style: none;
+            padding: 0;
+            margin: 0 0 32px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            flex: 1;
+        }
+
+        .plan-features li {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            font-size: 14px;
+            color: rgba(255,255,255,0.7);
+            line-height: 1.4;
+        }
+
+        .plan-features li .check {
+            color: #0C7E92;
+            font-size: 16px;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+
+        .plan-features li.disabled {
+            color: rgba(255,255,255,0.25);
+        }
+
+        .plan-features li.disabled .check {
+            color: rgba(255,255,255,0.2);
+        }
+
+        /* ── Subscribe button ────────────────────────────── */
+        .plan-btn {
+            width: 100%;
+            padding: 14px;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 700;
+            font-family: 'Poppins', sans-serif;
+            cursor: pointer;
+            border: none;
+            transition: opacity 0.2s, transform 0.15s, box-shadow 0.2s;
+            text-align: center;
+            text-decoration: none;
+            display: block;
+        }
+
+        .plan-btn:hover:not(:disabled) { opacity: 0.88; transform: translateY(-1px); }
+        .plan-btn:active { transform: translateY(0); }
+        .plan-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+        .plan-btn-primary {
+            background: linear-gradient(135deg, #0C7E92, #0a6a7c);
+            color: #fff;
+            box-shadow: 0 4px 20px rgba(12,126,146,0.35);
+        }
+
+        .plan-btn-outline {
+            background: rgba(255,255,255,0.05);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.15);
+        }
+
+        .plan-btn-current {
+            background: rgba(34,197,94,0.1);
+            color: #22c55e;
+            border: 1px solid rgba(34,197,94,0.3);
+            cursor: default;
+        }
+
+        /* ── Free plan card ──────────────────────────────── */
+        .plan-free-note {
+            text-align: center;
+            font-size: 13px;
+            color: rgba(255,255,255,0.35);
+            margin-top: 32px;
+        }
+
+        /* ── Coupon field ────────────────────────────────── */
+        .coupon-section {
+            max-width: 420px;
+            margin: 48px auto 0;
+            text-align: center;
+        }
+
+        .coupon-section label {
+            display: block;
+            font-size: 13px;
+            color: rgba(255,255,255,0.4);
+            margin-bottom: 10px;
+        }
+
+        .coupon-row {
+            display: flex;
+            gap: 8px;
+        }
+
+        .coupon-input {
+            flex: 1;
+            padding: 11px 16px;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 10px;
+            color: #fff;
+            font-size: 14px;
+            font-family: 'Poppins', sans-serif;
+            outline: none;
+            text-transform: uppercase;
+            transition: border-color 0.2s;
+        }
+
+        .coupon-input:focus { border-color: #0C7E92; }
+        .coupon-input::placeholder { color: rgba(255,255,255,0.25); }
+
+        .coupon-apply-btn {
+            padding: 11px 18px;
+            background: rgba(12,126,146,0.2);
+            border: 1px solid rgba(12,126,146,0.4);
+            border-radius: 10px;
+            color: #0C7E92;
+            font-size: 13px;
+            font-weight: 600;
+            font-family: 'Poppins', sans-serif;
+            cursor: pointer;
+            transition: background 0.2s;
+            white-space: nowrap;
+        }
+
+        .coupon-apply-btn:hover { background: rgba(12,126,146,0.35); }
+
+        .coupon-feedback {
+            margin-top: 8px;
+            font-size: 13px;
+            min-height: 20px;
+        }
+
+        .coupon-feedback.ok    { color: #22c55e; }
+        .coupon-feedback.error { color: #ef4444; }
+
+        /* ── Loading skeleton ────────────────────────────── */
+        .skeleton {
+            background: linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.09) 50%, rgba(255,255,255,0.05) 75%);
+            background-size: 400% 100%;
+            animation: shimmer 1.4s infinite;
+            border-radius: 8px;
+        }
+        @keyframes shimmer { 0%{background-position:100% 0} 100%{background-position:-100% 0} }
+
+        /* ── Toast ───────────────────────────────────────── */
+        .toast-container {
+            position: fixed; bottom: 24px; right: 24px; z-index: 9999;
+            display: flex; flex-direction: column; gap: 10px; pointer-events: none;
+        }
+        .toast {
+            display: flex; align-items: center; gap: 10px;
+            padding: 12px 18px; border-radius: 10px; font-size: 13px; font-weight: 500;
+            pointer-events: all; box-shadow: 0 8px 32px rgba(0,0,0,.4);
+            animation: toastIn .3s ease; max-width: 340px;
+        }
+        @keyframes toastIn { from{opacity:0;transform:translateX(20px)} to{opacity:1;transform:translateX(0)} }
+        .toast-success { background:#052e16; color:#22c55e; border:1px solid rgba(34,197,94,.3); }
+        .toast-error   { background:#1c0a0a; color:#ef4444; border:1px solid rgba(239,68,68,.3); }
+        .toast-info    { background:#0d1b35; color:#93c5fd; border:1px solid rgba(59,130,246,.3); }
+
+        /* ── Responsive ──────────────────────────────────── */
+        @media (max-width: 600px) {
+            .plans-page { padding: 48px 16px 80px; }
+            .plans-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- Header igual ao index -->
+<header class="header">
+    <div class="container">
+        <div class="logo">
+            <a href="index.html" style="display:flex;align-items:center;gap:12px;text-decoration:none;">
+                <img src="logo-light-marketing.png?v=3" alt="Light Marketing" class="logo-icon" />
+            </a>
+        </div>
+        <nav class="nav">
+            <a href="index.html">Início</a>
+            <a href="planos.html" style="color:#0C7E92;">Planos</a>
+            <a href="index.html#contato">Contato</a>
+        </nav>
+        <div class="header-right">
+            <div id="auth-section" style="display:none;"></div>
+            <button class="menu-toggle" aria-label="Menu">
+                <span></span><span></span><span></span>
+            </button>
+        </div>
+    </div>
+</header>
+
+<!-- Planos -->
+<main class="plans-page">
+    <div class="container">
+
+        <div class="plans-header">
+            <h1>Escolha o plano <span>ideal para você</span></h1>
+            <p>Automatize o processamento de etiquetas para todos os seus marketplaces. Cancele quando quiser.</p>
+        </div>
+
+        <!-- Interval toggle -->
+        <div class="interval-toggle">
+            <span id="labelMonth" class="active">Mensal</span>
+            <div class="toggle-switch" id="intervalToggle" onclick="toggleInterval()">
+                <div class="toggle-knob"></div>
+            </div>
+            <span id="labelYear">Anual</span>
+            <span class="discount-badge">2 meses grátis</span>
+        </div>
+
+        <!-- Cards -->
+        <div class="plans-grid" id="plansGrid">
+            <!-- Free card (always static) -->
+            <div class="plan-card" id="freePlanCard">
+                <div class="plan-tier-label">Gratuito</div>
+                <div class="plan-name">Free</div>
+                <div class="plan-description">Para quem está começando. Experimente sem compromisso.</div>
+                <div class="plan-price-block">
+                    <div class="plan-price"><sup>R$</sup>0<sub>/mês</sub></div>
+                </div>
+                <div class="plan-divider"></div>
+                <ul class="plan-features">
+                    <li><span class="check">✓</span> Processamento de etiquetas básico</li>
+                    <li><span class="check">✓</span> Shopee e TikTok</li>
+                    <li><span class="check">✓</span> Até 50 etiquetas por mês</li>
+                    <li class="disabled"><span class="check">✗</span> Shein e outros marketplaces</li>
+                    <li class="disabled"><span class="check">✗</span> Prioridade no suporte</li>
+                </ul>
+                <button class="plan-btn plan-btn-outline" id="freePlanBtn" onclick="handleFreePlan()">
+                    Plano atual
+                </button>
+            </div>
+
+            <!-- Paid plans loaded from DB -->
+            <div id="paidPlansContainer" style="display:contents;">
+                <!-- Loading skeletons -->
+                <div class="plan-card" style="gap:16px;">
+                    <div class="skeleton" style="height:14px;width:50%;"></div>
+                    <div class="skeleton" style="height:28px;width:70%;"></div>
+                    <div class="skeleton" style="height:40px;width:60%;"></div>
+                    <div class="skeleton" style="height:100px;"></div>
+                    <div class="skeleton" style="height:48px;"></div>
+                </div>
+                <div class="plan-card" style="gap:16px;">
+                    <div class="skeleton" style="height:14px;width:50%;"></div>
+                    <div class="skeleton" style="height:28px;width:70%;"></div>
+                    <div class="skeleton" style="height:40px;width:60%;"></div>
+                    <div class="skeleton" style="height:100px;"></div>
+                    <div class="skeleton" style="height:48px;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Coupon -->
+        <div class="coupon-section">
+            <label for="couponInput">Tem um cupom de desconto?</label>
+            <div class="coupon-row">
+                <input class="coupon-input" id="couponInput" type="text" placeholder="CÓDIGO" />
+                <button class="coupon-apply-btn" onclick="applyCoupon()">Aplicar</button>
+            </div>
+            <div class="coupon-feedback" id="couponFeedback"></div>
+        </div>
+
+        <p class="plan-free-note">
+            ✓ Cancele a qualquer momento &nbsp;·&nbsp; ✓ Pagamento seguro via Stripe &nbsp;·&nbsp; ✓ Suporte em português
+        </p>
+
+    </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase-config.js"></script>
+<script src="js/auth.js?v=1.0"></script>
+
+<script>
+// ─────────────────────────────────────────────────────────────
+// State
+// ─────────────────────────────────────────────────────────────
+let currentInterval = 'month';   // 'month' | 'year'
+let currentProfile  = null;
+let activeCouponCode = null;
+let allPlans = [];
+
+const SUPABASE_FUNCTIONS_URL = `${SUPABASE_URL}/functions/v1`;
+
+// Features por tier (exibição fixa)
+const FEATURES = {
+    basic: [
+        { text: 'Processamento de etiquetas', ok: true },
+        { text: 'Shopee, TikTok e Shein',     ok: true },
+        { text: 'Até 500 etiquetas por mês',  ok: true },
+        { text: 'Suporte por e-mail',          ok: true },
+        { text: 'Todos os marketplaces',       ok: false },
+        { text: 'Suporte prioritário',         ok: false },
+    ],
+    premium: [
+        { text: 'Processamento de etiquetas', ok: true },
+        { text: 'Todos os marketplaces',       ok: true },
+        { text: 'Etiquetas ilimitadas',        ok: true },
+        { text: 'Suporte prioritário',         ok: true },
+        { text: 'API de integração',           ok: true },
+        { text: 'Relatórios avançados',        ok: true },
+    ],
+};
+
+// ─────────────────────────────────────────────────────────────
+// Boot
+// ─────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', async () => {
+    // Auth header (reuse index.html pattern)
+    initAuthHeader();
+    
+    // Load plans from DB
+    await loadPlans();
+});
+
+async function initAuthHeader() {
+    const authSection = document.getElementById('auth-section');
+    try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+            authSection.innerHTML = `<a href="login.html" class="auth-btn-header">Entrar</a>`;
+            authSection.style.display = 'block';
+            return;
+        }
+
+        const user = session.user;
+        const name = user.user_metadata?.full_name || '';
+        const email = user.email || '';
+        const initials = (name || email).split(' ').slice(0,2).map(n=>n[0]).join('').toUpperCase() || '?';
+
+        let userRole = 'user';
+        try {
+            const res = await getUserProfile();
+            if (res.data) {
+                currentProfile = res.data;
+                userRole = res.data.role || 'user';
+            }
+        } catch(_) {}
+
+        const adminLink = ['admin','super_admin'].includes(userRole) ? `
+            <a href="admin.html" class="user-dropdown-item" style="text-decoration:none;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                Painel Admin
+            </a>` : '';
+
+        authSection.innerHTML = `
+            <div class="user-account">
+                <button class="user-account-btn" id="user-account-btn">
+                    <div class="user-avatar">${initials}</div>
+                    <span>${name || email.split('@')[0]}</span>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6 9L12 15L18 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+                <div class="user-dropdown" id="user-dropdown">
+                    <div class="user-dropdown-header">
+                        <div class="user-name">${name || 'Usuário'}</div>
+                        <div class="user-email">${email}</div>
+                    </div>
+                    ${adminLink}
+                    <button class="user-dropdown-item logout" id="logout-btn">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M9 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H9M16 17L21 12M21 12L16 7M21 12H9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        Sair
+                    </button>
+                </div>
+            </div>`;
+
+        authSection.style.display = 'block';
+
+        document.getElementById('user-account-btn').addEventListener('click', e => {
+            e.stopPropagation();
+            document.getElementById('user-dropdown').classList.toggle('active');
+        });
+        document.addEventListener('click', () => {
+            document.getElementById('user-dropdown')?.classList.remove('active');
+        });
+        document.getElementById('logout-btn').addEventListener('click', async () => {
+            await signOut();
+            window.location.href = 'login.html';
+        });
+
+        // Update free plan button state
+        updateFreePlanBtn();
+
+    } catch(e) {
+        console.error(e);
+        authSection.innerHTML = `<a href="login.html" class="auth-btn-header">Entrar</a>`;
+        authSection.style.display = 'block';
+    }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Load plans
+// ─────────────────────────────────────────────────────────────
+async function loadPlans() {
+    const { data, error } = await supabase
+        .from('plans')
+        .select('*')
+        .eq('is_active', true)
+        .order('display_order', { ascending: true });
+
+    if (error || !data || data.length === 0) {
+        document.getElementById('paidPlansContainer').innerHTML =
+            `<p style="color:rgba(255,255,255,0.4);text-align:center;grid-column:1/-1;">Nenhum plano disponível no momento.</p>`;
+        return;
+    }
+
+    allPlans = data;
+    renderPaidPlans();
+}
+
+function renderPaidPlans() {
+    const container  = document.getElementById('paidPlansContainer');
+    const monthPlans = allPlans.filter(p => p.interval === 'month');
+    const yearPlans  = allPlans.filter(p => p.interval === 'year');
+    const plans      = currentInterval === 'month' ? monthPlans : yearPlans;
+
+    // Se não tiver planos anuais ainda, mostra mensais com preço anual estimado
+    const display = plans.length > 0 ? plans : monthPlans;
+
+    container.innerHTML = display.map(p => buildPlanCard(p, plans.length === 0 && currentInterval === 'year')).join('');
+}
+
+function buildPlanCard(p, estimatedAnnual = false) {
+    const features  = FEATURES[p.tier] || [];
+    const isCurrent = currentProfile?.subscription_tier === p.tier;
+    const isFeatured = p.tier === 'premium';
+    const price     = parseFloat(p.price_brl);
+    const monthDisplay = estimatedAnnual
+        ? (price * 10 / 12).toFixed(2).replace('.', ',')
+        : price.toFixed(2).replace('.', ',');
+
+    const annualNote = estimatedAnnual
+        ? `<div class="plan-price-annual">≈ R$ ${(price * 10).toFixed(2).replace('.', ',')} /ano (2 meses grátis)</div>`
+        : currentInterval === 'year'
+            ? `<div class="plan-price-annual">R$ ${(price * 12).toFixed(2).replace('.', ',')} cobrado anualmente</div>`
+            : '';
+
+    const btnHtml = isCurrent
+        ? `<button class="plan-btn plan-btn-current" disabled>✓ Plano atual</button>`
+        : `<button class="plan-btn plan-btn-primary" onclick="handleSubscribe('${p.id}', '${escHtml(p.name)}')">Assinar agora</button>`;
+
+    const featuresHtml = features.map(f =>
+        `<li class="${f.ok ? '' : 'disabled'}"><span class="check">${f.ok ? '✓' : '✗'}</span> ${f.text}</li>`
+    ).join('');
+
+    return `
+    <div class="plan-card${isFeatured ? ' featured' : ''}">
+        ${isFeatured ? '<div class="plan-popular-badge">Mais popular</div>' : ''}
+        <div class="plan-tier-label">${p.tier === 'basic' ? 'Básico' : 'Premium'}</div>
+        <div class="plan-name">${escHtml(p.name)}</div>
+        <div class="plan-description">${escHtml(p.description || '')}</div>
+        <div class="plan-price-block">
+            <div class="plan-price"><sup>R$</sup>${monthDisplay}<sub>/mês</sub></div>
+            ${annualNote}
+        </div>
+        <div class="plan-divider"></div>
+        <ul class="plan-features">${featuresHtml}</ul>
+        ${btnHtml}
+    </div>`;
+}
+
+function updateFreePlanBtn() {
+    const btn = document.getElementById('freePlanBtn');
+    if (!btn) return;
+    if (!currentProfile) {
+        btn.textContent = 'Começar grátis';
+        btn.onclick = () => window.location.href = 'register.html';
+        btn.className = 'plan-btn plan-btn-outline';
+    } else if (currentProfile.subscription_tier === 'free') {
+        btn.textContent = '✓ Plano atual';
+        btn.className = 'plan-btn plan-btn-current';
+        btn.disabled = true;
+    } else {
+        btn.textContent = 'Ver plano free';
+        btn.className = 'plan-btn plan-btn-outline';
+        btn.disabled = false;
+    }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Interval toggle
+// ─────────────────────────────────────────────────────────────
+function toggleInterval() {
+    currentInterval = currentInterval === 'month' ? 'year' : 'month';
+    document.getElementById('intervalToggle').classList.toggle('year', currentInterval === 'year');
+    document.getElementById('labelMonth').classList.toggle('active', currentInterval === 'month');
+    document.getElementById('labelYear').classList.toggle('active', currentInterval === 'year');
+    renderPaidPlans();
+}
+
+// ─────────────────────────────────────────────────────────────
+// Subscribe
+// ─────────────────────────────────────────────────────────────
+async function handleSubscribe(planId, planName) {
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session) {
+        // Save intended plan so we can redirect back after login
+        sessionStorage.setItem('checkout_plan_id', planId);
+        window.location.href = 'login.html?next=planos.html';
+        return;
+    }
+
+    const btn = [...document.querySelectorAll('.plan-btn-primary')]
+        .find(b => b.getAttribute('onclick')?.includes(planId));
+    if (btn) { btn.disabled = true; btn.textContent = 'Aguarde…'; }
+
+    try {
+        const res = await fetch(`${SUPABASE_FUNCTIONS_URL}/create-checkout-session`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.access_token}`,
+                'apikey': SUPABASE_ANON_KEY,
+            },
+            body: JSON.stringify({
+                plan_id: planId,
+                coupon_code: activeCouponCode || undefined,
+            }),
+        });
+
+        const body = await res.json();
+        if (!res.ok) throw new Error(body.error || 'Erro ao iniciar checkout');
+
+        window.location.href = body.url;
+
+    } catch (err) {
+        showToast('Erro: ' + err.message, 'error');
+        if (btn) { btn.disabled = false; btn.textContent = 'Assinar agora'; }
+    }
+}
+
+function handleFreePlan() {
+    if (!currentProfile) {
+        window.location.href = 'register.html';
+    }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Coupon
+// ─────────────────────────────────────────────────────────────
+async function applyCoupon() {
+    const code     = document.getElementById('couponInput').value.trim().toUpperCase();
+    const feedback = document.getElementById('couponFeedback');
+
+    if (!code) { feedback.textContent = ''; return; }
+
+    feedback.textContent = 'Verificando…';
+    feedback.className   = 'coupon-feedback';
+
+    const { data, error } = await supabase
+        .from('coupons')
+        .select('code, discount_type, discount_value, redeem_by, max_redemptions, times_redeemed')
+        .eq('code', code)
+        .eq('is_active', true)
+        .single();
+
+    if (error || !data) {
+        feedback.textContent = '✗ Cupom inválido ou expirado.';
+        feedback.className   = 'coupon-feedback error';
+        activeCouponCode     = null;
+        return;
+    }
+
+    // Check expiration
+    if (data.redeem_by && new Date(data.redeem_by) < new Date()) {
+        feedback.textContent = '✗ Este cupom já expirou.';
+        feedback.className   = 'coupon-feedback error';
+        activeCouponCode     = null;
+        return;
+    }
+
+    // Check usage limit
+    if (data.max_redemptions !== null && data.times_redeemed >= data.max_redemptions) {
+        feedback.textContent = '✗ Este cupom atingiu o limite de usos.';
+        feedback.className   = 'coupon-feedback error';
+        activeCouponCode     = null;
+        return;
+    }
+
+    const discountText = data.discount_type === 'percent'
+        ? `${data.discount_value}% de desconto`
+        : `R$ ${parseFloat(data.discount_value).toFixed(2).replace('.', ',')} de desconto`;
+
+    feedback.textContent = `✓ Cupom válido — ${discountText} aplicado!`;
+    feedback.className   = 'coupon-feedback ok';
+    activeCouponCode     = code;
+}
+
+// ─────────────────────────────────────────────────────────────
+// Checkout success/cancel feedback
+// ─────────────────────────────────────────────────────────────
+const params = new URLSearchParams(window.location.search);
+if (params.get('checkout') === 'success') {
+    setTimeout(() => showToast('🎉 Assinatura realizada com sucesso! Seu plano foi ativado.', 'success'), 500);
+} else if (params.get('checkout') === 'canceled') {
+    setTimeout(() => showToast('Checkout cancelado. Você não foi cobrado.', 'info'), 500);
+}
+
+// ─────────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────────
+function escHtml(str) {
+    return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function showToast(message, type = 'info') {
+    const container = document.getElementById('toastContainer');
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.textContent = message;
+    container.appendChild(toast);
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(20px)';
+        toast.style.transition = 'opacity .3s, transform .3s';
+        setTimeout(() => toast.remove(), 320);
+    }, 4000);
+}
+</script>
+
+</body>
+</html>
