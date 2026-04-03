@@ -1159,11 +1159,6 @@ body.admin-body {
         transform: translateX(0);
     }
 
-    /* Dark overlay behind sidebar on mobile */
-    .sidebar-backdrop {
-        display: block;
-    }
-
     .admin-main {
         margin-left: 0;
         width: 100%;
@@ -1322,6 +1317,10 @@ body.admin-body {
     background: rgba(0, 0, 0, 0.6);
     z-index: 299;
     cursor: pointer;
+}
+
+.sidebar-backdrop.open {
+    display: block;
 }
 
 /* ── User detail modal ─────────────────────────────── */
