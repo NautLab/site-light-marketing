@@ -159,7 +159,10 @@
                         <h2 class="section-title">Planos</h2>
                         <p class="section-subtitle">Criar e gerir planos de assinatura no Stripe</p>
                     </div>
-                    <button class="btn btn-primary" onclick="openModal('createPlanModal')">+ Criar Plano</button>
+                    <div style="display:flex;gap:8px;">
+                        <button class="btn btn-secondary" id="toggleArchivedBtn" onclick="toggleArchivedPlans()">Ver arquivados</button>
+                        <button class="btn btn-primary" onclick="openModal('createPlanModal')">+ Criar Plano</button>
+                    </div>
                 </div>
 
                 <div id="plansContainer">

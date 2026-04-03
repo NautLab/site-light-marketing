@@ -235,7 +235,7 @@ function buildUserRow(u) {
 
     const tierBadge = `<span class="badge badge-${u.subscription_tier}">${tierLabel(u.subscription_tier)}</span>`;
     const roleBadge = `<span class="badge ${roleBadgeClass(u.role)}">${roleLabel(u.role)}</span>`;
-    const giftBadge = u.free_access ? `<span class="badge badge-gift">🎁 ${tierLabel(u.free_access_tier)}</span>` : `<span style="color:var(--text-dim);font-size:12px;">—</span>`;
+    const giftBadge = u.free_access ? `<span class="badge badge-gift">${tierLabel(u.free_access_tier)}</span>` : `<span style="color:var(--text-dim);font-size:12px;">—</span>`;
     const date      = u.created_at ? new Date(u.created_at).toLocaleDateString('pt-BR') : '—';
 
     const canEditRole = currentProfile.role === 'super_admin' || u.role !== 'super_admin';
@@ -243,12 +243,14 @@ function buildUserRow(u) {
 
     const roleBtn = (!isSelf && canEditRole) ? `
         <button class="btn btn-sm btn-secondary" onclick="openRoleModal('${u.id}', '${escHtml(u.full_name || u.email)}', '${u.role}')">
-            ✏️ Função
+            Função
         </button>` : '';
 
     const freeAccessBtn = u.free_access
-        ? `<button class="btn btn-sm btn-danger" onclick="revokeFreeAccess('${u.id}', '${escHtml(u.full_name || u.email)}')">🚫 Revogar</button>`
-        : `<button class="btn btn-sm btn-success" onclick="openFreeAccessModal('${u.id}', '${escHtml(u.full_name || u.email)}')">🎁 Acesso</button>`;
+        ? `<button class="btn btn-sm btn-danger" onclick="revokeFreeAccess('${u.id}', '${escHtml(u.full_name || u.email)}')">
+Revogar</button>`
+        : `<button class="btn btn-sm btn-success" onclick="openFreeAccessModal('${u.id}', '${escHtml(u.full_name || u.email)}')">
+Acesso</button>`;
 
     return `
     <tr>
@@ -412,30 +414,54 @@ async function loadPlans() {
     renderPlans();
 }
 
+let showArchivedPlans = false;
+
+function toggleArchivedPlans() {
+    showArchivedPlans = !showArchivedPlans;
+    const btn = document.getElementById('toggleArchivedBtn');
+    if (btn) btn.textContent = showArchivedPlans ? 'Ver ativos' : 'Ver arquivados';
+    renderPlans();
+}
+
 function renderPlans() {
     const container = document.getElementById('plansContainer');
+    const visible = allPlans.filter(p => !!p.is_archived === showArchivedPlans);
 
-    if (allPlans.length === 0) {
-        container.innerHTML = `<div class="empty-state"><span class="empty-state-icon">📦</span><p class="empty-state-text">Nenhum plano encontrado</p><p class="empty-state-sub">Clique em "+ Criar Plano" para começar.</p></div>`;
+    if (visible.length === 0) {
+        const msg = showArchivedPlans ? 'Nenhum plano arquivado' : 'Nenhum plano encontrado';
+        container.innerHTML = `<div class="empty-state"><span class="empty-state-icon">📦</span><p class="empty-state-text">${msg}</p>${!showArchivedPlans ? '<p class="empty-state-sub">Clique em "+ Criar Plano" para começar.</p>' : ''}</div>`;
         return;
     }
 
-    container.innerHTML = `<div class="plans-grid">${allPlans.map(buildPlanCard).join('')}</div>`;
+    container.innerHTML = `<div class="plans-grid">${visible.map(buildPlanCard).join('')}</div>`;
 }
 
 function buildPlanCard(p) {
     const price    = `R$ ${parseFloat(p.price_brl).toFixed(2).replace('.', ',')}`;
     const interval = p.interval === 'month' ? '/mês' : '/ano';
-    const status   = p.is_active
-        ? `<span class="badge badge-active">Ativo</span>`
-        : `<span class="badge badge-canceled">Inativo</span>`;
+    const status   = p.is_archived
+        ? `<span class="badge badge-canceled">Arquivado</span>`
+        : p.is_active
+            ? `<span class="badge badge-active">Ativo</span>`
+            : `<span class="badge badge-canceled">Inativo</span>`;
 
     const stripeLink = p.stripe_price_id
         ? `<span class="stripe-badge">⚡ Stripe</span>`
         : `<span style="color:var(--text-dim);font-size:11px;">Sem Stripe</span>`;
 
-    const toggleLabel = p.is_active ? 'Desativar' : 'Ativar';
-    const toggleClass = p.is_active ? 'btn-danger' : 'btn-success';
+    let footerActions = '';
+    if (p.is_archived) {
+        footerActions = `<button class="btn btn-sm btn-success" onclick="archivePlan('${p.id}', false)">Desarquivar</button>`;
+    } else {
+        const toggleLabel = p.is_active ? 'Desativar' : 'Ativar';
+        const toggleClass = p.is_active ? 'btn-danger' : 'btn-success';
+        const archiveBtn  = !p.is_active
+            ? `<button class="btn btn-sm btn-secondary" onclick="archivePlan('${p.id}', true)">Arquivar</button>`
+            : '';
+        footerActions = `
+            <button class="btn btn-sm ${toggleClass}" onclick="togglePlan('${p.id}', ${p.is_active})">${toggleLabel}</button>
+            ${archiveBtn}`;
+    }
 
     return `
     <div class="plan-card">
@@ -450,9 +476,7 @@ function buildPlanCard(p) {
         <div class="plan-description">${escHtml(p.description || '—')}</div>
         <div class="plan-card-footer">
             ${stripeLink}
-            <button class="btn btn-sm ${toggleClass}" onclick="togglePlan('${p.id}', ${p.is_active})">
-                ${toggleLabel}
-            </button>
+            <div style="display:flex;gap:6px;">${footerActions}</div>
         </div>
     </div>`;
 }
@@ -509,6 +533,32 @@ async function togglePlan(planId, currentActive) {
 
         renderPlans();
         showToast(`Plano ${!currentActive ? 'ativado' : 'desativado'}.`, 'success');
+    } catch (err) {
+        showToast('Erro: ' + err.message, 'error');
+    }
+}
+
+async function archivePlan(planId, archive) {
+    const label = archive ? 'arquivar' : 'desarquivar';
+    if (!confirm(`Deseja ${label} este plano?`)) return;
+
+    try {
+        const updates = archive
+            ? { is_archived: true, is_active: false }
+            : { is_archived: false };
+
+        const { error } = await supabase
+            .from('plans')
+            .update(updates)
+            .eq('id', planId);
+
+        if (error) throw error;
+
+        const plan = allPlans.find(p => p.id === planId);
+        if (plan) { plan.is_archived = archive; if (archive) plan.is_active = false; }
+
+        renderPlans();
+        showToast(`Plano ${archive ? 'arquivado' : 'desarquivado'} com sucesso.`, 'success');
     } catch (err) {
         showToast('Erro: ' + err.message, 'error');
     }
