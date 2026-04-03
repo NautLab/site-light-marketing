@@ -171,10 +171,13 @@ async function loadUsers() {
 }
 
 function updateUserStats() {
-    const total      = allUsers.length;
-    const free       = allUsers.filter(u => u.subscription_tier === 'free').length;
-    const basic      = allUsers.filter(u => u.subscription_tier === 'basic').length;
-    const premium    = allUsers.filter(u => u.subscription_tier === 'premium').length;
+    const filterActive = document.getElementById('filterFreeAccess')?.checked;
+    const base = filterActive ? allUsers.filter(u => !u.free_access) : allUsers;
+
+    const total      = base.length;
+    const free       = base.filter(u => u.subscription_tier === 'free').length;
+    const basic      = base.filter(u => u.subscription_tier === 'basic').length;
+    const premium    = base.filter(u => u.subscription_tier === 'premium').length;
     const freeAccess = allUsers.filter(u => u.free_access).length;
 
     document.getElementById('statTotal').textContent      = total;

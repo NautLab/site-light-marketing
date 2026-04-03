@@ -320,6 +320,21 @@ body.admin-body {
 .stat-value.success { color: var(--success); }
 .stat-value.warning { color: var(--warning); }
 
+.stat-filter-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+    margin-top: 2px;
+}
+
+.stat-filter-label input[type="checkbox"] {
+    accent-color: var(--warning);
+    cursor: pointer;
+}
+
 /* ── Toolbar / Search ──────────────────────────────── */
 
 .table-toolbar {
