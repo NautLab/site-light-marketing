@@ -14,6 +14,13 @@
 const SUPABASE_FUNCTIONS_URL = `${SUPABASE_URL}/functions/v1`;
 const USERS_PER_PAGE = 20;
 
+// ── Available app screens ─────────────────────────────────────
+// Update this list when new screens / tools are added to the site.
+const AVAILABLE_SCREENS = [
+    { id: 'label-processor', name: 'Processador de Etiquetas', description: 'Processar etiquetas de Shopee, TikTok, Shein e outros' },
+    // Add new screens here as the site grows
+];
+
 // ─────────────────────────────────────────────────────────────
 // State
 // ─────────────────────────────────────────────────────────────
@@ -453,9 +460,22 @@ function buildPlanCard(p) {
         ? `<span class="stripe-badge">Stripe</span>`
         : `<span style="color:var(--text-dim);font-size:11px;">Sem Stripe</span>`;
 
+    const limitText = p.monthly_limit
+        ? `<div style="font-size:11px;color:var(--text-dim);margin-top:4px;">${p.monthly_limit} processamentos/mês</div>`
+        : '';
+
+    const screensText = (p.unlocked_screens || []).length > 0
+        ? `<div style="font-size:11px;color:var(--text-dim);margin-top:2px;">Telas: ${(p.unlocked_screens || []).map(id => {
+            const s = AVAILABLE_SCREENS.find(s => s.id === id);
+            return s ? s.name : id;
+          }).join(', ')}</div>`
+        : '';
+
     let footerActions = '';
     if (p.is_archived) {
-        footerActions = `<button class="btn btn-sm btn-success" onclick="archivePlan('${p.id}', false)">Desarquivar</button>`;
+        footerActions = `
+            <button class="btn btn-sm btn-success" onclick="archivePlan('${p.id}', false)">Desarquivar</button>
+            <button class="btn btn-sm btn-danger" onclick="deletePlan('${p.id}', '${escHtml(p.name)}')">Excluir</button>`;
     } else {
         const toggleLabel = p.is_active ? 'Desativar' : 'Ativar';
         const toggleClass = p.is_active ? 'btn-danger' : 'btn-success';
@@ -463,6 +483,7 @@ function buildPlanCard(p) {
             ? `<button class="btn btn-sm btn-secondary" onclick="archivePlan('${p.id}', true)">Arquivar</button>`
             : '';
         footerActions = `
+            <button class="btn btn-sm btn-secondary" onclick="openEditPlanModal('${p.id}')">Editar</button>
             <button class="btn btn-sm ${toggleClass}" onclick="togglePlan('${p.id}', ${p.is_active})">${toggleLabel}</button>
             ${archiveBtn}`;
     }
@@ -478,9 +499,11 @@ function buildPlanCard(p) {
         </div>
         <div class="plan-price">${price} <span>${interval}</span></div>
         <div class="plan-description">${escHtml(p.description || '—')}</div>
+        ${limitText}
+        ${screensText}
         <div class="plan-card-footer">
             ${stripeLink}
-            <div style="display:flex;gap:6px;">${footerActions}</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">${footerActions}</div>
         </div>
     </div>`;
 }
@@ -488,11 +511,13 @@ function buildPlanCard(p) {
 async function submitCreatePlan() {
     const name        = document.getElementById('planName').value.trim();
     const description = document.getElementById('planDescription').value.trim();
-    const tier        = document.getElementById('planTier').value;
-    const interval    = document.getElementById('planInterval').value;
     const price       = parseFloat(document.getElementById('planPrice').value);
     const observation = document.getElementById('planObservation').value.trim();
-    const createAnnual = interval === 'month' && document.getElementById('createAnnualToo')?.checked;
+    const monthlyLimitRaw = document.getElementById('planMonthlyLimit').value;
+    const monthlyLimit = monthlyLimitRaw ? parseInt(monthlyLimitRaw) : null;
+    const unlockedScreens = [...document.querySelectorAll('#planScreensCreate .screen-check-input:checked')]
+        .map(el => el.value);
+    const createAnnual = document.getElementById('createAnnualToo')?.checked;
     const annualPrice  = createAnnual ? parseFloat(document.getElementById('planAnnualPrice').value) : null;
     const annualObs    = createAnnual ? document.getElementById('planAnnualObservation').value.trim() : '';
 
@@ -513,9 +538,10 @@ async function submitCreatePlan() {
         const session = await supabase.auth.getSession();
         const token = session.data.session.access_token;
 
-        // Create monthly (or annual-only) plan
+        // Create monthly plan
         const res = await callFunction('admin-create-plan', {
-            name, description, tier, interval, price_brl: price, observation,
+            name, description, interval: 'month', price_brl: price,
+            observation, monthly_limit: monthlyLimit, unlocked_screens: unlockedScreens,
         }, token);
         const body = await res.json();
         if (!res.ok) throw new Error(body.error || 'Erro ao criar plano');
@@ -526,10 +552,11 @@ async function submitCreatePlan() {
             const resAnnual = await callFunction('admin-create-plan', {
                 name: `${name} Anual`,
                 description,
-                tier,
                 interval: 'year',
                 price_brl: annualPrice,
                 observation: annualObs,
+                monthly_limit: monthlyLimit,
+                unlocked_screens: unlockedScreens,
             }, token);
             const bodyAnnual = await resAnnual.json();
             if (!resAnnual.ok) throw new Error(bodyAnnual.error || 'Erro ao criar plano anual');
@@ -539,24 +566,117 @@ async function submitCreatePlan() {
         renderPlans();
         closeModal('createPlanModal');
         clearPlanForm();
-        showToast(createAnnual ? 'Planos mensal e anual criados com sucesso!' : 'Plano criado com sucesso no Stripe!', 'success');
+        showToast(createAnnual ? 'Planos mensal e anual criados com sucesso!' : 'Plano criado com sucesso!', 'success');
     } catch (err) {
         showToast('Erro: ' + err.message, 'error');
     } finally {
         btn.disabled = false;
-        btn.textContent = 'Criar no Stripe';
+        btn.textContent = 'Criar';
     }
 }
 
 function toggleAnnualPriceFields() {
-    const interval = document.getElementById('planInterval').value;
-    const section  = document.getElementById('annualPriceSection');
     const fields   = document.getElementById('annualPriceFields');
     const checkbox = document.getElementById('createAnnualToo');
-
-    // Hide the annual section when the interval is already 'year'
-    if (section) section.style.display = interval === 'year' ? 'none' : '';
     if (fields && checkbox) fields.style.display = checkbox.checked ? '' : 'none';
+}
+
+// ── Build screen checkboxes ───────────────────────────────────
+function buildScreenCheckboxes(containerId, selectedIds = []) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    container.innerHTML = AVAILABLE_SCREENS.map(s => `
+        <label class="screen-check-item">
+            <input type="checkbox" class="screen-check-input" value="${s.id}"
+                ${selectedIds.includes(s.id) ? 'checked' : ''}
+                style="accent-color:var(--primary);" />
+            <div class="screen-check-info">
+                <span class="screen-check-name">${escHtml(s.name)}</span>
+                <span class="screen-check-desc">${escHtml(s.description)}</span>
+            </div>
+        </label>`).join('');
+}
+
+// ── Edit plan ─────────────────────────────────────────────────
+function openEditPlanModal(planId) {
+    const p = allPlans.find(x => x.id === planId);
+    if (!p) return;
+
+    document.getElementById('editPlanId').value           = p.id;
+    document.getElementById('editPlanName').value         = p.name;
+    document.getElementById('editPlanDescription').value  = p.description || '';
+    document.getElementById('editPlanPrice').value        = `R$ ${parseFloat(p.price_brl).toFixed(2).replace('.', ',')} / ${p.interval === 'month' ? 'mês' : 'ano'}`;
+    document.getElementById('editPlanTier').value         = p.tier || 'basic';
+    document.getElementById('editPlanMonthlyLimit').value = p.monthly_limit || '';
+    document.getElementById('editPlanObservation').value  = p.observation || '';
+
+    buildScreenCheckboxes('planScreensEdit', p.unlocked_screens || []);
+    openModal('editPlanModal');
+}
+
+async function submitEditPlan() {
+    const id            = document.getElementById('editPlanId').value;
+    const name          = document.getElementById('editPlanName').value.trim();
+    const description   = document.getElementById('editPlanDescription').value.trim();
+    const tier          = document.getElementById('editPlanTier').value;
+    const observation   = document.getElementById('editPlanObservation').value.trim();
+    const limitRaw      = document.getElementById('editPlanMonthlyLimit').value;
+    const monthly_limit = limitRaw ? parseInt(limitRaw) : null;
+    const unlocked_screens = [...document.querySelectorAll('#planScreensEdit .screen-check-input:checked')]
+        .map(el => el.value);
+
+    if (!name) { showToast('Nome é obrigatório.', 'error'); return; }
+
+    const btn = document.getElementById('editPlanBtn');
+    btn.disabled    = true;
+    btn.textContent = 'Salvando…';
+
+    try {
+        const session = await supabase.auth.getSession();
+        const res = await callFunction('admin-update-plan', {
+            action: 'edit',
+            plan_id: id,
+            name, description, tier, observation, monthly_limit, unlocked_screens,
+        }, session.data.session.access_token);
+
+        const body = await res.json();
+        if (!res.ok) throw new Error(body.error || 'Erro ao salvar plano');
+
+        // Update local state
+        const idx = allPlans.findIndex(p => p.id === id);
+        if (idx !== -1) allPlans[idx] = body.plan;
+
+        renderPlans();
+        closeModal('editPlanModal');
+        showToast('Plano atualizado com sucesso!', 'success');
+    } catch (err) {
+        showToast('Erro: ' + err.message, 'error');
+    } finally {
+        btn.disabled    = false;
+        btn.textContent = 'Salvar';
+    }
+}
+
+// ── Delete plan ───────────────────────────────────────────────
+async function deletePlan(planId, planName) {
+    if (!confirm(`Excluir o plano "${planName}" permanentemente?\n\nSó é possível excluir planos sem assinaturas ativas.`)) return;
+
+    try {
+        const session = await supabase.auth.getSession();
+        const res = await callFunction('admin-update-plan', {
+            action: 'delete',
+            plan_id: planId,
+        }, session.data.session.access_token);
+
+        const body = await res.json();
+        if (!res.ok) throw new Error(body.error || 'Erro ao excluir plano');
+
+        allPlans = allPlans.filter(p => p.id !== planId);
+        renderPlans();
+        showToast('Plano excluído com sucesso.', 'success');
+    } catch (err) {
+        showToast('Erro: ' + err.message, 'error');
+    }
 }
 
 async function togglePlan(planId, currentActive) {
@@ -605,15 +725,20 @@ async function archivePlan(planId, archive) {
 }
 
 function clearPlanForm() {
-    ['planName', 'planDescription', 'planPrice', 'planObservation', 'planAnnualPrice', 'planAnnualObservation'].forEach(id => {
+    ['planName', 'planDescription', 'planPrice', 'planMonthlyLimit', 'planObservation', 'planAnnualPrice', 'planAnnualObservation'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.value = '';
     });
-    document.getElementById('planTier').value     = 'basic';
-    document.getElementById('planInterval').value = 'month';
     const cb = document.getElementById('createAnnualToo');
     if (cb) cb.checked = false;
-    toggleAnnualPriceFields();
+    const fields = document.getElementById('annualPriceFields');
+    if (fields) fields.style.display = 'none';
+}
+
+function openCreatePlanModal() {
+    buildScreenCheckboxes('planScreensCreate', []);
+    clearPlanForm();
+    openModal('createPlanModal');
 }
 
 // ─────────────────────────────────────────────────────────────

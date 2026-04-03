@@ -39,9 +39,7 @@ Deno.serve(async (req) => {
       .eq('id', caller.id)
       .single();
 
-    if (!callerProfile || !['admin', 'super_admin'].includes(callerProfile.role)) {
-      return json({ error: 'Forbidden' }, 403);
-    }
+    const isAdmin = ['admin', 'super_admin'].includes(callerProfile?.role ?? '');
 
     const { subscription_id, cancel_at_period_end = true } = await req.json();
     if (!subscription_id) return json({ error: 'Missing subscription_id' }, 400);
@@ -49,12 +47,17 @@ Deno.serve(async (req) => {
     // Get Stripe subscription ID from DB
     const { data: sub } = await adminClient
       .from('subscriptions')
-      .select('stripe_subscription_id')
+      .select('stripe_subscription_id, user_id')
       .eq('id', subscription_id)
       .single();
 
     if (!sub?.stripe_subscription_id) {
       return json({ error: 'Subscription not found or has no Stripe ID' }, 404);
+    }
+
+    // Allow if caller is admin OR is the subscription owner
+    if (!isAdmin && sub.user_id !== caller.id) {
+      return json({ error: 'Forbidden' }, 403);
     }
 
     const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!, {

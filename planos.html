@@ -294,6 +294,36 @@
         }
 
         /* ── Free plan card ──────────────────────────────── */
+        /* ── Plan cancel notice ─────────────────────────────── */
+        .plan-btn-danger {
+            background: rgba(239,68,68,0.1);
+            color: #ef4444;
+            border: 1px solid rgba(239,68,68,0.25);
+            margin-top: 8px;
+            font-size: 13px;
+            padding: 11px;
+        }
+        .plan-btn-danger:hover:not(:disabled) { background: rgba(239,68,68,0.2); }
+
+        .plan-cancel-notice {
+            margin-top: 8px;
+            padding: 9px 12px;
+            border-radius: 10px;
+            background: rgba(245,158,11,0.08);
+            border: 1px solid rgba(245,158,11,0.2);
+            color: #f59e0b;
+            font-size: 12px;
+            font-weight: 500;
+            text-align: center;
+        }
+
+        .plan-price-obs {
+            font-size: 12px;
+            color: rgba(12,126,146,0.9);
+            margin-top: 5px;
+            font-weight: 500;
+        }
+
         .plan-free-note {
             text-align: center;
             font-size: 13px;
@@ -510,10 +540,11 @@
 // ─────────────────────────────────────────────────────────────
 // State
 // ─────────────────────────────────────────────────────────────
-let currentInterval = 'month';   // 'month' | 'year'
-let currentProfile  = null;
-let activeCouponCode = null;
-let allPlans = [];
+let currentInterval      = 'month';  // 'month' | 'year'
+let currentProfile       = null;
+let currentSubscription  = null;
+let activeCouponCode     = null;
+let allPlans             = [];
 
 const SUPABASE_FUNCTIONS_URL = `${SUPABASE_URL}/functions/v1`;
 
@@ -541,11 +572,8 @@ const FEATURES = {
 // Boot
 // ─────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
-    // Auth header (reuse index.html pattern)
-    initAuthHeader();
-    
-    // Load plans from DB
-    await loadPlans();
+    await Promise.all([initAuthHeader(), loadPlans()]);
+    renderPaidPlans(); // Re-render once both profile + plans are ready
 });
 
 async function initAuthHeader() {
@@ -571,6 +599,11 @@ async function initAuthHeader() {
                 userRole = res.role || 'user';
             }
         } catch(_) {}
+
+        // Load active subscription for cancel button
+        if (currentProfile && currentProfile.subscription_tier !== 'free') {
+            await loadActiveSubscription();
+        }
 
         // Show admin link in nav for admins
         if (['admin', 'super_admin'].includes(userRole)) {
@@ -620,11 +653,61 @@ async function initAuthHeader() {
 
         // Update free plan button state
         updateFreePlanBtn();
+        renderPaidPlans();
 
     } catch(e) {
         console.error(e);
         authSection.innerHTML = `<a href="login.html" class="auth-btn-header">Entrar</a>`;
         authSection.style.display = 'block';
+    }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Subscription
+// ─────────────────────────────────────────────────────────────
+async function loadActiveSubscription() {
+    try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+        const { data } = await supabase
+            .from('subscriptions')
+            .select('id, status, cancel_at_period_end, current_period_end, plan_id')
+            .eq('user_id', session.user.id)
+            .in('status', ['active', 'trialing'])
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+        if (data) currentSubscription = data;
+    } catch(_) {}
+}
+
+async function handleCancelSubscription() {
+    if (!currentSubscription) return;
+    if (!confirm('Tem certeza que deseja cancelar a assinatura?\n\nO acesso continua ativo até o fim do período já pago.')) return;
+
+    const btnEl = document.querySelector('.plan-btn-danger');
+    if (btnEl) { btnEl.disabled = true; btnEl.textContent = 'Cancelando…'; }
+
+    try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const res = await fetch(`${SUPABASE_FUNCTIONS_URL}/cancel-subscription`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.access_token}`,
+                'apikey': SUPABASE_ANON_KEY,
+            },
+            body: JSON.stringify({ subscription_id: currentSubscription.id, cancel_at_period_end: true }),
+        });
+        const body = await res.json();
+        if (!res.ok) throw new Error(body.error || 'Erro ao cancelar');
+
+        currentSubscription.cancel_at_period_end = true;
+        renderPaidPlans();
+        showToast('Assinatura cancelada. Acesso ativo até o fim do período.', 'success');
+    } catch (err) {
+        showToast('Erro: ' + err.message, 'error');
+        if (btnEl) { btnEl.disabled = false; btnEl.textContent = 'Cancelar assinatura'; }
     }
 }
 
@@ -683,10 +766,23 @@ function buildPlanCard(p, estimatedAnnual = false) {
         ? `<div class="plan-price-annual">≈ R$ ${(price * 10).toFixed(2).replace('.', ',')} /ano${obs ? ` — ${obs}` : ''}</div>`
         : currentInterval === 'year'
             ? `<div class="plan-price-annual">R$ ${(price * 12).toFixed(2).replace('.', ',')} cobrado anualmente${obs ? ` — ${obs}` : ''}</div>`
-            : '';
+            : obs ? `<div class="plan-price-obs">${obs}</div>` : '';
+
+    // Cancel subscription button for current paid plan
+    let cancelBtnHtml = '';
+    if (isCurrent && currentSubscription && currentProfile?.subscription_tier !== 'free') {
+        if (!currentSubscription.cancel_at_period_end) {
+            cancelBtnHtml = `<button class="plan-btn plan-btn-danger" onclick="handleCancelSubscription()">Cancelar assinatura</button>`;
+        } else {
+            const endDate = currentSubscription.current_period_end
+                ? new Date(currentSubscription.current_period_end).toLocaleDateString('pt-BR')
+                : '—';
+            cancelBtnHtml = `<div class="plan-cancel-notice">Cancelado · acesso até ${endDate}</div>`;
+        }
+    }
 
     const btnHtml = isCurrent
-        ? `<button class="plan-btn plan-btn-current" disabled>✓ Plano atual</button>`
+        ? `<button class="plan-btn plan-btn-current" disabled>✓ Plano atual</button>${cancelBtnHtml}`
         : `<button class="plan-btn plan-btn-primary" onclick="handleSubscribe('${p.id}', '${escHtml(p.name)}')">Assinar agora</button>`;
 
     const featuresHtml = features.map(f =>

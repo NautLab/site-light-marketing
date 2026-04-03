@@ -444,7 +444,86 @@
 
                 // Check for unread admin notifications
                 checkAdminNotifications(session.user.id, profileResult);
-                
+
+                // ─── Screen lock & monthly usage check ───────────────
+                (async function applyScreenLock() {
+                    const LABEL_PROCESSOR_SCREEN = 'label-processor';
+                    const FREE_MONTHLY_LIMIT = 30;
+
+                    // Load plan features for paid users
+                    let planFeatures = null;
+                    const tier = profileResult?.subscription_tier || 'free';
+                    if (tier !== 'free') {
+                        try {
+                            const { data: activeSub } = await supabase
+                                .from('subscriptions')
+                                .select('plan_id, plans(monthly_limit, unlocked_screens)')
+                                .eq('user_id', user.id)
+                                .in('status', ['active', 'trialing'])
+                                .limit(1)
+                                .maybeSingle();
+                            if (activeSub?.plans) planFeatures = activeSub.plans;
+                        } catch (_) { /* silent */ }
+                    }
+
+                    // Determine access
+                    const isScreenLocked = planFeatures
+                        ? !(planFeatures.unlocked_screens || []).includes(LABEL_PROCESSOR_SCREEN)
+                        : false; // Free users are not screen-locked
+
+                    const monthlyLimit = planFeatures?.monthly_limit ?? FREE_MONTHLY_LIMIT;
+                    const currentMonth = new Date().toISOString().slice(0, 7);
+                    const usageCount = (profileResult?.usage_month === currentMonth)
+                        ? (profileResult?.monthly_usage_count || 0)
+                        : 0;
+                    const isLimitExceeded = monthlyLimit !== null && usageCount >= monthlyLimit;
+
+                    if (isScreenLocked || isLimitExceeded) {
+                        const toolCard = document.querySelector('.tool-card');
+                        if (toolCard) {
+                            const overlay = document.createElement('div');
+                            overlay.className = 'tool-lock-overlay';
+                            overlay.innerHTML = isLimitExceeded
+                                ? `<div class="tool-lock-inner">
+                                    <div class="tool-lock-icon">⚡</div>
+                                    <h3>Limite mensal atingido</h3>
+                                    <p>Você utilizou ${usageCount} de ${monthlyLimit} processamentos este mês.</p>
+                                    <a href="planos.html" class="tool-lock-btn">Ver planos</a>
+                                   </div>`
+                                : `<div class="tool-lock-inner">
+                                    <div class="tool-lock-icon">🔒</div>
+                                    <h3>Recurso não disponível</h3>
+                                    <p>Este recurso não está incluído no seu plano atual.</p>
+                                    <a href="planos.html" class="tool-lock-btn">Atualizar plano</a>
+                                   </div>`;
+                            toolCard.appendChild(overlay);
+                            const processBtn = document.getElementById('process-btn');
+                            if (processBtn) processBtn.disabled = true;
+                        }
+                    } else {
+                        // Track usage when user downloads processed labels
+                        document.addEventListener('click', async function onDownload(e) {
+                            if (!e.target.closest('#download-btn')) return;
+                            document.removeEventListener('click', onDownload);
+                            try {
+                                const month = new Date().toISOString().slice(0, 7);
+                                const base = (profileResult?.usage_month === month)
+                                    ? (profileResult?.monthly_usage_count || 0)
+                                    : 0;
+                                const newCount = base + 1;
+                                await supabase.from('profiles').update({
+                                    monthly_usage_count: newCount,
+                                    usage_month: month
+                                }).eq('id', user.id);
+                                if (profileResult) {
+                                    profileResult.monthly_usage_count = newCount;
+                                    profileResult.usage_month = month;
+                                }
+                            } catch (_) { /* silent */ }
+                        });
+                    }
+                })();
+
             } catch (err) {
                 console.error('Auth check error:', err);
                 window.location.href = 'login.html';

@@ -168,7 +168,7 @@
                     </div>
                     <div style="display:flex;gap:8px;">
                         <button class="btn btn-secondary" id="toggleArchivedBtn" onclick="toggleArchivedPlans()">Ver arquivados</button>
-                        <button class="btn btn-primary" onclick="openModal('createPlanModal')">+ Criar Plano</button>
+                        <button class="btn btn-primary" onclick="openCreatePlanModal()">+ Criar Plano</button>
                     </div>
                 </div>
 
@@ -343,33 +343,28 @@
                 <label class="form-label" for="planDescription">Descrição</label>
                 <input class="form-control" id="planDescription" type="text" placeholder="Breve descrição do plano" />
             </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
-                <div class="form-group">
-                    <label class="form-label" for="planTier">Nível</label>
-                    <select class="form-control form-select" id="planTier">
-                        <option value="basic">Básico</option>
-                        <option value="premium">Premium</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label class="form-label" for="planInterval">Intervalo</label>
-                    <select class="form-control form-select" id="planInterval" onchange="toggleAnnualPriceFields()">
-                        <option value="month">Mensal</option>
-                        <option value="year">Anual</option>
-                    </select>
-                </div>
+            <div class="form-group">
+                <label class="form-label" for="planPrice">Preço Mensal (R$)</label>
+                <input class="form-control" id="planPrice" type="number" min="0" step="0.01" placeholder="29.90" />
+                <span class="form-helper">Valor em reais (BRL) · intervalo mensal por padrão</span>
             </div>
             <div class="form-group">
-                <label class="form-label" for="planPrice">Preço (R$)</label>
-                <input class="form-control" id="planPrice" type="number" min="0" step="0.01" placeholder="29.90" />
-                <span class="form-helper">Valor em reais (BRL)</span>
+                <label class="form-label" for="planMonthlyLimit">Processamentos mensais</label>
+                <input class="form-control" id="planMonthlyLimit" type="number" min="1" step="1" placeholder="Ex: 500 (vazio = ilimitado)" />
+                <span class="form-helper">Número máximo de processamentos por mês. Deixe vazio para ilimitado.</span>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Telas desbloqueadas</label>
+                <div id="planScreensCreate" class="screens-checkboxes">
+                    <!-- populated by JS via AVAILABLE_SCREENS -->
+                </div>
             </div>
             <div class="form-group">
                 <label class="form-label" for="planObservation">Observação</label>
-                <input class="form-control" id="planObservation" type="text" placeholder="Ex: Equivale a 2 meses grátis" />
+                <input class="form-control" id="planObservation" type="text" placeholder="Ex: Mais popular" />
                 <span class="form-helper">Nota exibida junto ao preço na página de planos (opcional)</span>
             </div>
-            <!-- Campos visíveis apenas quando intervalo = Mensal -->
+            <!-- Criar versão anual junto -->
             <div id="annualPriceSection" style="border-top:1px solid var(--border);padding-top:14px;margin-top:4px;">
                 <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-muted);cursor:pointer;margin-bottom:10px;">
                     <input type="checkbox" id="createAnnualToo" onchange="toggleAnnualPriceFields()" style="width:16px;height:16px;accent-color:var(--primary);cursor:pointer;" />
@@ -391,7 +386,63 @@
         </div>
         <div class="modal-footer">
             <button class="btn btn-secondary" onclick="closeModal('createPlanModal')">Cancelar</button>
-            <button class="btn btn-primary" id="createPlanBtn" onclick="submitCreatePlan()">Criar no Stripe</button>
+            <button class="btn btn-primary" id="createPlanBtn" onclick="submitCreatePlan()">Criar</button>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     MODAL: Editar Plano
+══════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="editPlanModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="editPlanModalTitle">
+        <div class="modal-header">
+            <h3 class="modal-title" id="editPlanModalTitle">Editar Plano</h3>
+            <button class="modal-close-btn" onclick="closeModal('editPlanModal')">×</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="editPlanId" />
+            <div class="form-group">
+                <label class="form-label" for="editPlanName">Nome</label>
+                <input class="form-control" id="editPlanName" type="text" />
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="editPlanDescription">Descrição</label>
+                <input class="form-control" id="editPlanDescription" type="text" />
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+                <div class="form-group">
+                    <label class="form-label" for="editPlanPrice">Preço (R$)</label>
+                    <input class="form-control" id="editPlanPrice" type="text" disabled style="opacity:0.5;cursor:not-allowed;" />
+                    <span class="form-helper">Preço não pode ser editado (Stripe)</span>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="editPlanTier">Nível</label>
+                    <select class="form-control form-select" id="editPlanTier">
+                        <option value="basic">Básico</option>
+                        <option value="premium">Premium</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="editPlanMonthlyLimit">Processamentos mensais</label>
+                <input class="form-control" id="editPlanMonthlyLimit" type="number" min="1" step="1" placeholder="Vazio = ilimitado" />
+                <span class="form-helper">Número máximo de processamentos por mês. Deixe vazio para ilimitado.</span>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Telas desbloqueadas</label>
+                <div id="planScreensEdit" class="screens-checkboxes">
+                    <!-- populated by JS via AVAILABLE_SCREENS -->
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="editPlanObservation">Observação</label>
+                <input class="form-control" id="editPlanObservation" type="text" placeholder="Nota junto ao preço (opcional)" />
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('editPlanModal')">Cancelar</button>
+            <button class="btn btn-primary" id="editPlanBtn" onclick="submitEditPlan()">Salvar</button>
         </div>
     </div>
 </div>

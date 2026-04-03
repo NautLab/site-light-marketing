@@ -797,6 +797,51 @@ body.admin-body {
     border-radius: 10px;
 }
 
+/* ── Screens checkboxes (create / edit plan) ──────── */
+.screens-checkboxes {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px 12px;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+}
+
+.screen-check-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    cursor: pointer;
+    padding: 4px 0;
+}
+
+.screen-check-item input[type="checkbox"] {
+    margin-top: 2px;
+    flex-shrink: 0;
+    width: 15px;
+    height: 15px;
+    accent-color: var(--primary);
+    cursor: pointer;
+}
+
+.screen-check-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.screen-check-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+}
+
+.screen-check-desc {
+    font-size: 11px;
+    color: var(--text-dim);
+}
+
 .notif-user-item {
     display: flex;
     align-items: center;

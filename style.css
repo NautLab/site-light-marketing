@@ -370,12 +370,62 @@ section *, .hero *, .how-to-use *, .footer * {
 }
 
 .tool-card {
+    position: relative;
     background: rgba(255, 255, 255, 0.05);
     backdrop-filter: blur(20px);
     border: 1px solid rgba(12, 126, 146, 0.3);
     border-radius: 20px;
     padding: 40px;
     box-shadow: var(--shadow);
+    overflow: hidden;
+}
+
+/* Screen lock overlay */
+.tool-lock-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(10, 10, 10, 0.88);
+    backdrop-filter: blur(5px);
+    border-radius: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+}
+.tool-lock-inner {
+    text-align: center;
+    padding: 32px 24px;
+    max-width: 320px;
+}
+.tool-lock-icon {
+    font-size: 40px;
+    margin-bottom: 14px;
+}
+.tool-lock-inner h3 {
+    color: #fff;
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0 0 10px;
+}
+.tool-lock-inner p {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 14px;
+    line-height: 1.6;
+    margin: 0 0 22px;
+}
+.tool-lock-btn {
+    display: inline-block;
+    padding: 12px 28px;
+    background: #0C7E92;
+    color: #fff;
+    border-radius: 10px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 14px;
+    transition: background 0.2s;
+}
+.tool-lock-btn:hover {
+    background: #0a6a7c;
 }
 
 /* Tool Logo */

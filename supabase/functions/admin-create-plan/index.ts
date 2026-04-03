@@ -43,9 +43,18 @@ Deno.serve(async (req) => {
       return json({ error: 'Forbidden' }, 403);
     }
 
-    const { name, description, tier, interval, price_brl, observation } = await req.json();
+    const {
+      name,
+      description,
+      tier = 'basic',
+      interval = 'month',
+      price_brl,
+      observation,
+      monthly_limit = null,
+      unlocked_screens = [],
+    } = await req.json();
 
-    if (!name || !tier || !interval || !price_brl || price_brl <= 0) {
+    if (!name || !price_brl || price_brl <= 0) {
       return json({ error: 'Missing required fields' }, 400);
     }
 
@@ -78,6 +87,8 @@ Deno.serve(async (req) => {
         interval,
         price_brl,
         observation: observation || null,
+        monthly_limit: monthly_limit || null,
+        unlocked_screens: unlocked_screens || [],
         stripe_product_id: product.id,
         stripe_price_id: price.id,
         is_active: true,
