@@ -512,8 +512,24 @@
     </div>
 </div>
 
-<!-- ══════════════════════════════════════════════════
-     MODAL: Cancelar Assinatura
+<!-- ══════════════════════════════════════════════════     MODAL: Detalhe do Usuário
+════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="userDetailModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="userDetailModalTitle">
+        <div class="modal-header">
+            <h3 class="modal-title" id="userDetailModalTitle">Detalhes do Usuário</h3>
+            <button class="modal-close-btn" onclick="closeModal('userDetailModal')">&#215;</button>
+        </div>
+        <div class="modal-body" id="userDetailBody">
+            <!-- populated by JS -->
+        </div>
+        <div class="modal-footer" id="userDetailFooter">
+            <!-- populated by JS -->
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════     MODAL: Cancelar Assinatura
 ══════════════════════════════════════════════════ -->
 <div class="modal-overlay" id="cancelSubModal">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="cancelSubModalTitle">
@@ -616,5 +632,8 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-config.js"></script>
 <script src="js/admin.js"></script>
+
+<!-- Sidebar backdrop -->
+<div class="sidebar-backdrop" id="sidebarBackdrop" onclick="closeSidebar()"></div>
 </body>
 </html>

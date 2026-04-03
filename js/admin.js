@@ -137,12 +137,21 @@ function showSection(name) {
 
     // Close sidebar on mobile
     if (window.innerWidth <= 768) {
-        document.getElementById('adminSidebar').classList.remove('open');
+        closeSidebar();
     }
 }
 
 function toggleSidebar() {
-    document.getElementById('adminSidebar').classList.toggle('open');
+    const sidebar  = document.getElementById('adminSidebar');
+    const backdrop = document.getElementById('sidebarBackdrop');
+    const isOpen   = sidebar.classList.toggle('open');
+    if (backdrop) backdrop.classList.toggle('open', isOpen);
+}
+
+function closeSidebar() {
+    document.getElementById('adminSidebar').classList.remove('open');
+    const backdrop = document.getElementById('sidebarBackdrop');
+    if (backdrop) backdrop.classList.remove('open');
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -240,6 +249,77 @@ function renderUsersTable() {
     tbody.innerHTML = page.map(u => buildUserRow(u)).join('');
 }
 
+function openUserDetail(userId) {
+    const u = allUsers.find(u => u.id === userId);
+    if (!u) return;
+
+    const initials = (u.full_name || u.email || '?')
+        .split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase();
+    const date    = u.created_at ? new Date(u.created_at).toLocaleDateString('pt-BR') : '—';
+    const isSelf  = u.id === currentProfile.id;
+    const canEditRole = currentProfile.role === 'super_admin' || u.role !== 'super_admin';
+
+    const tierBadge = `<span class="badge badge-${u.subscription_tier}">${tierLabel(u.subscription_tier)}</span>`;
+    const roleBadge = `<span class="badge ${roleBadgeClass(u.role)}">${roleLabel(u.role)}</span>`;
+    const freeAccBadge = u.free_access
+        ? `<span class="badge badge-gift">${tierLabel(u.free_access_tier)}</span>`
+        : `<span style="color:var(--text-dim);font-size:12px;">—</span>`;
+
+    const usageMonth = u.usage_month || '';
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    const usageCount = (u.usage_month === currentMonth) ? (u.monthly_usage_count || 0) : 0;
+
+    document.getElementById('userDetailBody').innerHTML = `
+        <div class="user-detail-header">
+            <div class="user-detail-avatar">${initials}</div>
+            <div class="user-detail-info">
+                <div class="user-detail-name">${escHtml(u.full_name || '—')}</div>
+                <div class="user-detail-email">${escHtml(u.email)}</div>
+            </div>
+        </div>
+        <div class="user-detail-grid">
+            <div class="user-detail-item">
+                <span class="user-detail-item-label">Plano</span>
+                ${tierBadge}
+            </div>
+            <div class="user-detail-item">
+                <span class="user-detail-item-label">Função</span>
+                ${roleBadge}
+            </div>
+            <div class="user-detail-item">
+                <span class="user-detail-item-label">Acesso gratuito</span>
+                ${freeAccBadge}
+            </div>
+            <div class="user-detail-item">
+                <span class="user-detail-item-label">Cadastro</span>
+                <span style="font-size:13px;color:var(--text);">${date}</span>
+            </div>
+            <div class="user-detail-item">
+                <span class="user-detail-item-label">Uso este mês</span>
+                <span style="font-size:13px;color:var(--text);">${usageCount} processamento${usageCount !== 1 ? 's' : ''}</span>
+            </div>
+            <div class="user-detail-item">
+                <span class="user-detail-item-label">ID</span>
+                <span style="font-size:10px;color:var(--text-dim);word-break:break-all;">${u.id}</span>
+            </div>
+        </div>
+        <div class="user-detail-actions">
+            ${(!isSelf && canEditRole) ? `
+            <button class="btn btn-secondary" style="width:100%;justify-content:center;" onclick="closeModal('userDetailModal'); openRoleModal('${u.id}', '${escHtml(u.full_name || u.email)}', '${u.role}')">
+                Alterar função
+            </button>` : ''}
+            ${u.free_access ? `
+            <button class="btn btn-danger" style="width:100%;justify-content:center;" onclick="closeModal('userDetailModal'); revokeFreeAccess('${u.id}', '${escHtml(u.full_name || u.email)}')">Revogar acesso gratuito</button>` : `
+            <button class="btn btn-success" style="width:100%;justify-content:center;" onclick="closeModal('userDetailModal'); openFreeAccessModal('${u.id}', '${escHtml(u.full_name || u.email)}')">Conceder acesso gratuito</button>`}
+        </div>
+    `;
+
+    document.getElementById('userDetailFooter').innerHTML =
+        `<button class="btn btn-secondary" onclick="closeModal('userDetailModal')">Fechar</button>`;
+
+    openModal('userDetailModal');
+}
+
 function buildUserRow(u) {
     const initials = (u.full_name || u.email || '?')
         .split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase();
@@ -264,7 +344,7 @@ Revogar</button>`
 Acesso</button>`;
 
     return `
-    <tr>
+    <tr class="user-row-clickable" onclick="openUserDetail('${u.id}')">
         <td>
             <div class="user-cell">
                 <div class="user-avatar-sm">${initials}</div>
@@ -278,7 +358,7 @@ Acesso</button>`;
         <td>${roleBadge}</td>
         <td>${giftBadge}</td>
         <td style="color:var(--text-muted);font-size:12px;">${date}</td>
-        <td>
+        <td onclick="event.stopPropagation()">
             <div class="actions-cell">
                 ${roleBtn}
                 ${freeAccessBtn}
