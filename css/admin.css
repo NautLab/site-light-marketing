@@ -65,9 +65,11 @@ body.admin-body {
 .sidebar-brand {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 20px 20px 16px;
+    justify-content: center;
+    height: var(--header-height);
+    padding: 0 20px;
     border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
 }
 
 .sidebar-brand img {
@@ -77,11 +79,28 @@ body.admin-body {
 }
 
 .sidebar-brand-label {
-    font-size: 11px;
-    font-weight: 600;
+    font-size: 16px;
+    font-weight: 700;
     color: var(--primary);
     text-transform: uppercase;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.12em;
+}
+
+/* ── Sidebar logo area (above user info) ───────────── */
+.sidebar-logo-area {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 8px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 4px;
+}
+
+.sidebar-logo-area img {
+    height: 36px;
+    width: auto;
+    object-fit: contain;
+    opacity: 0.85;
 }
 
 .sidebar-nav {
@@ -1063,113 +1082,115 @@ body.admin-body {
         --sidebar-width: 0px;
     }
 
-    /* Sidebar: oculta por padrão, desliza para dentro ao abrir */
+    /* Sidebar: hidden by default, slides in when .open */
     .admin-sidebar {
         transform: translateX(-100%);
         position: fixed;
         top: 0;
         left: 0;
         height: 100%;
-        z-index: 200;
-        box-shadow: 4px 0 32px rgba(0,0,0,0.5);
+        width: 260px !important;
+        z-index: 300;
+        box-shadow: 4px 0 40px rgba(0,0,0,0.6);
     }
 
     .admin-sidebar.open {
         transform: translateX(0);
-        width: 240px;
     }
 
-    /* Overlay escuro ao abrir sidebar no mobile */
-    .admin-sidebar.open::after {
+    /* Dark overlay behind sidebar on mobile */
+    body.sidebar-open::after {
         content: '';
         position: fixed;
         inset: 0;
-        left: 240px;
-        background: rgba(0,0,0,0.55);
-        z-index: -1;
+        background: rgba(0,0,0,0.6);
+        z-index: 299;
     }
 
     .admin-main {
         margin-left: 0;
+        width: 100%;
     }
 
     .mobile-menu-btn {
         display: flex;
     }
 
-    /* Topbar: compactar no mobile */
+    /* Topbar */
     .admin-topbar {
-        padding: 0 14px;
-        gap: 10px;
+        padding: 0 12px;
+        gap: 8px;
     }
 
     .topbar-title {
         font-size: 15px;
+        flex: 1;
+        text-align: center;
     }
 
     .topbar-back-btn {
-        font-size: 12px;
-        padding: 6px 10px;
+        font-size: 11px;
+        padding: 5px 8px;
+        white-space: nowrap;
     }
 
-    /* Content: menos padding */
+    /* Content padding reduced */
     .admin-content {
-        padding: 16px 12px;
+        padding: 16px 12px 32px;
     }
 
-    /* Stats grid: 2 colunas em telas pequenas */
+    /* Stats grid: 2 columns */
     .stats-grid {
         grid-template-columns: repeat(2, 1fr);
         gap: 10px;
     }
 
     .stat-card {
-        padding: 14px;
+        padding: 14px 12px;
     }
 
     .stat-value {
         font-size: 22px;
     }
 
-    /* Toolbar: empilha em coluna */
+    /* Toolbar: stacks vertically */
     .table-toolbar {
         flex-direction: column;
         align-items: stretch;
+        gap: 8px;
     }
 
     .search-input {
         max-width: 100%;
         width: 100%;
+        min-width: unset;
     }
 
     .filter-select {
         width: 100%;
     }
 
-    /* Tabela: ocultar colunas menos importantes */
+    /* Table: show only 3 columns (User, Plan, Actions) */
     .data-table th:nth-child(n+4),
     .data-table td:nth-child(n+4) {
         display: none;
     }
 
-    /* Plans/Coupons grid: 1 coluna */
+    /* Plans/Coupons grids: 1 column */
     .plans-grid,
     .coupons-grid {
         grid-template-columns: 1fr;
     }
 
-    /* Section header: empilha botões abaixo do título */
+    /* Section header: stack title + buttons */
     .section-header {
         flex-direction: column;
         align-items: flex-start;
-    }
-
-    .section-header > div:last-child,
-    .section-header > button:last-child {
-        width: 100%;
+        gap: 10px;
     }
 
     .section-header > div:last-child {
+        width: 100%;
         display: flex;
         gap: 8px;
     }
@@ -1180,7 +1201,7 @@ body.admin-body {
         justify-content: center;
     }
 
-    /* Paginação: empilha em coluna */
+    /* Pagination: stacks vertically */
     .pagination {
         flex-direction: column;
         align-items: stretch;
@@ -1197,18 +1218,42 @@ body.admin-body {
         justify-content: center;
     }
 
-    /* Modais: largura total no mobile */
-    .modal {
-        width: calc(100vw - 24px);
-        max-height: 90vh;
-        overflow-y: auto;
+    /* Modals: full-width, scrollable */
+    .modal-overlay {
+        padding: 12px;
+        align-items: flex-end;
     }
 
-    /* Grids internos de modais: uma coluna */
-    .modal-body [style*="grid-template-columns:1fr 1fr"] {
+    .modal,
+    .modal.modal-lg {
+        max-width: 100%;
+        width: 100%;
+        max-height: 92vh;
+        overflow-y: auto;
+        border-radius: 20px 20px 12px 12px;
+    }
+
+    /* Collapse side-by-side grid columns inside modals */
+    .modal-body [style*="grid-template-columns:1fr 1fr"],
+    .modal-body [style*="grid-template-columns: 1fr 1fr"] {
         display: flex !important;
         flex-direction: column !important;
         gap: 0 !important;
+    }
+
+    /* Annual price section inside modal */
+    #annualPriceSection {
+        padding-top: 12px;
+    }
+
+    /* Notification user list: slightly shorter on mobile */
+    .notif-user-list {
+        max-height: 200px;
+    }
+
+    /* Sidebar logo area: slightly smaller on mobile */
+    .sidebar-logo-area img {
+        height: 30px;
     }
 }
 
