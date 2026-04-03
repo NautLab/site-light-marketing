@@ -451,6 +451,7 @@
         </nav>
         <div class="header-right">
             <div id="auth-section" style="display:none;"></div>
+            <script>try{var _ui=sessionStorage.getItem('lm_user_initials'),_un=sessionStorage.getItem('lm_user_name'),_ue=sessionStorage.getItem('lm_user_email');if(_ui&&(_un||_ue)){var _as=document.getElementById('auth-section');_as.innerHTML='<div class="user-account"><button class="user-account-btn" style="pointer-events:none;"><div class="user-avatar">'+_ui+'</div><span>'+(_un||_ue.split('@')[0])+'</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6 9L12 15L18 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>';_as.style.display='block';}}catch(e){}</script>
             <button class="menu-toggle" aria-label="Menu">
                 <span></span><span></span><span></span>
             </button>
@@ -596,6 +597,9 @@ async function initAuthHeader() {
         const name = user.user_metadata?.full_name || '';
         const email = user.email || '';
         const initials = (name || email).split(' ').slice(0,2).map(n=>n[0]).join('').toUpperCase() || '?';
+        sessionStorage.setItem('lm_user_name', name);
+        sessionStorage.setItem('lm_user_email', email);
+        sessionStorage.setItem('lm_user_initials', initials);
 
         let userRole = 'user';
         try {
