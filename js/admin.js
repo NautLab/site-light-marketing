@@ -31,6 +31,8 @@ let selectedSubId    = null;
 let allSubs   = [];
 let allPlans  = [];
 let allCoupons = [];
+let allNotifications = [];
+let filteredNotifications = [];
 
 // ─────────────────────────────────────────────────────────────
 // Boot
@@ -109,6 +111,7 @@ const sectionTitles = {
     plans: 'Planos',
     subscriptions: 'Assinaturas',
     coupons: 'Cupons',
+    notifications: 'Notificações',
 };
 
 function showSection(name) {
@@ -120,9 +123,10 @@ function showSection(name) {
     document.getElementById('topbarTitle').textContent = sectionTitles[name] || name;
 
     // Lazy-load section data
-    if (name === 'plans' && allPlans.length === 0)       loadPlans();
-    if (name === 'subscriptions' && allSubs.length === 0) loadSubscriptions();
-    if (name === 'coupons' && allCoupons.length === 0)   loadCoupons();
+    if (name === 'plans' && allPlans.length === 0)               loadPlans();
+    if (name === 'subscriptions' && allSubs.length === 0)         loadSubscriptions();
+    if (name === 'coupons' && allCoupons.length === 0)            loadCoupons();
+    if (name === 'notifications' && allNotifications.length === 0) loadNotifications();
 
     // Close sidebar on mobile
     if (window.innerWidth <= 768) {
@@ -487,9 +491,17 @@ async function submitCreatePlan() {
     const tier        = document.getElementById('planTier').value;
     const interval    = document.getElementById('planInterval').value;
     const price       = parseFloat(document.getElementById('planPrice').value);
+    const observation = document.getElementById('planObservation').value.trim();
+    const createAnnual = interval === 'month' && document.getElementById('createAnnualToo')?.checked;
+    const annualPrice  = createAnnual ? parseFloat(document.getElementById('planAnnualPrice').value) : null;
+    const annualObs    = createAnnual ? document.getElementById('planAnnualObservation').value.trim() : '';
 
     if (!name || isNaN(price) || price <= 0) {
         showToast('Preencha nome e preço corretamente.', 'error');
+        return;
+    }
+    if (createAnnual && (isNaN(annualPrice) || annualPrice <= 0)) {
+        showToast('Preencha o preço anual corretamente.', 'error');
         return;
     }
 
@@ -499,24 +511,52 @@ async function submitCreatePlan() {
 
     try {
         const session = await supabase.auth.getSession();
-        const res = await callFunction('admin-create-plan', {
-            name, description, tier, interval, price_brl: price,
-        }, session.data.session.access_token);
+        const token = session.data.session.access_token;
 
+        // Create monthly (or annual-only) plan
+        const res = await callFunction('admin-create-plan', {
+            name, description, tier, interval, price_brl: price, observation,
+        }, token);
         const body = await res.json();
         if (!res.ok) throw new Error(body.error || 'Erro ao criar plano');
-
         allPlans.push(body.plan);
+
+        // Optionally create annual counterpart
+        if (createAnnual) {
+            const resAnnual = await callFunction('admin-create-plan', {
+                name: `${name} Anual`,
+                description,
+                tier,
+                interval: 'year',
+                price_brl: annualPrice,
+                observation: annualObs,
+            }, token);
+            const bodyAnnual = await resAnnual.json();
+            if (!resAnnual.ok) throw new Error(bodyAnnual.error || 'Erro ao criar plano anual');
+            allPlans.push(bodyAnnual.plan);
+        }
+
         renderPlans();
         closeModal('createPlanModal');
         clearPlanForm();
-        showToast('Plano criado com sucesso no Stripe!', 'success');
+        showToast(createAnnual ? 'Planos mensal e anual criados com sucesso!' : 'Plano criado com sucesso no Stripe!', 'success');
     } catch (err) {
         showToast('Erro: ' + err.message, 'error');
     } finally {
         btn.disabled = false;
         btn.textContent = 'Criar no Stripe';
     }
+}
+
+function toggleAnnualPriceFields() {
+    const interval = document.getElementById('planInterval').value;
+    const section  = document.getElementById('annualPriceSection');
+    const fields   = document.getElementById('annualPriceFields');
+    const checkbox = document.getElementById('createAnnualToo');
+
+    // Hide the annual section when the interval is already 'year'
+    if (section) section.style.display = interval === 'year' ? 'none' : '';
+    if (fields && checkbox) fields.style.display = checkbox.checked ? '' : 'none';
 }
 
 async function togglePlan(planId, currentActive) {
@@ -565,11 +605,15 @@ async function archivePlan(planId, archive) {
 }
 
 function clearPlanForm() {
-    ['planName', 'planDescription', 'planPrice'].forEach(id => {
-        document.getElementById(id).value = '';
+    ['planName', 'planDescription', 'planPrice', 'planObservation', 'planAnnualPrice', 'planAnnualObservation'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
     });
     document.getElementById('planTier').value     = 'basic';
     document.getElementById('planInterval').value = 'month';
+    const cb = document.getElementById('createAnnualToo');
+    if (cb) cb.checked = false;
+    toggleAnnualPriceFields();
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -834,6 +878,227 @@ function clearCouponForm() {
     document.getElementById('couponDuration').value = 'once';
     document.getElementById('couponDurationMonthsGroup').style.display = 'none';
     toggleCouponTypeHint();
+}
+
+// ─────────────────────────────────────────────────────────────
+// ██  NOTIFICATIONS SECTION  ██
+// ─────────────────────────────────────────────────────────────
+
+async function loadNotifications() {
+    document.getElementById('notificationsContainer').innerHTML =
+        `<div class="empty-state"><p class="empty-state-text">Carregando notificações…</p></div>`;
+
+    const { data, error } = await supabase
+        .from('admin_notifications')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+    if (error) {
+        showToast('Erro ao carregar notificações: ' + error.message, 'error');
+        return;
+    }
+
+    allNotifications = data || [];
+    filteredNotifications = [...allNotifications];
+    renderNotifications();
+}
+
+function filterNotifications() {
+    const status = document.getElementById('notifStatusFilter').value;
+    const target = document.getElementById('notifTargetFilter').value;
+
+    filteredNotifications = allNotifications.filter(n => {
+        const matchStatus = !status
+            || (status === 'active' && n.is_active)
+            || (status === 'inactive' && !n.is_active);
+        const matchTarget = !target || n.target_type === target;
+        return matchStatus && matchTarget;
+    });
+    renderNotifications();
+}
+
+function renderNotifications() {
+    const container = document.getElementById('notificationsContainer');
+
+    if (filteredNotifications.length === 0) {
+        container.innerHTML = `<div class="empty-state"><p class="empty-state-text">Nenhuma notificação encontrada</p><p class="empty-state-sub">Clique em "+ Criar Notificação" para começar.</p></div>`;
+        return;
+    }
+
+    container.innerHTML = filteredNotifications.map(buildNotificationCard).join('');
+}
+
+function buildNotificationCard(n) {
+    const date   = new Date(n.created_at).toLocaleDateString('pt-BR');
+    const status = n.is_active
+        ? `<span class="badge badge-active">Ativa</span>`
+        : `<span class="badge badge-canceled">Inativa</span>`;
+
+    const targetDesc = notifTargetDesc(n);
+
+    return `
+    <div class="notification-card${n.is_active ? '' : ' notification-card--inactive'}">
+        <div class="notification-card-header">
+            <div style="flex:1;min-width:0;">
+                <div class="notification-title">${escHtml(n.title)}</div>
+                <div class="notification-meta">${targetDesc} · ${date}</div>
+            </div>
+            <div style="display:flex;gap:6px;align-items:center;flex-shrink:0;">
+                ${status}
+                <button class="btn btn-sm ${n.is_active ? 'btn-danger' : 'btn-success'}"
+                    onclick="toggleNotification('${n.id}', ${n.is_active})">
+                    ${n.is_active ? 'Desativar' : 'Ativar'}
+                </button>
+            </div>
+        </div>
+        <div class="notification-message">${escHtml(n.message)}</div>
+    </div>`;
+}
+
+function notifTargetDesc(n) {
+    if (n.target_type === 'all')      return 'Todos os usuários';
+    if (n.target_type === 'role')     return `Funções: ${(n.target_roles || []).map(roleLabel).join(', ') || '—'}`;
+    if (n.target_type === 'tier')     return `Planos: ${(n.target_tiers || []).map(tierLabel).join(', ') || '—'}`;
+    if (n.target_type === 'specific') return `${(n.target_user_ids || []).length} usuário(s) específico(s)`;
+    return '—';
+}
+
+async function toggleNotification(id, currentActive) {
+    try {
+        const { error } = await supabase
+            .from('admin_notifications')
+            .update({ is_active: !currentActive })
+            .eq('id', id);
+
+        if (error) throw error;
+
+        const n = allNotifications.find(x => x.id === id);
+        if (n) n.is_active = !currentActive;
+
+        filterNotifications();
+        showToast(`Notificação ${!currentActive ? 'ativada' : 'desativada'}.`, 'success');
+    } catch (err) {
+        showToast('Erro: ' + err.message, 'error');
+    }
+}
+
+// ─── Create notification modal ────────────────────────────────
+
+function openCreateNotificationModal() {
+    // Populate user list
+    populateNotifUserList();
+    updateNotifTargetFields();
+    openModal('createNotificationModal');
+}
+
+function updateNotifTargetFields() {
+    const type = document.getElementById('notifTargetType').value;
+    document.getElementById('notifRoleFields').style.display     = type === 'role'     ? '' : 'none';
+    document.getElementById('notifTierFields').style.display     = type === 'tier'     ? '' : 'none';
+    document.getElementById('notifSpecificFields').style.display = type === 'specific' ? '' : 'none';
+}
+
+function populateNotifUserList() {
+    renderNotifUserList(allUsers);
+}
+
+function filterNotifUserList() {
+    const q = (document.getElementById('notifUserSearch').value || '').toLowerCase();
+    const filtered = q
+        ? allUsers.filter(u =>
+            (u.full_name || '').toLowerCase().includes(q) ||
+            (u.email || '').toLowerCase().includes(q))
+        : allUsers;
+    renderNotifUserList(filtered);
+}
+
+function renderNotifUserList(users) {
+    const container = document.getElementById('notifUserList');
+    if (!container) return;
+
+    if (users.length === 0) {
+        container.innerHTML = `<p style="color:var(--text-dim);font-size:12px;padding:8px 0;">Nenhum usuário encontrado.</p>`;
+        return;
+    }
+
+    container.innerHTML = users.slice(0, 100).map(u => `
+        <label class="notif-user-item">
+            <input type="checkbox" class="notif-user-check" value="${u.id}" style="accent-color:var(--primary);" />
+            <div class="notif-user-info">
+                <span class="notif-user-name">${escHtml(u.full_name || u.email)}</span>
+                <span class="notif-user-email">${escHtml(u.email)}</span>
+            </div>
+            <span class="badge badge-${u.subscription_tier}" style="font-size:10px;">${tierLabel(u.subscription_tier)}</span>
+        </label>`).join('');
+}
+
+async function submitCreateNotification() {
+    const title   = document.getElementById('notifTitle').value.trim();
+    const message = document.getElementById('notifMessage').value.trim();
+    const type    = document.getElementById('notifTargetType').value;
+
+    if (!title || !message) {
+        showToast('Preencha título e mensagem.', 'error');
+        return;
+    }
+
+    let target_roles    = [];
+    let target_tiers    = [];
+    let target_user_ids = [];
+
+    if (type === 'role') {
+        target_roles = [...document.querySelectorAll('.notif-role-check:checked')].map(el => el.value);
+        if (target_roles.length === 0) { showToast('Selecione ao menos uma função.', 'error'); return; }
+    }
+    if (type === 'tier') {
+        target_tiers = [...document.querySelectorAll('.notif-tier-check:checked')].map(el => el.value);
+        if (target_tiers.length === 0) { showToast('Selecione ao menos um plano.', 'error'); return; }
+    }
+    if (type === 'specific') {
+        target_user_ids = [...document.querySelectorAll('.notif-user-check:checked')].map(el => el.value);
+        if (target_user_ids.length === 0) { showToast('Selecione ao menos um usuário.', 'error'); return; }
+    }
+
+    const btn = document.getElementById('createNotifBtn');
+    btn.disabled = true;
+    btn.textContent = 'Criando…';
+
+    try {
+        const { data, error } = await supabase
+            .from('admin_notifications')
+            .insert({
+                title, message,
+                target_type: type,
+                target_roles, target_tiers, target_user_ids,
+                created_by: currentProfile.id,
+            })
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        allNotifications.unshift(data);
+        filteredNotifications = [...allNotifications];
+        filterNotifications();
+        closeModal('createNotificationModal');
+        clearNotifForm();
+        showToast('Notificação criada com sucesso!', 'success');
+    } catch (err) {
+        showToast('Erro: ' + err.message, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Criar Notificação';
+    }
+}
+
+function clearNotifForm() {
+    document.getElementById('notifTitle').value   = '';
+    document.getElementById('notifMessage').value = '';
+    document.getElementById('notifTargetType').value = 'all';
+    document.getElementById('notifUserSearch').value = '';
+    document.querySelectorAll('.notif-role-check, .notif-tier-check, .notif-user-check')
+        .forEach(el => el.checked = false);
+    updateNotifTargetFields();
 }
 
 // ─────────────────────────────────────────────────────────────

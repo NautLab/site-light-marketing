@@ -438,7 +438,7 @@
                 <div class="toggle-knob"></div>
             </div>
             <span id="labelYear">Anual</span>
-            <span class="discount-badge">2 meses grátis</span>
+            <span class="discount-badge" id="annualBadge" style="display:none;"></span>
         </div>
 
         <!-- Cards -->
@@ -566,9 +566,9 @@ async function initAuthHeader() {
         let userRole = 'user';
         try {
             const res = await getUserProfile();
-            if (res.data) {
-                currentProfile = res.data;
-                userRole = res.data.role || 'user';
+            if (res) {
+                currentProfile = res;
+                userRole = res.role || 'user';
             }
         } catch(_) {}
 
@@ -657,6 +657,14 @@ function renderPaidPlans() {
     // Se não tiver planos anuais ainda, mostra mensais com preço anual estimado
     const display = plans.length > 0 ? plans : monthPlans;
 
+    // Update annual badge from first annual plan observation
+    const badge = document.getElementById('annualBadge');
+    if (badge) {
+        const obs = yearPlans.length > 0 ? (yearPlans[0].observation || '') : '';
+        if (obs) { badge.textContent = obs; badge.style.display = ''; }
+        else { badge.style.display = 'none'; }
+    }
+
     container.innerHTML = display.map(p => buildPlanCard(p, plans.length === 0 && currentInterval === 'year')).join('');
 }
 
@@ -669,10 +677,12 @@ function buildPlanCard(p, estimatedAnnual = false) {
         ? (price * 10 / 12).toFixed(2).replace('.', ',')
         : price.toFixed(2).replace('.', ',');
 
+    const obs = p.observation ? escHtml(p.observation) : '';
+
     const annualNote = estimatedAnnual
-        ? `<div class="plan-price-annual">≈ R$ ${(price * 10).toFixed(2).replace('.', ',')} /ano (2 meses grátis)</div>`
+        ? `<div class="plan-price-annual">≈ R$ ${(price * 10).toFixed(2).replace('.', ',')} /ano${obs ? ` — ${obs}` : ''}</div>`
         : currentInterval === 'year'
-            ? `<div class="plan-price-annual">R$ ${(price * 12).toFixed(2).replace('.', ',')} cobrado anualmente</div>`
+            ? `<div class="plan-price-annual">R$ ${(price * 12).toFixed(2).replace('.', ',')} cobrado anualmente${obs ? ` — ${obs}` : ''}</div>`
             : '';
 
     const btnHtml = isCurrent

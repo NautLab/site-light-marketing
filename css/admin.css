@@ -698,6 +698,112 @@ body.admin-body {
     border-top: 1px solid var(--border);
 }
 
+/* ── Notification cards ──────────────────────────── */
+
+.notification-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 12px;
+    transition: border-color 0.2s;
+}
+
+.notification-card:hover {
+    border-color: var(--border-accent);
+}
+
+.notification-card--inactive {
+    opacity: 0.6;
+}
+
+.notification-card-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.notification-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.notification-meta {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+.notification-message {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.5;
+    white-space: pre-wrap;
+    padding: 10px 12px;
+    background: var(--bg-input);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+}
+
+/* ── Notification user-picker ────────────────────── */
+
+.notif-user-list {
+    max-height: 260px;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg-input);
+}
+
+.notif-user-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.notif-user-item:last-child {
+    border-bottom: none;
+}
+
+.notif-user-item:hover {
+    background: var(--bg-hover);
+}
+
+.notif-user-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.notif-user-name {
+    font-size: 13px;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.notif-user-email {
+    font-size: 11px;
+    color: var(--text-dim);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 /* ── Pagination ────────────────────────────────────── */
 
 .pagination {
@@ -791,6 +897,10 @@ body.admin-body {
     transform: translateY(16px) scale(0.97);
     transition: transform 0.25s;
     box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
+}
+
+.modal.modal-lg {
+    max-width: 600px;
 }
 
 .modal-overlay.open .modal {
