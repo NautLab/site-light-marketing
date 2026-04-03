@@ -41,32 +41,24 @@ menuOverlay.addEventListener('click', () => {
 const navLinks = document.querySelectorAll('.nav a');
 navLinks.forEach(link => {
     link.addEventListener('click', (e) => {
-        e.preventDefault();
-        
+        const href = link.getAttribute('href') || '';
+
         // Fechar menu
         menuToggle.classList.remove('active');
         nav.classList.remove('active');
         menuOverlay.classList.remove('active');
         document.body.classList.remove('menu-open');
-        
-        // Scroll sem focar no elemento (evita cursor de texto)
-        const targetId = link.getAttribute('href');
-        const targetSection = document.querySelector(targetId);
-        
-        if (targetSection) {
-            // Usar scrollIntoView sem causar focus
-            targetSection.scrollIntoView({
-                behavior: 'smooth',
-                block: 'start'
-            });
-            
-            // Remover focus do elemento alvo para evitar cursor de texto
-            setTimeout(() => {
-                if (document.activeElement) {
-                    document.activeElement.blur();
-                }
-            }, 100);
+
+        // Links de âncora (#section): rolar suavemente
+        if (href.startsWith('#')) {
+            e.preventDefault();
+            const targetSection = document.querySelector(href);
+            if (targetSection) {
+                targetSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                setTimeout(() => { if (document.activeElement) document.activeElement.blur(); }, 100);
+            }
         }
+        // Links externos (ex: planos.html, admin.html): navegação normal do browser
     });
 });
 

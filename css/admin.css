@@ -953,13 +953,30 @@ body.admin-body {
         --sidebar-width: 0px;
     }
 
+    /* Sidebar: oculta por padrão, desliza para dentro ao abrir */
     .admin-sidebar {
         transform: translateX(-100%);
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100%;
+        z-index: 200;
+        box-shadow: 4px 0 32px rgba(0,0,0,0.5);
     }
 
     .admin-sidebar.open {
         transform: translateX(0);
         width: 240px;
+    }
+
+    /* Overlay escuro ao abrir sidebar no mobile */
+    .admin-sidebar.open::after {
+        content: '';
+        position: fixed;
+        inset: 0;
+        left: 240px;
+        background: rgba(0,0,0,0.55);
+        z-index: -1;
     }
 
     .admin-main {
@@ -970,13 +987,118 @@ body.admin-body {
         display: flex;
     }
 
-    .admin-content {
-        padding: 20px 16px;
+    /* Topbar: compactar no mobile */
+    .admin-topbar {
+        padding: 0 14px;
+        gap: 10px;
     }
 
+    .topbar-title {
+        font-size: 15px;
+    }
+
+    .topbar-back-btn {
+        font-size: 12px;
+        padding: 6px 10px;
+    }
+
+    /* Content: menos padding */
+    .admin-content {
+        padding: 16px 12px;
+    }
+
+    /* Stats grid: 2 colunas em telas pequenas */
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+
+    .stat-card {
+        padding: 14px;
+    }
+
+    .stat-value {
+        font-size: 22px;
+    }
+
+    /* Toolbar: empilha em coluna */
+    .table-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .search-input {
+        max-width: 100%;
+        width: 100%;
+    }
+
+    .filter-select {
+        width: 100%;
+    }
+
+    /* Tabela: ocultar colunas menos importantes */
     .data-table th:nth-child(n+4),
     .data-table td:nth-child(n+4) {
         display: none;
+    }
+
+    /* Plans/Coupons grid: 1 coluna */
+    .plans-grid,
+    .coupons-grid {
+        grid-template-columns: 1fr;
+    }
+
+    /* Section header: empilha botões abaixo do título */
+    .section-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .section-header > div:last-child,
+    .section-header > button:last-child {
+        width: 100%;
+    }
+
+    .section-header > div:last-child {
+        display: flex;
+        gap: 8px;
+    }
+
+    .section-header > div:last-child .btn,
+    .section-header > .btn {
+        flex: 1;
+        justify-content: center;
+    }
+
+    /* Paginação: empilha em coluna */
+    .pagination {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
+
+    .pagination-controls {
+        display: flex;
+        gap: 8px;
+    }
+
+    .pagination-controls .btn {
+        flex: 1;
+        justify-content: center;
+    }
+
+    /* Modais: largura total no mobile */
+    .modal {
+        width: calc(100vw - 24px);
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+
+    /* Grids internos de modais: uma coluna */
+    .modal-body [style*="grid-template-columns:1fr 1fr"] {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 0 !important;
     }
 }
 

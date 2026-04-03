@@ -408,8 +408,10 @@
         </div>
         <nav class="nav">
             <a href="index.html">Início</a>
-            <a href="planos.html" style="color:#0C7E92;">Planos</a>
+            <a href="index.html#como-usar">Como Usar</a>
             <a href="index.html#contato">Contato</a>
+            <a href="planos.html" style="color:#0C7E92;">Planos</a>
+            <a href="admin.html" id="admin-nav-link" style="display:none;">Admin</a>
         </nav>
         <div class="header-right">
             <div id="auth-section" style="display:none;"></div>
@@ -502,6 +504,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-config.js"></script>
 <script src="js/auth.js?v=1.0"></script>
+<script src="script.js"></script>
 
 <script>
 // ─────────────────────────────────────────────────────────────
@@ -568,6 +571,12 @@ async function initAuthHeader() {
                 userRole = res.data.role || 'user';
             }
         } catch(_) {}
+
+        // Show admin link in nav for admins
+        if (['admin', 'super_admin'].includes(userRole)) {
+            const adminNavLink = document.getElementById('admin-nav-link');
+            if (adminNavLink) adminNavLink.style.display = '';
+        }
 
         const adminLink = ['admin','super_admin'].includes(userRole) ? `
             <a href="admin.html" class="user-dropdown-item" style="text-decoration:none;">
