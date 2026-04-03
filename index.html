@@ -457,7 +457,6 @@
 
                 // ─── Screen lock & monthly usage check ───────────────
                 (async function applyScreenLock() {
-                    const LABEL_PROCESSOR_SCREEN = 'label-processor';
                     const FREE_MONTHLY_LIMIT = 30;
 
                     // Load plan features for paid users
@@ -477,10 +476,6 @@
                     }
 
                     // Determine access
-                    const isScreenLocked = planFeatures
-                        ? !(planFeatures.unlocked_screens || []).includes(LABEL_PROCESSOR_SCREEN)
-                        : false; // Free users are not screen-locked
-
                     const monthlyLimit = planFeatures?.monthly_limit ?? FREE_MONTHLY_LIMIT;
                     const currentMonth = new Date().toISOString().slice(0, 7);
                     const usageCount = (profileResult?.usage_month === currentMonth)
@@ -488,29 +483,45 @@
                         : 0;
                     const isLimitExceeded = monthlyLimit !== null && usageCount >= monthlyLimit;
 
-                    if (isScreenLocked || isLimitExceeded) {
+                    if (isLimitExceeded) {
                         const toolCard = document.querySelector('.tool-card');
                         if (toolCard) {
                             const overlay = document.createElement('div');
                             overlay.className = 'tool-lock-overlay';
-                            overlay.innerHTML = isLimitExceeded
-                                ? `<div class="tool-lock-inner">
+                            overlay.innerHTML = `<div class="tool-lock-inner">
                                     <div class="tool-lock-icon">⚡</div>
                                     <h3>Limite mensal atingido</h3>
                                     <p>Você utilizou ${usageCount} de ${monthlyLimit} processamentos este mês.</p>
                                     <a href="planos.html" class="tool-lock-btn">Ver planos</a>
-                                   </div>`
-                                : `<div class="tool-lock-inner">
-                                    <div class="tool-lock-icon">🔒</div>
-                                    <h3>Recurso não disponível</h3>
-                                    <p>Este recurso não está incluído no seu plano atual.</p>
-                                    <a href="planos.html" class="tool-lock-btn">Atualizar plano</a>
                                    </div>`;
                             toolCard.appendChild(overlay);
                             const processBtn = document.getElementById('process-btn');
                             if (processBtn) processBtn.disabled = true;
                         }
                     } else {
+                        // Per-marketplace screen lock for paid users.
+                        // Legacy plans that still have 'label-processor' are treated as all-unlocked.
+                        if (planFeatures) {
+                            const unlockedScreens = planFeatures.unlocked_screens || [];
+                            const legacyAllUnlocked = unlockedScreens.includes('label-processor');
+                            if (!legacyAllUnlocked) {
+                                document.querySelectorAll('.marketplace-content').forEach(function(content) {
+                                    const marketplace = content.getAttribute('data-marketplace');
+                                    if (!unlockedScreens.includes(marketplace)) {
+                                        const overlay = document.createElement('div');
+                                        overlay.className = 'tool-lock-overlay';
+                                        overlay.innerHTML = `<div class="tool-lock-inner">
+                                            <div class="tool-lock-icon">🔒</div>
+                                            <h3>Recurso não disponível</h3>
+                                            <p>Este marketplace não está incluído no seu plano atual.</p>
+                                            <a href="planos.html" class="tool-lock-btn">Atualizar plano</a>
+                                           </div>`;
+                                        content.style.position = 'relative';
+                                        content.appendChild(overlay);
+                                    }
+                                });
+                            }
+                        }
                         // Track usage when user downloads processed labels
                         document.addEventListener('click', async function onDownload(e) {
                             if (!e.target.closest('#download-btn')) return;

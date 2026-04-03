@@ -15,10 +15,12 @@ const SUPABASE_FUNCTIONS_URL = `${SUPABASE_URL}/functions/v1`;
 const USERS_PER_PAGE = 20;
 
 // ── Available app screens ─────────────────────────────────────
-// Update this list when new screens / tools are added to the site.
+// Each entry maps to a marketplace tab in index.html (data-marketplace).
+// Update this list when new marketplaces are added to the site.
 const AVAILABLE_SCREENS = [
-    { id: 'label-processor', name: 'Processador de Etiquetas', description: 'Processar etiquetas de Shopee, TikTok, Shein e outros' },
-    // Add new screens here as the site grows
+    { id: 'shopee', name: 'Shopee',  description: 'Processamento de etiquetas Shopee' },
+    { id: 'tiktok', name: 'TikTok', description: 'Processamento de etiquetas TikTok' },
+    { id: 'shein',  name: 'Shein',  description: 'Processamento de etiquetas Shein' },
 ];
 
 // ─────────────────────────────────────────────────────────────
@@ -528,8 +530,9 @@ function renderPlans() {
 }
 
 function buildPlanCard(p) {
-    const price    = `R$ ${parseFloat(p.price_brl).toFixed(2).replace('.', ',')}`;
-    const interval = p.interval === 'month' ? '/mês' : '/ano';
+    const priceBrl = p.price_brl != null ? parseFloat(p.price_brl) : 0;
+    const price    = `R$ ${priceBrl.toFixed(2).replace('.', ',')}`;
+    const interval = p.interval === 'month' ? '/mês' : p.interval === 'year' ? '/ano' : '';
     const status   = p.is_archived
         ? `<span class="badge badge-canceled">Arquivado</span>`
         : p.is_active
@@ -685,7 +688,7 @@ function openEditPlanModal(planId) {
     document.getElementById('editPlanId').value           = p.id;
     document.getElementById('editPlanName').value         = p.name;
     document.getElementById('editPlanDescription').value  = p.description || '';
-    document.getElementById('editPlanPrice').value        = `R$ ${parseFloat(p.price_brl).toFixed(2).replace('.', ',')} / ${p.interval === 'month' ? 'mês' : 'ano'}`;
+    document.getElementById('editPlanPrice').value        = parseFloat(p.price_brl || 0).toFixed(2);
     document.getElementById('editPlanTier').value         = p.tier || 'basic';
     document.getElementById('editPlanMonthlyLimit').value = p.monthly_limit || '';
     document.getElementById('editPlanObservation').value  = p.observation || '';
@@ -702,6 +705,8 @@ async function submitEditPlan() {
     const observation   = document.getElementById('editPlanObservation').value.trim();
     const limitRaw      = document.getElementById('editPlanMonthlyLimit').value;
     const monthly_limit = limitRaw ? parseInt(limitRaw) : null;
+    const price_brl_raw = document.getElementById('editPlanPrice').value;
+    const price_brl     = price_brl_raw !== '' ? parseFloat(price_brl_raw) : undefined;
     const unlocked_screens = [...document.querySelectorAll('#planScreensEdit .screen-check-input:checked')]
         .map(el => el.value);
 
@@ -717,6 +722,7 @@ async function submitEditPlan() {
             action: 'edit',
             plan_id: id,
             name, description, tier, observation, monthly_limit, unlocked_screens,
+            ...(price_brl !== undefined && !isNaN(price_brl) ? { price_brl } : {}),
         }, session.data.session.access_token);
 
         const body = await res.json();

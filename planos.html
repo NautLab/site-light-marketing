@@ -319,9 +319,9 @@
 
         .plan-price-obs {
             font-size: 12px;
-            color: rgba(12,126,146,0.9);
+            color: rgba(255,255,255,0.45);
             margin-top: 5px;
-            font-weight: 500;
+            font-weight: 400;
         }
 
         .plan-free-note {
@@ -886,6 +886,18 @@ function handleFreePlan() {
         window.location.href = 'register.html';
     }
 }
+
+// Bfcache: reset plan buttons when user navigates back
+window.addEventListener('pageshow', function(e) {
+    if (e.persisted) {
+        document.querySelectorAll('.plan-btn-primary').forEach(function(btn) {
+            if (btn.disabled && btn.textContent.trim() === 'Aguarde…') {
+                btn.disabled = false;
+                btn.textContent = 'Assinar agora';
+            }
+        });
+    }
+});
 
 // ─────────────────────────────────────────────────────────────
 // Coupon

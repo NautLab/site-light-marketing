@@ -104,37 +104,41 @@ const downloadBtn = document.getElementById('download-btn');
 let generatedPdfBlob = null;
 
 // File selection handlers
-pdfInput.addEventListener('change', function(e) {
-    if (this.files && this.files[0]) {
-        pdfName.textContent = this.files[0].name;
-        pdfName.style.color = '#0C7E92';
-        // Configura o arquivo no processador
-        if (typeof labelProcessor !== 'undefined') {
-            labelProcessor.setPdfFile(this.files[0]);
+if (pdfInput) {
+    pdfInput.addEventListener('change', function(e) {
+        if (this.files && this.files[0]) {
+            pdfName.textContent = this.files[0].name;
+            pdfName.style.color = '#0C7E92';
+            // Configura o arquivo no processador
+            if (typeof labelProcessor !== 'undefined') {
+                labelProcessor.setPdfFile(this.files[0]);
+            }
+        } else {
+            pdfName.textContent = 'Nenhum arquivo selecionado';
+            pdfName.style.color = 'rgba(255, 255, 255, 0.6)';
         }
-    } else {
-        pdfName.textContent = 'Nenhum arquivo selecionado';
-        pdfName.style.color = 'rgba(255, 255, 255, 0.6)';
-    }
-    // Esconde mensagens anteriores
-    hideAllMessages();
-});
+        // Esconde mensagens anteriores
+        hideAllMessages();
+    });
+}
 
-xlsxInput.addEventListener('change', function(e) {
-    if (this.files && this.files[0]) {
-        xlsxName.textContent = this.files[0].name;
-        xlsxName.style.color = '#0C7E92';
-        // Configura o arquivo no processador
-        if (typeof labelProcessor !== 'undefined') {
-            labelProcessor.setXlsxFile(this.files[0]);
+if (xlsxInput) {
+    xlsxInput.addEventListener('change', function(e) {
+        if (this.files && this.files[0]) {
+            xlsxName.textContent = this.files[0].name;
+            xlsxName.style.color = '#0C7E92';
+            // Configura o arquivo no processador
+            if (typeof labelProcessor !== 'undefined') {
+                labelProcessor.setXlsxFile(this.files[0]);
+            }
+        } else {
+            xlsxName.textContent = 'Nenhum arquivo selecionado';
+            xlsxName.style.color = 'rgba(255, 255, 255, 0.6)';
         }
-    } else {
-        xlsxName.textContent = 'Nenhum arquivo selecionado';
-        xlsxName.style.color = 'rgba(255, 255, 255, 0.6)';
-    }
-    // Esconde mensagens anteriores
-    hideAllMessages();
-});
+        // Esconde mensagens anteriores
+        hideAllMessages();
+    });
+}
 
 // Função para esconder todas as mensagens
 function hideAllMessages() {
@@ -215,7 +219,7 @@ if (downloadBtn) {
 // Os labels com atributo 'for' já acionam o input automaticamente
 
 // Process button handler
-processBtn.addEventListener('click', async function() {
+if (processBtn) processBtn.addEventListener('click', async function() {
     const pdfFile = pdfInput.files[0];
     const xlsxFile = xlsxInput.files[0];
     

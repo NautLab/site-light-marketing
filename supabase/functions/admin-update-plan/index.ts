@@ -70,6 +70,7 @@ Deno.serve(async (req) => {
         observation,
         monthly_limit,
         unlocked_screens,
+        price_brl,
       } = body;
 
       // Update Stripe product name/description if changed
@@ -88,6 +89,7 @@ Deno.serve(async (req) => {
       if (observation !== undefined)       updates.observation       = observation || null;
       if (monthly_limit !== undefined)     updates.monthly_limit     = monthly_limit || null;
       if (unlocked_screens !== undefined)  updates.unlocked_screens  = unlocked_screens || [];
+      if (price_brl !== undefined)         updates.price_brl         = price_brl;
 
       const { data: updated, error: updateErr } = await adminClient
         .from('plans')
