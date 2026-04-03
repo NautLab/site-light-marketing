@@ -342,8 +342,9 @@
 
                 // Fetch profile to check admin role (non-blocking: render UI first)
                 let userRole = 'user';
+                let profileResult = null;
                 try {
-                    const profileResult = await getUserProfile();
+                    profileResult = await getUserProfile();
                     if (profileResult) userRole = profileResult.role || 'user';
                 } catch (_) { /* silent – admin link just won't appear */ }
 

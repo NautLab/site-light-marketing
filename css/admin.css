@@ -779,6 +779,22 @@ body.admin-body {
     border: 1px solid var(--border);
     border-radius: 10px;
     background: var(--bg-input);
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) var(--bg-input);
+}
+
+.notif-user-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.notif-user-list::-webkit-scrollbar-track {
+    background: var(--bg-input);
+    border-radius: 0 10px 10px 0;
+}
+
+.notif-user-list::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 10px;
 }
 
 .notif-user-item {
