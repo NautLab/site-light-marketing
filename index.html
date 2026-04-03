@@ -33,6 +33,7 @@
                 <a href="#contato">Contato</a>
                 <a href="planos.html">Planos</a>
                 <a href="admin.html" id="admin-nav-link" style="display:none;">Admin</a>
+                <script>try{var _r=sessionStorage.getItem('lm_user_role');if(_r==='admin'||_r==='super_admin')document.getElementById('admin-nav-link').style.display='';}catch(e){}</script>
             </nav>
             
             <div class="header-right">
@@ -343,13 +344,6 @@
                 // Fetch profile to check admin role (non-blocking: render UI first)
                 let userRole = 'user';
                 let profileResult = null;
-
-                // Show admin link immediately if role is cached from a previous load (same session)
-                const cachedRole = sessionStorage.getItem('lm_user_role');
-                if (cachedRole && ['admin', 'super_admin'].includes(cachedRole)) {
-                    const adminNavLink = document.getElementById('admin-nav-link');
-                    if (adminNavLink) adminNavLink.style.display = '';
-                }
 
                 try {
                     profileResult = await getUserProfile();

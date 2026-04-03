@@ -425,7 +425,7 @@
 
         /* ── Navbar: não fixo no mobile ──────────────────── */
         @media (max-width: 768px) {
-            .header { position: static !important; }
+            .header { position: relative !important; z-index: 1000; }
         }
     </style>
 </head>
@@ -447,6 +447,7 @@
             <a href="index.html#contato">Contato</a>
             <a href="planos.html" style="color:#0C7E92;">Planos</a>
             <a href="admin.html" id="admin-nav-link" style="display:none;">Admin</a>
+            <script>try{var _r=sessionStorage.getItem('lm_user_role');if(_r==='admin'||_r==='super_admin')document.getElementById('admin-nav-link').style.display='';}catch(e){}</script>
         </nav>
         <div class="header-right">
             <div id="auth-section" style="display:none;"></div>
@@ -602,6 +603,7 @@ async function initAuthHeader() {
             if (res) {
                 currentProfile = res;
                 userRole = res.role || 'user';
+                sessionStorage.setItem('lm_user_role', userRole);
             }
         } catch(_) {}
 
