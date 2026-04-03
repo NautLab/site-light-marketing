@@ -632,6 +632,22 @@
 ══════════════════════════════════════════════════ -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-config.js"></script>
+<script>
+try {
+    var _r  = sessionStorage.getItem('lm_user_role');
+    var _ui = sessionStorage.getItem('lm_user_initials');
+    var _un = sessionStorage.getItem('lm_user_name');
+    var _ue = sessionStorage.getItem('lm_user_email');
+    if ((_r === 'admin' || _r === 'super_admin') && (_ui || _un || _ue)) {
+        document.getElementById('sidebarAvatar').textContent = _ui || (_un || _ue || '?').charAt(0).toUpperCase();
+        document.getElementById('sidebarName').textContent   = _un || _ue || '—';
+        document.getElementById('sidebarRole').textContent   = _r === 'super_admin' ? 'Super Admin' : 'Admin';
+        document.getElementById('authLoading').style.display = 'none';
+        document.getElementById('adminApp').style.display    = 'flex';
+        window._adminPreRendered = true;
+    }
+} catch(e) {}
+</script>
 <script src="js/admin.js"></script>
 
 <!-- Sidebar backdrop -->

@@ -98,9 +98,11 @@ async function initAdmin() {
             if (saOpt) saOpt.remove();
         }
 
-        // Show app
-        document.getElementById('authLoading').style.display = 'none';
-        document.getElementById('adminApp').style.display    = 'flex';
+        // Show app (may already be visible via sessionStorage pre-render)
+        if (!window._adminPreRendered) {
+            document.getElementById('authLoading').style.display = 'none';
+            document.getElementById('adminApp').style.display    = 'flex';
+        }
 
         // Load initial section data
         await loadUsers();
