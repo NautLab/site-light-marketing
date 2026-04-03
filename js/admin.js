@@ -158,7 +158,7 @@ async function loadUsers() {
 
     if (error) {
         showToast('Erro ao carregar usuários: ' + error.message, 'error');
-        tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><span class="empty-state-icon">❌</span><p class="empty-state-text">Erro ao carregar usuários</p></div></td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><p class="empty-state-text">Erro ao carregar usuários</p></div></td></tr>`;
         return;
     }
 
@@ -222,7 +222,7 @@ function renderUsersTable() {
     document.getElementById('usersNextBtn').disabled = usersCurrentPage >= totalPages;
 
     if (page.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><span class="empty-state-icon">🔍</span><p class="empty-state-text">Nenhum usuário encontrado</p></div></td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><p class="empty-state-text">Nenhum usuário encontrado</p></div></td></tr>`;
         return;
     }
 
@@ -398,7 +398,7 @@ async function confirmRoleChange() {
 
 async function loadPlans() {
     document.getElementById('plansContainer').innerHTML =
-        `<div class="empty-state"><span class="empty-state-icon">⏳</span><p class="empty-state-text">Carregando planos…</p></div>`;
+        `<div class="empty-state"><p class="empty-state-text">Carregando planos…</p></div>`;
 
     const { data, error } = await supabase
         .from('plans')
@@ -429,7 +429,7 @@ function renderPlans() {
 
     if (visible.length === 0) {
         const msg = showArchivedPlans ? 'Nenhum plano arquivado' : 'Nenhum plano encontrado';
-        container.innerHTML = `<div class="empty-state"><span class="empty-state-icon">📦</span><p class="empty-state-text">${msg}</p>${!showArchivedPlans ? '<p class="empty-state-sub">Clique em "+ Criar Plano" para começar.</p>' : ''}</div>`;
+        container.innerHTML = `<div class="empty-state"><p class="empty-state-text">${msg}</p>${!showArchivedPlans ? '<p class="empty-state-sub">Clique em "+ Criar Plano" para começar.</p>' : ''}</div>`;
         return;
     }
 
@@ -446,7 +446,7 @@ function buildPlanCard(p) {
             : `<span class="badge badge-canceled">Inativo</span>`;
 
     const stripeLink = p.stripe_price_id
-        ? `<span class="stripe-badge">⚡ Stripe</span>`
+        ? `<span class="stripe-badge">Stripe</span>`
         : `<span style="color:var(--text-dim);font-size:11px;">Sem Stripe</span>`;
 
     let footerActions = '';
@@ -605,7 +605,7 @@ function renderSubscriptionsTable(list) {
     const tbody = document.getElementById('subsTableBody');
 
     if (display.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><span class="empty-state-icon">💳</span><p class="empty-state-text">Nenhuma assinatura encontrada</p></div></td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><p class="empty-state-text">Nenhuma assinatura encontrada</p></div></td></tr>`;
         return;
     }
 
@@ -678,7 +678,7 @@ async function confirmCancelSub() {
 
 async function loadCoupons() {
     document.getElementById('couponsContainer').innerHTML =
-        `<div class="empty-state"><span class="empty-state-icon">⏳</span><p class="empty-state-text">Carregando cupons…</p></div>`;
+        `<div class="empty-state"><p class="empty-state-text">Carregando cupons…</p></div>`;
 
     const { data, error } = await supabase
         .from('coupons')
@@ -698,7 +698,7 @@ function renderCoupons() {
     const container = document.getElementById('couponsContainer');
 
     if (allCoupons.length === 0) {
-        container.innerHTML = `<div class="empty-state"><span class="empty-state-icon">🏷️</span><p class="empty-state-text">Nenhum cupom encontrado</p><p class="empty-state-sub">Clique em "+ Criar Cupom" para começar.</p></div>`;
+        container.innerHTML = `<div class="empty-state"><p class="empty-state-text">Nenhum cupom encontrado</p><p class="empty-state-sub">Clique em "+ Criar Cupom" para começar.</p></div>`;
         return;
     }
 
@@ -727,9 +727,9 @@ function buildCouponCard(c) {
         <div class="coupon-code-display">${escHtml(c.code)}</div>
         <div class="coupon-discount">${discount}</div>
         <div class="coupon-meta">
-            <span>📅 ${validade}</span>
-            <span>🔁 Duração: ${durationLabel(c.duration)}</span>
-            <span>🎟️ ${usos}</span>
+            <span>Validade: ${validade}</span>
+            <span>Duração: ${durationLabel(c.duration)}</span>
+            <span>${usos}</span>
         </div>
         <div class="coupon-card-footer">
             ${status}
