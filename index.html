@@ -343,9 +343,19 @@
                 // Fetch profile to check admin role (non-blocking: render UI first)
                 let userRole = 'user';
                 let profileResult = null;
+
+                // Show admin link immediately if role is cached from a previous load (same session)
+                const cachedRole = sessionStorage.getItem('lm_user_role');
+                if (cachedRole && ['admin', 'super_admin'].includes(cachedRole)) {
+                    const adminNavLink = document.getElementById('admin-nav-link');
+                    if (adminNavLink) adminNavLink.style.display = '';
+                }
+
                 try {
                     profileResult = await getUserProfile();
                     if (profileResult) userRole = profileResult.role || 'user';
+                    // Cache role for instant display on next page load within session
+                    sessionStorage.setItem('lm_user_role', userRole);
                 } catch (_) { /* silent – admin link just won't appear */ }
 
                 const adminLinkHTML = ['admin', 'super_admin'].includes(userRole) ? `
