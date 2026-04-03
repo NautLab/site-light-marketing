@@ -423,9 +423,9 @@
             .plans-grid { grid-template-columns: 1fr; }
         }
 
-        /* ── Navbar: não fixo no mobile ──────────────────── */
+        /* ── Navbar: sticky no mobile ──────────────────── */
         @media (max-width: 768px) {
-            .header { position: relative !important; z-index: 1000; }
+            .header { position: sticky !important; top: 0 !important; z-index: 1000; }
         }
     </style>
 </head>
@@ -475,7 +475,6 @@
                 <div class="toggle-knob"></div>
             </div>
             <span id="labelYear">Anual</span>
-            <span class="discount-badge" id="annualBadge" style="display:none;"></span>
         </div>
 
         <!-- Cards -->
@@ -540,6 +539,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-config.js"></script>
+<script src="js/screens-config.js"></script>
 <script src="js/auth.js?v=1.0"></script>
 <script src="script.js"></script>
 
@@ -555,25 +555,50 @@ let allPlans             = [];
 
 const SUPABASE_FUNCTIONS_URL = `${SUPABASE_URL}/functions/v1`;
 
-// Features por tier (exibição fixa)
-const FEATURES = {
-    basic: [
-        { text: 'Processamento de etiquetas', ok: true },
-        { text: 'Shopee, TikTok e Shein',     ok: true },
-        { text: 'Até 500 etiquetas por mês',  ok: true },
-        { text: 'Suporte por e-mail',          ok: true },
-        { text: 'Todos os marketplaces',       ok: false },
-        { text: 'Suporte prioritário',         ok: false },
-    ],
-    premium: [
-        { text: 'Processamento de etiquetas', ok: true },
-        { text: 'Todos os marketplaces',       ok: true },
-        { text: 'Etiquetas ilimitadas',        ok: true },
-        { text: 'Suporte prioritário',         ok: true },
-        { text: 'API de integração',           ok: true },
-        { text: 'Relatórios avançados',        ok: true },
-    ],
-};
+// All available marketplaces — loaded from js/screens-config.js (AVAILABLE_SCREENS)
+const ALL_SCREENS = AVAILABLE_SCREENS;
+
+// Build features dynamically from plan data
+function buildFeatures(plan) {
+    const screens = plan.unlocked_screens || [];
+    const limit   = plan.monthly_limit;
+    const features = [];
+
+    // Processing feature (always true for paid plans)
+    features.push({ text: 'Processamento de etiquetas', ok: true });
+
+    // Screens
+    const allUnlocked = ALL_SCREENS.every(s => screens.includes(s.id));
+    if (allUnlocked) {
+        features.push({ text: 'Todos os marketplaces', ok: true });
+    } else {
+        const unlockedNames = ALL_SCREENS.filter(s => screens.includes(s.id)).map(s => s.name);
+        const lockedNames   = ALL_SCREENS.filter(s => !screens.includes(s.id)).map(s => s.name);
+        if (unlockedNames.length > 0) {
+            features.push({ text: unlockedNames.join(', '), ok: true });
+        }
+        if (lockedNames.length > 0) {
+            features.push({ text: lockedNames.join(', '), ok: false });
+        }
+    }
+
+    // Monthly limit
+    if (limit) {
+        features.push({ text: `Até ${limit.toLocaleString('pt-BR')} etiquetas/mês`, ok: true });
+    } else {
+        features.push({ text: 'Etiquetas ilimitadas', ok: true });
+    }
+
+    // Tier-based extras
+    if (plan.tier === 'premium') {
+        features.push({ text: 'Suporte prioritário', ok: true });
+    } else {
+        features.push({ text: 'Suporte por e-mail', ok: true });
+        features.push({ text: 'Suporte prioritário', ok: false });
+    }
+
+    return features;
+}
 
 // ─────────────────────────────────────────────────────────────
 // Boot
@@ -743,41 +768,35 @@ async function loadPlans() {
 }
 
 function renderPaidPlans() {
-    const container  = document.getElementById('paidPlansContainer');
-    const monthPlans = allPlans.filter(p => p.interval === 'month');
-    const yearPlans  = allPlans.filter(p => p.interval === 'year');
-    const plans      = currentInterval === 'month' ? monthPlans : yearPlans;
-
-    // Se não tiver planos anuais ainda, mostra mensais com preço anual estimado
-    const display = plans.length > 0 ? plans : monthPlans;
-
-    // Update annual badge from first annual plan observation
-    const badge = document.getElementById('annualBadge');
-    if (badge) {
-        const obs = yearPlans.length > 0 ? (yearPlans[0].observation || '') : '';
-        if (obs) { badge.textContent = obs; badge.style.display = ''; }
-        else { badge.style.display = 'none'; }
-    }
-
-    container.innerHTML = display.map(p => buildPlanCard(p, plans.length === 0 && currentInterval === 'year')).join('');
+    const container = document.getElementById('paidPlansContainer');
+    // All plans are now single rows (interval='month') with optional annual_price_brl
+    const plans = allPlans.filter(p => p.interval === 'month');
+    container.innerHTML = plans.map(p => buildPlanCard(p)).join('');
 }
 
-function buildPlanCard(p, estimatedAnnual = false) {
-    const features  = FEATURES[p.tier] || [];
+function buildPlanCard(p) {
+    const features  = buildFeatures(p);
     const isCurrent = currentProfile?.subscription_tier === p.tier;
     const isFeatured = p.tier === 'premium';
-    const price     = parseFloat(p.price_brl);
-    const monthDisplay = estimatedAnnual
-        ? (price * 10 / 12).toFixed(2).replace('.', ',')
-        : price.toFixed(2).replace('.', ',');
+    const monthlyPrice = parseFloat(p.price_brl);
+    const annualTotal  = p.annual_price_brl ? parseFloat(p.annual_price_brl) : null;
+    const annualMonthly = annualTotal ? annualTotal / 12 : null;
 
-    const obs = p.observation ? escHtml(p.observation) : '';
+    const isAnnual = currentInterval === 'year' && annualTotal;
+    const monthDisplay = isAnnual
+        ? annualMonthly.toFixed(2).replace('.', ',')
+        : monthlyPrice.toFixed(2).replace('.', ',');
 
-    const annualNote = estimatedAnnual
-        ? `<div class="plan-price-annual">≈ R$ ${(price * 10).toFixed(2).replace('.', ',')} /ano${obs ? ` — ${obs}` : ''}</div>`
-        : currentInterval === 'year'
-            ? `<div class="plan-price-annual">R$ ${(price * 12).toFixed(2).replace('.', ',')} cobrado anualmente${obs ? ` — ${obs}` : ''}</div>`
-            : obs ? `<div class="plan-price-obs">${obs}</div>` : '';
+    const obs = currentInterval === 'year' && p.annual_observation
+        ? escHtml(p.annual_observation)
+        : p.observation ? escHtml(p.observation) : '';
+
+    let priceNote = '';
+    if (isAnnual) {
+        priceNote = `<div class="plan-price-annual">R$ ${annualTotal.toFixed(2).replace('.', ',')} cobrado anualmente${obs ? ` — ${obs}` : ''}</div>`;
+    } else if (obs) {
+        priceNote = `<div class="plan-price-obs">${obs}</div>`;
+    }
 
     // Cancel subscription button for current paid plan
     let cancelBtnHtml = '';
@@ -808,7 +827,7 @@ function buildPlanCard(p, estimatedAnnual = false) {
         <div class="plan-description">${escHtml(p.description || '')}</div>
         <div class="plan-price-block">
             <div class="plan-price"><sup>R$</sup>${monthDisplay}<sub>/mês</sub></div>
-            ${annualNote}
+            ${priceNote}
         </div>
         <div class="plan-divider"></div>
         <ul class="plan-features">${featuresHtml}</ul>
@@ -873,6 +892,7 @@ async function handleSubscribe(planId, planName) {
             body: JSON.stringify({
                 plan_id: planId,
                 coupon_code: activeCouponCode || undefined,
+                billing_interval: currentInterval,
             }),
         });
 

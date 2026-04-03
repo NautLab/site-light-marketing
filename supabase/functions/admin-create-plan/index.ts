@@ -47,50 +47,69 @@ Deno.serve(async (req) => {
       name,
       description,
       tier = 'basic',
-      interval = 'month',
       price_brl,
       observation,
       monthly_limit = null,
       unlocked_screens = [],
+      annual_price_brl = null,
+      annual_observation = null,
     } = await req.json();
 
     if (!name || !price_brl || price_brl <= 0) {
       return json({ error: 'Missing required fields' }, 400);
+    }
+    if (annual_price_brl != null && annual_price_brl <= 0) {
+      return json({ error: 'Invalid annual price' }, 400);
     }
 
     const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!, {
       apiVersion: '2024-06-20',
     });
 
-    // Create Stripe product
+    // Create Stripe product (one product for both intervals)
     const product = await stripe.products.create({
       name,
       description: description || undefined,
-      metadata: { tier, interval },
+      metadata: { tier },
     });
 
-    // Create Stripe price (BRL, in centavos)
-    const price = await stripe.prices.create({
+    // Create monthly Stripe price (BRL, in centavos)
+    const monthlyPrice = await stripe.prices.create({
       product: product.id,
       unit_amount: Math.round(price_brl * 100),
       currency: 'brl',
-      recurring: { interval: interval as 'month' | 'year' },
+      recurring: { interval: 'month' },
     });
 
-    // Save to DB
+    // Optionally create annual Stripe price
+    let annualStripeId: string | null = null;
+    if (annual_price_brl) {
+      const annualPrice = await stripe.prices.create({
+        product: product.id,
+        unit_amount: Math.round(annual_price_brl * 100),
+        currency: 'brl',
+        recurring: { interval: 'year' },
+      });
+      annualStripeId = annualPrice.id;
+    }
+
+    // Save to DB (single row with both intervals)
     const { data: plan, error } = await adminClient
       .from('plans')
       .insert({
         name,
         description: description || null,
         tier,
-        interval,
+        interval: 'month',
         price_brl,
         observation: observation || null,
         monthly_limit: monthly_limit || null,
         unlocked_screens: unlocked_screens || [],
         stripe_product_id: product.id,
-        stripe_price_id: price.id,
+        stripe_price_id: monthlyPrice.id,
+        annual_price_brl: annual_price_brl || null,
+        annual_stripe_price_id: annualStripeId,
+        annual_observation: annual_observation || null,
         is_active: true,
       })
       .select()

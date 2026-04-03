@@ -1066,6 +1066,12 @@ body.admin-body {
     color: var(--text-dim);
 }
 
+/* ── Global checkbox & number input theming ── */
+input[type="checkbox"] {
+    accent-color: var(--primary);
+    color-scheme: dark;
+}
+
 .form-control[type="number"] {
     color-scheme: dark;
 }
@@ -1262,13 +1268,13 @@ body.admin-body {
         gap: 10px;
     }
 
-    .section-header > div:last-child {
+    .section-header > div:last-child:not(:first-child) {
         width: 100%;
         display: flex;
         gap: 8px;
     }
 
-    .section-header > div:last-child .btn,
+    .section-header > div:last-child:not(:first-child) .btn,
     .section-header > .btn {
         flex: 1;
         justify-content: center;

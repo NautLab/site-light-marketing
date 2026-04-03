@@ -71,6 +71,8 @@ Deno.serve(async (req) => {
         monthly_limit,
         unlocked_screens,
         price_brl,
+        annual_price_brl,
+        annual_observation,
       } = body;
 
       // Update Stripe product name/description if changed
@@ -90,6 +92,19 @@ Deno.serve(async (req) => {
       if (monthly_limit !== undefined)     updates.monthly_limit     = monthly_limit || null;
       if (unlocked_screens !== undefined)  updates.unlocked_screens  = unlocked_screens || [];
       if (price_brl !== undefined)         updates.price_brl         = price_brl;
+      if (annual_price_brl !== undefined)  updates.annual_price_brl  = annual_price_brl || null;
+      if (annual_observation !== undefined) updates.annual_observation = annual_observation || null;
+
+      // Create annual Stripe price if annual_price_brl provided and no annual_stripe_price_id yet
+      if (annual_price_brl && !plan.annual_stripe_price_id && plan.stripe_product_id) {
+        const annualPrice = await stripe.prices.create({
+          product: plan.stripe_product_id,
+          unit_amount: Math.round(annual_price_brl * 100),
+          currency: 'brl',
+          recurring: { interval: 'year' },
+        });
+        updates.annual_stripe_price_id = annualPrice.id;
+      }
 
       const { data: updated, error: updateErr } = await adminClient
         .from('plans')

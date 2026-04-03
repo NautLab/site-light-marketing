@@ -15,13 +15,8 @@ const SUPABASE_FUNCTIONS_URL = `${SUPABASE_URL}/functions/v1`;
 const USERS_PER_PAGE = 20;
 
 // ── Available app screens ─────────────────────────────────────
-// Each entry maps to a marketplace tab in index.html (data-marketplace).
-// Update this list when new marketplaces are added to the site.
-const AVAILABLE_SCREENS = [
-    { id: 'shopee', name: 'Shopee',  description: 'Processamento de etiquetas Shopee' },
-    { id: 'tiktok', name: 'TikTok', description: 'Processamento de etiquetas TikTok' },
-    { id: 'shein',  name: 'Shein',  description: 'Processamento de etiquetas Shein' },
-];
+// Defined in js/screens-config.js (shared with planos.html).
+// AVAILABLE_SCREENS is loaded as a global from that file.
 
 // ─────────────────────────────────────────────────────────────
 // State
@@ -123,6 +118,7 @@ const sectionTitles = {
     subscriptions: 'Assinaturas',
     coupons: 'Cupons',
     notifications: 'Notificações',
+    'site-data': 'Dados do site',
 };
 
 function showSection(name) {
@@ -138,6 +134,7 @@ function showSection(name) {
     if (name === 'subscriptions' && allSubs.length === 0)         loadSubscriptions();
     if (name === 'coupons' && allCoupons.length === 0)            loadCoupons();
     if (name === 'notifications' && allNotifications.length === 0) loadNotifications();
+    if (name === 'site-data') loadSiteSettings();
 
     // Close sidebar on mobile
     if (window.innerWidth <= 768) {
@@ -377,6 +374,16 @@ function openFreeAccessModal(userId, userName) {
     selectedUserId   = userId;
     selectedUserName = userName;
     document.getElementById('freeAccessUserName').textContent = userName;
+
+    // Populate plan select from loaded plans (exclude free tier)
+    const select = document.getElementById('freeAccessTierSelect');
+    const paidPlans = allPlans.filter(p => p.tier !== 'free' && !p.is_archived && p.is_active);
+    if (paidPlans.length > 0) {
+        select.innerHTML = paidPlans.map(p =>
+            `<option value="${p.tier}">${escHtml(p.name)}</option>`
+        ).join('');
+    }
+
     openModal('freeAccessModal');
 }
 
@@ -534,7 +541,6 @@ function renderPlans() {
 function buildPlanCard(p) {
     const priceBrl = p.price_brl != null ? parseFloat(p.price_brl) : 0;
     const price    = `R$ ${priceBrl.toFixed(2).replace('.', ',')}`;
-    const interval = p.interval === 'month' ? '/mês' : p.interval === 'year' ? '/ano' : '';
     const status   = p.is_archived
         ? `<span class="badge badge-canceled">Arquivado</span>`
         : p.is_active
@@ -554,6 +560,11 @@ function buildPlanCard(p) {
             const s = AVAILABLE_SCREENS.find(s => s.id === id);
             return s ? s.name : id;
           }).join(', ')}</div>`
+        : '';
+
+    // Annual pricing info
+    const annualInfo = p.annual_price_brl
+        ? `<div style="font-size:11px;color:var(--primary);margin-top:4px;">Anual: R$ ${parseFloat(p.annual_price_brl).toFixed(2).replace('.', ',')} /ano (R$ ${(parseFloat(p.annual_price_brl)/12).toFixed(2).replace('.', ',')} /mês)${p.annual_observation ? ' — ' + escHtml(p.annual_observation) : ''}</div>`
         : '';
 
     let footerActions = '';
@@ -582,7 +593,8 @@ function buildPlanCard(p) {
             </div>
             ${status}
         </div>
-        <div class="plan-price">${price} <span>${interval}</span></div>
+        <div class="plan-price">${price} <span>/mês</span></div>
+        ${annualInfo}
         <div class="plan-description">${escHtml(p.description || '—')}</div>
         ${limitText}
         ${screensText}
@@ -603,15 +615,15 @@ async function submitCreatePlan() {
     const unlockedScreens = [...document.querySelectorAll('#planScreensCreate .screen-check-input:checked')]
         .map(el => el.value);
     const createAnnual = document.getElementById('createAnnualToo')?.checked;
-    const annualPrice  = createAnnual ? parseFloat(document.getElementById('planAnnualPrice').value) : null;
+    const annualMonthly = createAnnual ? parseFloat(document.getElementById('planAnnualPrice').value) : null;
     const annualObs    = createAnnual ? document.getElementById('planAnnualObservation').value.trim() : '';
 
     if (!name || isNaN(price) || price <= 0) {
         showToast('Preencha nome e preço corretamente.', 'error');
         return;
     }
-    if (createAnnual && (isNaN(annualPrice) || annualPrice <= 0)) {
-        showToast('Preencha o preço anual corretamente.', 'error');
+    if (createAnnual && (isNaN(annualMonthly) || annualMonthly <= 0)) {
+        showToast('Preencha o preço mensal da versão anual corretamente.', 'error');
         return;
     }
 
@@ -623,35 +635,25 @@ async function submitCreatePlan() {
         const session = await supabase.auth.getSession();
         const token = session.data.session.access_token;
 
-        // Create monthly plan
-        const res = await callFunction('admin-create-plan', {
-            name, description, interval: 'month', price_brl: price,
+        // Create single plan with optional annual pricing
+        const payload = {
+            name, description, price_brl: price,
             observation, monthly_limit: monthlyLimit, unlocked_screens: unlockedScreens,
-        }, token);
+        };
+        if (createAnnual) {
+            payload.annual_price_brl = Math.round(annualMonthly * 12 * 100) / 100; // total anual
+            payload.annual_observation = annualObs;
+        }
+
+        const res = await callFunction('admin-create-plan', payload, token);
         const body = await res.json();
         if (!res.ok) throw new Error(body.error || 'Erro ao criar plano');
         allPlans.push(body.plan);
 
-        // Optionally create annual counterpart
-        if (createAnnual) {
-            const resAnnual = await callFunction('admin-create-plan', {
-                name: `${name} Anual`,
-                description,
-                interval: 'year',
-                price_brl: annualPrice,
-                observation: annualObs,
-                monthly_limit: monthlyLimit,
-                unlocked_screens: unlockedScreens,
-            }, token);
-            const bodyAnnual = await resAnnual.json();
-            if (!resAnnual.ok) throw new Error(bodyAnnual.error || 'Erro ao criar plano anual');
-            allPlans.push(bodyAnnual.plan);
-        }
-
         renderPlans();
         closeModal('createPlanModal');
         clearPlanForm();
-        showToast(createAnnual ? 'Planos mensal e anual criados com sucesso!' : 'Plano criado com sucesso!', 'success');
+        showToast('Plano criado com sucesso!', 'success');
     } catch (err) {
         showToast('Erro: ' + err.message, 'error');
     } finally {
@@ -673,8 +675,7 @@ function buildScreenCheckboxes(containerId, selectedIds = []) {
     container.innerHTML = AVAILABLE_SCREENS.map(s => `
         <label class="screen-check-item">
             <input type="checkbox" class="screen-check-input" value="${s.id}"
-                ${selectedIds.includes(s.id) ? 'checked' : ''}
-                style="accent-color:var(--primary);" />
+                ${selectedIds.includes(s.id) ? 'checked' : ''} />
             <div class="screen-check-info">
                 <span class="screen-check-name">${escHtml(s.name)}</span>
                 <span class="screen-check-desc">${escHtml(s.description)}</span>
@@ -695,6 +696,19 @@ function openEditPlanModal(planId) {
     document.getElementById('editPlanMonthlyLimit').value = p.monthly_limit || '';
     document.getElementById('editPlanObservation').value  = p.observation || '';
 
+    // Annual fields
+    const annualPriceEl = document.getElementById('editPlanAnnualPrice');
+    const annualObsEl   = document.getElementById('editPlanAnnualObservation');
+    if (annualPriceEl) annualPriceEl.value = p.annual_price_brl ? (parseFloat(p.annual_price_brl) / 12).toFixed(2) : '';
+    if (annualObsEl)   annualObsEl.value   = p.annual_observation || '';
+
+    // Free plan: lock price, tier and annual fields
+    const isFree = p.tier === 'free';
+    document.getElementById('editPlanPrice').disabled = isFree;
+    document.getElementById('editPlanTier').disabled  = isFree;
+    if (annualPriceEl) annualPriceEl.disabled = isFree;
+    if (annualObsEl)   annualObsEl.disabled   = isFree;
+
     buildScreenCheckboxes('planScreensEdit', p.unlocked_screens || []);
     openModal('editPlanModal');
 }
@@ -712,6 +726,12 @@ async function submitEditPlan() {
     const unlocked_screens = [...document.querySelectorAll('#planScreensEdit .screen-check-input:checked')]
         .map(el => el.value);
 
+    // Annual fields
+    const annualPriceRaw = document.getElementById('editPlanAnnualPrice')?.value;
+    const annualMonthly  = annualPriceRaw ? parseFloat(annualPriceRaw) : null;
+    const annual_price_brl = annualMonthly ? Math.round(annualMonthly * 12 * 100) / 100 : null;
+    const annual_observation = document.getElementById('editPlanAnnualObservation')?.value.trim() || '';
+
     if (!name) { showToast('Nome é obrigatório.', 'error'); return; }
 
     const btn = document.getElementById('editPlanBtn');
@@ -725,6 +745,8 @@ async function submitEditPlan() {
             plan_id: id,
             name, description, tier, observation, monthly_limit, unlocked_screens,
             ...(price_brl !== undefined && !isNaN(price_brl) ? { price_brl } : {}),
+            annual_price_brl,
+            annual_observation,
         }, session.data.session.access_token);
 
         const body = await res.json();
@@ -1236,7 +1258,7 @@ function renderNotifUserList(users) {
 
     container.innerHTML = users.slice(0, 100).map(u => `
         <label class="notif-user-item">
-            <input type="checkbox" class="notif-user-check" value="${u.id}" style="accent-color:var(--primary);" />
+            <input type="checkbox" class="notif-user-check" value="${u.id}" />
             <div class="notif-user-info">
                 <span class="notif-user-name">${escHtml(u.full_name || u.email)}</span>
                 <span class="notif-user-email">${escHtml(u.email)}</span>
@@ -1413,4 +1435,67 @@ function buildLoadingRows(cols, count) {
         `<td><div class="skeleton" style="height:14px;width:80%;border-radius:4px;"></div></td>`
     ).join('')}</tr>`;
     return Array.from({ length: count }, () => row).join('');
+}
+
+/* ══════════════════════════════════════
+   DADOS DO SITE (site_settings)
+══════════════════════════════════════ */
+
+const siteFieldMap = {
+    company_name: 'siteCompanyName',
+    cnpj:         'siteCnpj',
+    phone:        'sitePhone',
+    email:        'siteEmail',
+    website:      'siteWebsite',
+    address:      'siteAddress',
+    city:         'siteCity',
+    state:        'siteState',
+    zip:          'siteZip',
+};
+
+async function loadSiteSettings() {
+    try {
+        const { data, error } = await supabase
+            .from('site_settings')
+            .select('key, value');
+        if (error) throw error;
+
+        (data || []).forEach(row => {
+            const inputId = siteFieldMap[row.key];
+            if (inputId) {
+                const el = document.getElementById(inputId);
+                if (el) el.value = row.value || '';
+            }
+        });
+    } catch (err) {
+        console.error('Erro ao carregar dados do site:', err);
+        showToast('Erro ao carregar dados do site', 'error');
+    }
+}
+
+async function saveSiteSettings() {
+    const btn = document.getElementById('btnSaveSiteData');
+    btn.disabled = true;
+    btn.textContent = 'Salvando…';
+
+    try {
+        const rows = Object.entries(siteFieldMap).map(([key, inputId]) => ({
+            key,
+            value: (document.getElementById(inputId)?.value || '').trim(),
+            updated_at: new Date().toISOString(),
+        }));
+
+        const { error } = await supabase
+            .from('site_settings')
+            .upsert(rows, { onConflict: 'key' });
+        if (error) throw error;
+
+        showToast('Dados do site salvos com sucesso!', 'success');
+    } catch (err) {
+        console.error('Erro ao salvar dados do site:', err);
+        showToast('Erro ao salvar dados do site', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Salvar alterações';
+    }
 }

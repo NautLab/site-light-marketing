@@ -30,6 +30,16 @@ body {
     min-width: 320px;
 }
 
+/* Global checkbox & number input theming */
+input[type="checkbox"] {
+    accent-color: var(--primary-color);
+    color-scheme: dark;
+}
+
+input[type="number"] {
+    color-scheme: dark;
+}
+
 .container {
     max-width: 1400px;
     margin: 0 auto;

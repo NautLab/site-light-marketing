@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
     const { data: { user } } = await callerClient.auth.getUser();
     if (!user) return json({ error: 'Unauthorized' }, 401);
 
-    const { plan_id, coupon_code } = await req.json();
+    const { plan_id, coupon_code, billing_interval } = await req.json();
     if (!plan_id) return json({ error: 'Missing plan_id' }, 400);
 
     // Load plan from DB
@@ -48,7 +48,11 @@ Deno.serve(async (req) => {
       .single();
 
     if (planErr || !plan) return json({ error: 'Plan not found or inactive' }, 404);
-    if (!plan.stripe_price_id) return json({ error: 'Plan has no Stripe price configured' }, 400);
+
+    // Determine which Stripe price to use based on billing interval
+    const useAnnual = billing_interval === 'year' && plan.annual_stripe_price_id;
+    const stripePriceId = useAnnual ? plan.annual_stripe_price_id : plan.stripe_price_id;
+    if (!stripePriceId) return json({ error: 'Plan has no Stripe price configured' }, 400);
 
     const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!, {
       apiVersion: '2024-06-20',
@@ -90,7 +94,7 @@ Deno.serve(async (req) => {
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: 'subscription',
-      line_items: [{ price: plan.stripe_price_id, quantity: 1 }],
+      line_items: [{ price: stripePriceId, quantity: 1 }],
       discounts,
       success_url: `${SITE_URL}/planos.html?checkout=success`,
       cancel_url:  `${SITE_URL}/planos.html?checkout=canceled`,
