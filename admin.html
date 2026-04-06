@@ -116,8 +116,7 @@
                 <div class="stats-grid" id="usersStats">
                     <div class="stat-card"><div class="stat-label">Total</div><div class="stat-value" id="statTotal">—</div></div>
                     <div class="stat-card"><div class="stat-label">Free</div><div class="stat-value" id="statFree">—</div></div>
-                    <div class="stat-card"><div class="stat-label">Básico</div><div class="stat-value primary" id="statBasic">—</div></div>
-                    <div class="stat-card"><div class="stat-label">Premium</div><div class="stat-value success" id="statPremium">—</div></div>
+                    <div class="stat-card"><div class="stat-label">Pagantes</div><div class="stat-value primary" id="statPaid">—</div></div>
                     <div class="stat-card"><div class="stat-label">Acesso Gratuito</div><div class="stat-value warning" id="statFreeAccess">—</div><label class="stat-filter-label"><input type="checkbox" id="filterFreeAccess" onchange="updateUserStats()"> Filtrar</label></div>
                 </div>
 
@@ -132,8 +131,7 @@
                     <select class="filter-select" id="usersTierFilter" onchange="filterUsers()">
                         <option value="">Todos os planos</option>
                         <option value="free">Free</option>
-                        <option value="basic">Básico</option>
-                        <option value="premium">Premium</option>
+                        <option value="paid">Pagante</option>
                     </select>
                 </div>
 
@@ -263,7 +261,7 @@
                         <option value="">Todos os alvos</option>
                         <option value="all">Todos os usuários</option>
                         <option value="role">Por função</option>
-                        <option value="tier">Por plano</option>
+                        <option value="plan">Por plano</option>
                         <option value="specific">Usuários específicos</option>
                     </select>
                 </div>
@@ -339,12 +337,11 @@
             <button class="modal-close-btn" onclick="closeModal('freeAccessModal')">×</button>
         </div>
         <div class="modal-body">
-            <p style="font-size:13px;color:var(--text-muted);">Selecione o nível de acesso gratuito para <strong id="freeAccessUserName" style="color:var(--text);">—</strong>.</p>
+            <p style="font-size:13px;color:var(--text-muted);">Selecione o plano de acesso gratuito para <strong id="freeAccessUserName" style="color:var(--text);">—</strong>.</p>
             <div class="form-group">
-                <label class="form-label" for="freeAccessTierSelect">Plano</label>
-                <select class="form-control form-select" id="freeAccessTierSelect">
-                    <option value="basic">Básico</option>
-                    <option value="premium">Premium</option>
+                <label class="form-label" for="freeAccessPlanSelect">Plano</label>
+                <select class="form-control form-select" id="freeAccessPlanSelect">
+                    <!-- Populated dynamically from allPlans -->
                 </select>
             </div>
             <div class="info-row warning">Este acesso é permanente até que seja revogado manualmente. Não gera cobrança no Stripe.
@@ -469,20 +466,10 @@
                 <label class="form-label" for="editPlanDescription">Descrição</label>
                 <input class="form-control" id="editPlanDescription" type="text" />
             </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
-                <div class="form-group">
-                    <label class="form-label" for="editPlanPrice">Preço (R$)</label>
-                    <input class="form-control" id="editPlanPrice" type="number" min="0" step="0.01" />
-                    <span class="form-helper">Atualiza apenas o valor exibido — assinaturas Stripe em andamento mantêm o valor original.</span>
-                </div>
-                <div class="form-group">
-                    <label class="form-label" for="editPlanTier">Nível</label>
-                    <select class="form-control form-select" id="editPlanTier">
-                        <option value="free">Free</option>
-                        <option value="basic">Básico</option>
-                        <option value="premium">Premium</option>
-                    </select>
-                </div>
+            <div class="form-group">
+                <label class="form-label" for="editPlanPrice">Preço (R$)</label>
+                <input class="form-control" id="editPlanPrice" type="number" min="0" step="0.01" />
+                <span class="form-helper">Novos assinantes pagarão o novo preço. Assinaturas ativas mantêm o valor original.</span>
             </div>
             <div class="form-group">
                 <label class="form-label" for="editPlanMonthlyLimit">Processamentos mensais</label>
@@ -659,7 +646,7 @@
                 <select class="form-control form-select" id="notifTargetType" onchange="updateNotifTargetFields()">
                     <option value="all">Todos os usuários</option>
                     <option value="role">Por função</option>
-                    <option value="tier">Por plano</option>
+                    <option value="plan">Por plano</option>
                     <option value="specific">Usuários específicos</option>
                 </select>
             </div>
@@ -676,14 +663,12 @@
                 </div>
             </div>
 
-            <!-- Tier targets -->
-            <div id="notifTierFields" style="display:none;">
+            <!-- Plan targets -->
+            <div id="notifPlanFields" style="display:none;">
                 <div class="form-group">
                     <label class="form-label">Planos</label>
-                    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:4px;">
-                        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" class="notif-tier-check" value="free" /> Free</label>
-                        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" class="notif-tier-check" value="basic" /> Básico</label>
-                        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" class="notif-tier-check" value="premium" /> Premium</label>
+                    <div id="notifPlanCheckboxes" style="display:flex;gap:12px;flex-wrap:wrap;margin-top:4px;">
+                        <!-- Populated dynamically from allPlans -->
                     </div>
                 </div>
             </div>

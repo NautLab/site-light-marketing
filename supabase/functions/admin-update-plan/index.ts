@@ -66,7 +66,6 @@ Deno.serve(async (req) => {
       const {
         name,
         description,
-        tier,
         observation,
         monthly_limit,
         unlocked_screens,
@@ -87,7 +86,6 @@ Deno.serve(async (req) => {
       const updates: Record<string, unknown> = {};
       if (name !== undefined)              updates.name              = name;
       if (description !== undefined)       updates.description       = description;
-      if (tier !== undefined)              updates.tier              = tier;
       if (observation !== undefined)       updates.observation       = observation || null;
       if (monthly_limit !== undefined)     updates.monthly_limit     = monthly_limit || null;
       if (unlocked_screens !== undefined)  updates.unlocked_screens  = unlocked_screens || [];
@@ -95,15 +93,42 @@ Deno.serve(async (req) => {
       if (annual_price_brl !== undefined)  updates.annual_price_brl  = annual_price_brl || null;
       if (annual_observation !== undefined) updates.annual_observation = annual_observation || null;
 
-      // Create annual Stripe price if annual_price_brl provided and no annual_stripe_price_id yet
-      if (annual_price_brl && !plan.annual_stripe_price_id && plan.stripe_product_id) {
-        const annualPrice = await stripe.prices.create({
+      // ── Monthly price changed → create new Stripe Price, archive old one ──
+      if (price_brl !== undefined && price_brl !== parseFloat(plan.price_brl) && plan.stripe_product_id) {
+        const newPrice = await stripe.prices.create({
           product: plan.stripe_product_id,
-          unit_amount: Math.round(annual_price_brl * 100),
+          unit_amount: Math.round(price_brl * 100),
           currency: 'brl',
-          recurring: { interval: 'year' },
+          recurring: { interval: 'month' },
         });
-        updates.annual_stripe_price_id = annualPrice.id;
+        // Archive old price
+        if (plan.stripe_price_id) {
+          await stripe.prices.update(plan.stripe_price_id, { active: false }).catch(() => {});
+        }
+        updates.stripe_price_id = newPrice.id;
+      }
+
+      // ── Annual price handling ──
+      if (annual_price_brl && plan.stripe_product_id) {
+        const annualChanged = annual_price_brl !== parseFloat(plan.annual_price_brl || '0');
+        if (!plan.annual_stripe_price_id || annualChanged) {
+          // Create new annual Stripe price
+          const annualPrice = await stripe.prices.create({
+            product: plan.stripe_product_id,
+            unit_amount: Math.round(annual_price_brl * 100),
+            currency: 'brl',
+            recurring: { interval: 'year' },
+          });
+          // Archive old annual price if existed
+          if (plan.annual_stripe_price_id) {
+            await stripe.prices.update(plan.annual_stripe_price_id, { active: false }).catch(() => {});
+          }
+          updates.annual_stripe_price_id = annualPrice.id;
+        }
+      } else if (annual_price_brl === null && plan.annual_stripe_price_id) {
+        // Annual removed — archive old annual price
+        await stripe.prices.update(plan.annual_stripe_price_id, { active: false }).catch(() => {});
+        updates.annual_stripe_price_id = null;
       }
 
       const { data: updated, error: updateErr } = await adminClient

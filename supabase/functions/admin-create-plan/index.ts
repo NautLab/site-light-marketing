@@ -46,7 +46,6 @@ Deno.serve(async (req) => {
     const {
       name,
       description,
-      tier = 'basic',
       price_brl,
       observation,
       monthly_limit = null,
@@ -70,7 +69,7 @@ Deno.serve(async (req) => {
     const product = await stripe.products.create({
       name,
       description: description || undefined,
-      metadata: { tier },
+      metadata: {},
     });
 
     // Create monthly Stripe price (BRL, in centavos)
@@ -99,7 +98,6 @@ Deno.serve(async (req) => {
       .insert({
         name,
         description: description || null,
-        tier,
         interval: 'month',
         price_brl,
         observation: observation || null,

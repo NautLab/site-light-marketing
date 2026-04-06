@@ -770,8 +770,8 @@ function renderPaidPlans() {
 
 function buildPlanCard(p) {
     const features  = buildFeatures(p);
-    const isCurrent = currentProfile?.subscription_tier === p.tier;
-    const isFeatured = p.tier === 'premium';
+    const isCurrent = currentSubscription?.plan_id === p.id || (currentProfile?.free_access && currentProfile?.free_access_plan_id === p.id);
+    const isFeatured = false;
     const monthlyPrice = parseFloat(p.price_brl);
     const annualTotal  = p.annual_price_brl ? parseFloat(p.annual_price_brl) : null;
     const annualMonthly = annualTotal ? annualTotal / 12 : null;
@@ -816,7 +816,6 @@ function buildPlanCard(p) {
     return `
     <div class="plan-card${isFeatured ? ' featured' : ''}">
         ${isFeatured ? '<div class="plan-popular-badge">Mais popular</div>' : ''}
-        <div class="plan-tier-label">${p.tier === 'basic' ? 'Básico' : 'Premium'}</div>
         <div class="plan-name">${escHtml(p.name)}</div>
         <div class="plan-description">${escHtml(p.description || '')}</div>
         <div class="plan-price-block">

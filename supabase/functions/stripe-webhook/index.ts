@@ -73,16 +73,9 @@ Deno.serve(async (req) => {
           cancel_at_period_end: stripeSub.cancel_at_period_end,
         }, { onConflict: 'stripe_subscription_id' });
 
-        // Get plan tier
-        let tier = 'basic';
-        if (planId) {
-          const { data: plan } = await adminClient.from('plans').select('tier').eq('id', planId).single();
-          if (plan?.tier) tier = plan.tier;
-        }
-
-        // Update profile
+        // Update profile – mark as paid subscriber
         await adminClient.from('profiles').update({
-          subscription_tier: tier,
+          subscription_tier: 'paid',
           stripe_customer_id: custId,
         }).eq('id', userId);
 

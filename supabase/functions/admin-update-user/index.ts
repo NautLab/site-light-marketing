@@ -94,23 +94,34 @@ Deno.serve(async (req) => {
 
     // ── ACTION: grant_free_access ────────────────────────
     if (action === 'grant_free_access') {
-      const tier = body.free_access_tier;
-      if (!['basic', 'premium'].includes(tier)) {
-        return json({ error: 'Invalid free_access_tier' }, 400);
+      const planId = body.free_access_plan_id;
+      if (!planId) {
+        return json({ error: 'Missing free_access_plan_id' }, 400);
+      }
+
+      // Verify the plan exists and is active
+      const { data: plan } = await adminClient
+        .from('plans')
+        .select('id, name')
+        .eq('id', planId)
+        .single();
+
+      if (!plan) {
+        return json({ error: 'Plan not found' }, 404);
       }
 
       const { error } = await adminClient
         .from('profiles')
         .update({
           free_access: true,
-          free_access_tier: tier,
+          free_access_plan_id: planId,
           free_access_granted_by: caller.id,
-          subscription_tier: tier,        // sync immediately
+          subscription_tier: 'paid',
         })
         .eq('id', target_user_id);
 
       if (error) throw error;
-      return json({ success: true, free_access: true, tier });
+      return json({ success: true, free_access: true, plan_id: planId, plan_name: plan.name });
     }
 
     // ── ACTION: revoke_free_access ───────────────────────
@@ -119,7 +130,7 @@ Deno.serve(async (req) => {
         .from('profiles')
         .update({
           free_access: false,
-          free_access_tier: null,
+          free_access_plan_id: null,
           free_access_granted_by: null,
           subscription_tier: 'free',
         })

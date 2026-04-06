@@ -471,6 +471,18 @@
                                 .maybeSingle();
                             if (activeSub?.plans) planFeatures = activeSub.plans;
                         } catch (_) { /* silent */ }
+
+                        // Fallback for free access users (no subscription row)
+                        if (!planFeatures && profileResult?.free_access && profileResult?.free_access_plan_id) {
+                            try {
+                                const { data: faPlan } = await supabase
+                                    .from('plans')
+                                    .select('monthly_limit, unlocked_screens')
+                                    .eq('id', profileResult.free_access_plan_id)
+                                    .single();
+                                if (faPlan) planFeatures = faPlan;
+                            } catch (_) { /* silent */ }
+                        }
                     }
 
                     // Determine access
@@ -574,7 +586,7 @@
                     if (readIds.has(n.id)) return false;
                     if (n.target_type === 'all') return true;
                     if (n.target_type === 'role')     return (n.target_roles || []).includes(profile?.role || 'user');
-                    if (n.target_type === 'tier')     return (n.target_tiers || []).includes(profile?.subscription_tier || 'free');
+                    if (n.target_type === 'tier' || n.target_type === 'plan') return (n.target_tiers || []).includes(profile?.subscription_tier || 'free');
                     if (n.target_type === 'specific') return (n.target_user_ids || []).includes(userId);
                     return false;
                 });

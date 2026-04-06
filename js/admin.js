@@ -197,14 +197,12 @@ function updateUserStats() {
 
     const total      = base.length;
     const free       = base.filter(u => u.subscription_tier === 'free').length;
-    const basic      = base.filter(u => u.subscription_tier === 'basic').length;
-    const premium    = base.filter(u => u.subscription_tier === 'premium').length;
+    const paid       = base.filter(u => u.subscription_tier === 'paid').length;
     const freeAccess = allUsers.filter(u => u.free_access).length;
 
     document.getElementById('statTotal').textContent      = total;
     document.getElementById('statFree').textContent       = free;
-    document.getElementById('statBasic').textContent      = basic;
-    document.getElementById('statPremium').textContent    = premium;
+    document.getElementById('statPaid').textContent       = paid;
     document.getElementById('statFreeAccess').textContent = freeAccess;
 }
 
@@ -263,7 +261,7 @@ function openUserDetail(userId) {
     const tierBadge = `<span class="badge badge-${u.subscription_tier}">${tierLabel(u.subscription_tier)}</span>`;
     const roleBadge = `<span class="badge ${roleBadgeClass(u.role)}">${roleLabel(u.role)}</span>`;
     const freeAccBadge = u.free_access
-        ? `<span class="badge badge-gift">${tierLabel(u.free_access_tier)}</span>`
+        ? `<span class="badge badge-gift">${escHtml(planNameById(u.free_access_plan_id))}</span>`
         : `<span style="color:var(--text-dim);font-size:12px;">—</span>`;
 
     const usageMonth = u.usage_month || '';
@@ -327,7 +325,7 @@ function buildUserRow(u) {
 
     const tierBadge = `<span class="badge badge-${u.subscription_tier}">${tierLabel(u.subscription_tier)}</span>`;
     const roleBadge = `<span class="badge ${roleBadgeClass(u.role)}">${roleLabel(u.role)}</span>`;
-    const giftBadge = u.free_access ? `<span class="badge badge-gift">${tierLabel(u.free_access_tier)}</span>` : `<span style="color:var(--text-dim);font-size:12px;">—</span>`;
+    const giftBadge = u.free_access ? `<span class="badge badge-gift">${escHtml(planNameById(u.free_access_plan_id))}</span>` : `<span style="color:var(--text-dim);font-size:12px;">—</span>`;
     const date      = u.created_at ? new Date(u.created_at).toLocaleDateString('pt-BR') : '—';
 
     const canEditRole = currentProfile.role === 'super_admin' || u.role !== 'super_admin';
@@ -375,20 +373,23 @@ function openFreeAccessModal(userId, userName) {
     selectedUserName = userName;
     document.getElementById('freeAccessUserName').textContent = userName;
 
-    // Populate plan select from loaded plans (exclude free tier)
-    const select = document.getElementById('freeAccessTierSelect');
-    const paidPlans = allPlans.filter(p => p.tier !== 'free' && !p.is_archived && p.is_active);
+    // Populate plan select from loaded plans (exclude free plans)
+    const select = document.getElementById('freeAccessPlanSelect');
+    const paidPlans = allPlans.filter(p => !p.is_free && !p.is_archived && p.is_active);
     if (paidPlans.length > 0) {
         select.innerHTML = paidPlans.map(p =>
-            `<option value="${p.tier}">${escHtml(p.name)}</option>`
+            `<option value="${p.id}">${escHtml(p.name)}</option>`
         ).join('');
+    } else {
+        select.innerHTML = '<option value="">Nenhum plano pago disponível</option>';
     }
 
     openModal('freeAccessModal');
 }
 
 async function confirmFreeAccess() {
-    const tier = document.getElementById('freeAccessTierSelect').value;
+    const planId = document.getElementById('freeAccessPlanSelect').value;
+    if (!planId) { showToast('Selecione um plano.', 'error'); return; }
     const btn  = document.getElementById('freeAccessConfirmBtn');
 
     btn.disabled = true;
@@ -399,7 +400,7 @@ async function confirmFreeAccess() {
         const res = await callFunction('admin-update-user', {
             target_user_id: selectedUserId,
             action: 'grant_free_access',
-            free_access_tier: tier,
+            free_access_plan_id: planId,
         }, session.data.session.access_token);
 
         if (!res.ok) {
@@ -410,15 +411,16 @@ async function confirmFreeAccess() {
         // Update local state
         const user = allUsers.find(u => u.id === selectedUserId);
         if (user) {
-            user.free_access      = true;
-            user.free_access_tier = tier;
-            user.subscription_tier = tier;
+            user.free_access          = true;
+            user.free_access_plan_id  = planId;
+            user.subscription_tier    = 'paid';
         }
 
         closeModal('freeAccessModal');
         renderUsersTable();
         updateUserStats();
-        showToast(`Acesso gratuito (${tierLabel(tier)}) concedido com sucesso!`, 'success');
+        const planName = planNameById(planId);
+        showToast(`Acesso gratuito (${planName}) concedido com sucesso!`, 'success');
     } catch (err) {
         showToast('Erro: ' + err.message, 'error');
     } finally {
@@ -444,9 +446,9 @@ async function revokeFreeAccess(userId, userName) {
 
         const user = allUsers.find(u => u.id === userId);
         if (user) {
-            user.free_access       = false;
-            user.free_access_tier  = null;
-            user.subscription_tier = 'free';
+            user.free_access          = false;
+            user.free_access_plan_id  = null;
+            user.subscription_tier    = 'free';
         }
 
         renderUsersTable();
@@ -568,7 +570,11 @@ function buildPlanCard(p) {
         : '';
 
     let footerActions = '';
-    if (p.is_archived) {
+    if (p.is_free) {
+        // Free plan: only edit, no delete/deactivate/archive
+        footerActions = `
+            <button class="btn btn-sm btn-secondary" onclick="openEditPlanModal('${p.id}')">Editar</button>`;
+    } else if (p.is_archived) {
         footerActions = `
             <button class="btn btn-sm btn-success" onclick="archivePlan('${p.id}', false)">Desarquivar</button>
             <button class="btn btn-sm btn-danger" onclick="deletePlan('${p.id}', '${escHtml(p.name)}')">Excluir</button>`;
@@ -589,7 +595,6 @@ function buildPlanCard(p) {
         <div class="plan-card-header">
             <div>
                 <div class="plan-name">${escHtml(p.name)}</div>
-                <span class="badge badge-${p.tier}" style="margin-top:4px;">${tierLabel(p.tier)}</span>
             </div>
             ${status}
         </div>
@@ -710,7 +715,6 @@ function openEditPlanModal(planId) {
     document.getElementById('editPlanName').value         = p.name;
     document.getElementById('editPlanDescription').value  = p.description || '';
     document.getElementById('editPlanPrice').value        = parseFloat(p.price_brl || 0).toFixed(2);
-    document.getElementById('editPlanTier').value         = p.tier || 'basic';
     document.getElementById('editPlanMonthlyLimit').value = p.monthly_limit || '';
     document.getElementById('editPlanObservation').value  = p.observation || '';
 
@@ -729,10 +733,9 @@ function openEditPlanModal(planId) {
     // Update helper text with calculated value
     if (annualPriceEl?.value) updateAnnualHelper('editPlanAnnualPrice', 'editAnnualHelper');
 
-    // Free plan: lock price, tier and annual section
-    const isFree = p.tier === 'free';
+    // Free plan: lock price and annual section
+    const isFree = !!p.is_free;
     document.getElementById('editPlanPrice').disabled = isFree;
-    document.getElementById('editPlanTier').disabled  = isFree;
     const annualSection = document.getElementById('editAnnualSection');
     if (annualSection) annualSection.style.display = isFree ? 'none' : '';
 
@@ -744,7 +747,6 @@ async function submitEditPlan() {
     const id            = document.getElementById('editPlanId').value;
     const name          = document.getElementById('editPlanName').value.trim();
     const description   = document.getElementById('editPlanDescription').value.trim();
-    const tier          = document.getElementById('editPlanTier').value;
     const observation   = document.getElementById('editPlanObservation').value.trim();
     const limitRaw      = document.getElementById('editPlanMonthlyLimit').value;
     const monthly_limit = limitRaw ? parseInt(limitRaw) : null;
@@ -771,7 +773,7 @@ async function submitEditPlan() {
         const res = await callFunction('admin-update-plan', {
             action: 'edit',
             plan_id: id,
-            name, description, tier, observation, monthly_limit, unlocked_screens,
+            name, description, observation, monthly_limit, unlocked_screens,
             ...(price_brl !== undefined && !isNaN(price_brl) ? { price_brl } : {}),
             annual_price_brl,
             annual_observation,
@@ -889,7 +891,7 @@ async function loadSubscriptions() {
 
     const { data, error } = await supabase
         .from('subscriptions')
-        .select('*, plans(name, tier)')
+        .select('*, plans(name)')
         .order('created_at', { ascending: false });
 
     if (error) {
@@ -918,7 +920,6 @@ function renderSubscriptionsTable(list) {
 
     tbody.innerHTML = display.map(s => {
         const planName    = s.plans?.name || '—';
-        const planTier    = s.plans?.tier || 'free';
         const periodEnd   = s.current_period_end ? new Date(s.current_period_end).toLocaleDateString('pt-BR') : '—';
         const cancelAtEnd = s.cancel_at_period_end ? '<span class="badge badge-warning">Sim</span>' : '<span style="color:var(--text-dim);font-size:12px;">Não</span>';
 
@@ -927,7 +928,6 @@ function renderSubscriptionsTable(list) {
             <td style="color:var(--text-muted);font-size:12px;">${escHtml(s.user_id.slice(0, 8))}…</td>
             <td>
                 <div>${escHtml(planName)}</div>
-                <span class="badge badge-${planTier}" style="margin-top:3px;">${tierLabel(planTier)}</span>
             </td>
             <td><span class="badge badge-${s.status}">${statusLabel(s.status)}</span></td>
             <td style="font-size:12px;color:var(--text-muted);">${periodEnd}</td>
@@ -1221,7 +1221,7 @@ function buildNotificationCard(n) {
 function notifTargetDesc(n) {
     if (n.target_type === 'all')      return 'Todos os usuários';
     if (n.target_type === 'role')     return `Funções: ${(n.target_roles || []).map(roleLabel).join(', ') || '—'}`;
-    if (n.target_type === 'tier')     return `Planos: ${(n.target_tiers || []).map(tierLabel).join(', ') || '—'}`;
+    if (n.target_type === 'tier' || n.target_type === 'plan') return `Planos: ${(n.target_tiers || []).join(', ') || '—'}`;
     if (n.target_type === 'specific') return `${(n.target_user_ids || []).length} usuário(s) específico(s)`;
     return '—';
 }
@@ -1250,14 +1250,24 @@ async function toggleNotification(id, currentActive) {
 function openCreateNotificationModal() {
     // Populate user list
     populateNotifUserList();
+    populateNotifPlanCheckboxes();
     updateNotifTargetFields();
     openModal('createNotificationModal');
+}
+
+function populateNotifPlanCheckboxes() {
+    const container = document.getElementById('notifPlanCheckboxes');
+    if (!container) return;
+    const plans = allPlans.filter(p => !p.is_archived);
+    container.innerHTML = plans.map(p =>
+        `<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" class="notif-plan-check" value="${escHtml(p.name)}" /> ${escHtml(p.name)}</label>`
+    ).join('');
 }
 
 function updateNotifTargetFields() {
     const type = document.getElementById('notifTargetType').value;
     document.getElementById('notifRoleFields').style.display     = type === 'role'     ? '' : 'none';
-    document.getElementById('notifTierFields').style.display     = type === 'tier'     ? '' : 'none';
+    document.getElementById('notifPlanFields').style.display     = type === 'plan'     ? '' : 'none';
     document.getElementById('notifSpecificFields').style.display = type === 'specific' ? '' : 'none';
 }
 
@@ -1313,8 +1323,8 @@ async function submitCreateNotification() {
         target_roles = [...document.querySelectorAll('.notif-role-check:checked')].map(el => el.value);
         if (target_roles.length === 0) { showToast('Selecione ao menos uma função.', 'error'); return; }
     }
-    if (type === 'tier') {
-        target_tiers = [...document.querySelectorAll('.notif-tier-check:checked')].map(el => el.value);
+    if (type === 'plan') {
+        target_tiers = [...document.querySelectorAll('.notif-plan-check:checked')].map(el => el.value);
         if (target_tiers.length === 0) { showToast('Selecione ao menos um plano.', 'error'); return; }
     }
     if (type === 'specific') {
@@ -1359,7 +1369,7 @@ function clearNotifForm() {
     document.getElementById('notifMessage').value = '';
     document.getElementById('notifTargetType').value = 'all';
     document.getElementById('notifUserSearch').value = '';
-    document.querySelectorAll('.notif-role-check, .notif-tier-check, .notif-user-check')
+    document.querySelectorAll('.notif-role-check, .notif-plan-check, .notif-user-check')
         .forEach(el => el.checked = false);
     updateNotifTargetFields();
 }
@@ -1439,7 +1449,13 @@ function escHtml(str) {
 }
 
 function tierLabel(tier) {
-    return { free: 'Free', basic: 'Básico', premium: 'Premium' }[tier] || tier || '—';
+    return { free: 'Free', paid: 'Pagante' }[tier] || tier || '—';
+}
+
+function planNameById(planId) {
+    if (!planId) return '—';
+    const p = allPlans.find(x => x.id === planId);
+    return p ? p.name : '—';
 }
 
 function roleLabel(role) {
