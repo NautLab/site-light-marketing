@@ -545,6 +545,9 @@ function renderPlans() {
         if (sortVal === 'name-desc')  return (b.name || '').localeCompare(a.name || '');
         if (sortVal === 'price-asc')  return (parseFloat(a.price_brl) || 0) - (parseFloat(b.price_brl) || 0);
         if (sortVal === 'price-desc') return (parseFloat(b.price_brl) || 0) - (parseFloat(a.price_brl) || 0);
+        if (sortVal === 'updated-desc') return new Date(b.updated_at || 0) - new Date(a.updated_at || 0);
+        if (sortVal === 'created-desc') return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+        if (sortVal === 'created-asc')  return new Date(a.created_at || 0) - new Date(b.created_at || 0);
         return 0;
     });
 
@@ -560,10 +563,6 @@ function buildPlanCard(p) {
             ? `<span class="badge badge-active">Ativo</span>`
             : `<span class="badge badge-canceled">Inativo</span>`;
 
-    const stripeLink = p.stripe_price_id
-        ? `<span class="stripe-badge">Stripe</span>`
-        : `<span style="color:var(--text-dim);font-size:11px;">Sem Stripe</span>`;
-
     const limitText = p.monthly_limit
         ? `<div style="font-size:11px;color:var(--text-dim);margin-top:4px;">${p.monthly_limit} processamentos/mês</div>`
         : '';
@@ -577,7 +576,7 @@ function buildPlanCard(p) {
 
     // Annual pricing info
     const annualInfo = p.annual_price_brl
-        ? `<div style="font-size:11px;color:var(--primary);margin-top:4px;">Anual: R$ ${parseFloat(p.annual_price_brl).toFixed(2).replace('.', ',')} /ano (R$ ${(parseFloat(p.annual_price_brl)/12).toFixed(2).replace('.', ',')} /mês)${p.annual_observation ? ' — ' + escHtml(p.annual_observation) : ''}</div>`
+        ? `<div style="font-size:11px;color:var(--primary);margin-top:4px;">Anual: R$ ${parseFloat(p.annual_price_brl).toFixed(2).replace('.', ',')} /ano (R$ ${(parseFloat(p.annual_price_brl)/12).toFixed(2).replace('.', ',')} /mês)</div>`
         : '';
 
     let footerActions = '';
@@ -615,7 +614,6 @@ function buildPlanCard(p) {
         ${limitText}
         ${screensText}
         <div class="plan-card-footer">
-            ${stripeLink}
             <div style="display:flex;gap:6px;flex-wrap:wrap;">${footerActions}</div>
         </div>
     </div>`;
