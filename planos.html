@@ -426,11 +426,16 @@
             .plans-grid { grid-template-columns: 1fr; }
         }
 
-        /* ── Navbar: sticky ────────────────────────── */
+        /* ── Compensação para header fixo ──────────── */
+        body { padding-top: 70px; }
+
+        /* ── Navbar: fixo no topo ───────────────────── */
         .header {
-            position: sticky !important;
+            position: fixed !important;
             top: 0 !important;
-            z-index: 1000;
+            left: 0 !important;
+            right: 0 !important;
+            z-index: 1000 !important;
             background: rgba(0, 0, 0, 0.95) !important;
         }
     </style>
