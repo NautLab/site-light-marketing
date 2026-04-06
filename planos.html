@@ -622,7 +622,7 @@ async function initAuthHeader() {
         const user = session.user;
         const name = user.user_metadata?.full_name || '';
         const email = user.email || '';
-        const initials = (name || email).split(' ').slice(0,2).map(n=>n[0]).join('').toUpperCase() || '?';
+        const initials = getUserInitials(name, email);
         sessionStorage.setItem('lm_user_name', name);
         sessionStorage.setItem('lm_user_email', email);
         sessionStorage.setItem('lm_user_initials', initials);
