@@ -423,9 +423,12 @@
             .plans-grid { grid-template-columns: 1fr; }
         }
 
-        /* ── Navbar: sticky no mobile ──────────────────── */
-        @media (max-width: 768px) {
-            .header { position: sticky !important; top: 0 !important; z-index: 1000; }
+        /* ── Navbar: sticky ────────────────────────── */
+        .header {
+            position: sticky !important;
+            top: 0 !important;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.95) !important;
         }
     </style>
 </head>
@@ -489,11 +492,10 @@
                 </div>
                 <div class="plan-divider"></div>
                 <ul class="plan-features">
-                    <li><span class="check">✓</span> Processamento de etiquetas básico</li>
+                    <li><span class="check">✓</span> Processamento de etiquetas</li>
                     <li><span class="check">✓</span> Shopee e TikTok</li>
                     <li><span class="check">✓</span> Até 50 etiquetas por mês</li>
                     <li class="disabled"><span class="check">✗</span> Shein e outros marketplaces</li>
-                    <li class="disabled"><span class="check">✗</span> Prioridade no suporte</li>
                 </ul>
                 <button class="plan-btn plan-btn-outline" id="freePlanBtn" onclick="handleFreePlan()">
                     Plano atual
@@ -587,14 +589,6 @@ function buildFeatures(plan) {
         features.push({ text: `Até ${limit.toLocaleString('pt-BR')} etiquetas/mês`, ok: true });
     } else {
         features.push({ text: 'Etiquetas ilimitadas', ok: true });
-    }
-
-    // Tier-based extras
-    if (plan.tier === 'premium') {
-        features.push({ text: 'Suporte prioritário', ok: true });
-    } else {
-        features.push({ text: 'Suporte por e-mail', ok: true });
-        features.push({ text: 'Suporte prioritário', ok: false });
     }
 
     return features;

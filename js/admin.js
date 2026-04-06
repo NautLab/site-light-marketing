@@ -668,6 +668,24 @@ function toggleAnnualPriceFields() {
     if (fields && checkbox) fields.style.display = checkbox.checked ? '' : 'none';
 }
 
+function toggleEditAnnualFields() {
+    const fields   = document.getElementById('editAnnualFields');
+    const checkbox = document.getElementById('editAnnualToggle');
+    if (fields && checkbox) fields.style.display = checkbox.checked ? '' : 'none';
+}
+
+function updateAnnualHelper(inputId, helperId) {
+    const val  = parseFloat(document.getElementById(inputId)?.value);
+    const el   = document.getElementById(helperId);
+    if (!el) return;
+    if (val > 0) {
+        const total = (val * 12).toFixed(2).replace('.', ',');
+        el.textContent = `Equivalente mensal ao cobrar anualmente. Total anual = R$ ${total}`;
+    } else {
+        el.textContent = 'Equivalente mensal ao cobrar anualmente.';
+    }
+}
+
 // ── Build screen checkboxes ───────────────────────────────────
 function buildScreenCheckboxes(containerId, selectedIds = []) {
     const container = document.getElementById(containerId);
@@ -696,18 +714,27 @@ function openEditPlanModal(planId) {
     document.getElementById('editPlanMonthlyLimit').value = p.monthly_limit || '';
     document.getElementById('editPlanObservation').value  = p.observation || '';
 
-    // Annual fields
+    // Annual fields — checkbox toggle
+    const hasAnnual = !!p.annual_price_brl;
+    const annualToggle = document.getElementById('editAnnualToggle');
+    const annualFields = document.getElementById('editAnnualFields');
+    if (annualToggle) annualToggle.checked = hasAnnual;
+    if (annualFields) annualFields.style.display = hasAnnual ? '' : 'none';
+
     const annualPriceEl = document.getElementById('editPlanAnnualPrice');
     const annualObsEl   = document.getElementById('editPlanAnnualObservation');
     if (annualPriceEl) annualPriceEl.value = p.annual_price_brl ? (parseFloat(p.annual_price_brl) / 12).toFixed(2) : '';
     if (annualObsEl)   annualObsEl.value   = p.annual_observation || '';
 
-    // Free plan: lock price, tier and annual fields
+    // Update helper text with calculated value
+    if (annualPriceEl?.value) updateAnnualHelper('editPlanAnnualPrice', 'editAnnualHelper');
+
+    // Free plan: lock price, tier and annual section
     const isFree = p.tier === 'free';
     document.getElementById('editPlanPrice').disabled = isFree;
     document.getElementById('editPlanTier').disabled  = isFree;
-    if (annualPriceEl) annualPriceEl.disabled = isFree;
-    if (annualObsEl)   annualObsEl.disabled   = isFree;
+    const annualSection = document.getElementById('editAnnualSection');
+    if (annualSection) annualSection.style.display = isFree ? 'none' : '';
 
     buildScreenCheckboxes('planScreensEdit', p.unlocked_screens || []);
     openModal('editPlanModal');
@@ -726,11 +753,12 @@ async function submitEditPlan() {
     const unlocked_screens = [...document.querySelectorAll('#planScreensEdit .screen-check-input:checked')]
         .map(el => el.value);
 
-    // Annual fields
-    const annualPriceRaw = document.getElementById('editPlanAnnualPrice')?.value;
+    // Annual fields — only if checkbox is checked
+    const annualEnabled  = document.getElementById('editAnnualToggle')?.checked;
+    const annualPriceRaw = annualEnabled ? document.getElementById('editPlanAnnualPrice')?.value : '';
     const annualMonthly  = annualPriceRaw ? parseFloat(annualPriceRaw) : null;
     const annual_price_brl = annualMonthly ? Math.round(annualMonthly * 12 * 100) / 100 : null;
-    const annual_observation = document.getElementById('editPlanAnnualObservation')?.value.trim() || '';
+    const annual_observation = annualEnabled ? (document.getElementById('editPlanAnnualObservation')?.value.trim() || '') : '';
 
     if (!name) { showToast('Nome é obrigatório.', 'error'); return; }
 

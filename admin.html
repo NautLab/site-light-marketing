@@ -423,17 +423,17 @@
                 <input class="form-control" id="planObservation" type="text" placeholder="Ex: Mais popular" />
                 <span class="form-helper">Nota exibida junto ao preço na página de planos (opcional)</span>
             </div>
-            <!-- Criar versão anual junto -->
+            <!-- Habilitar versão anual -->
             <div id="annualPriceSection" style="border-top:1px solid var(--border);padding-top:14px;margin-top:4px;">
                 <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-muted);cursor:pointer;margin-bottom:10px;">
                     <input type="checkbox" id="createAnnualToo" onchange="toggleAnnualPriceFields()" style="width:16px;height:16px;cursor:pointer;" />
-                    Criar versão anual junto
+                    Habilitar versão anual
                 </label>
                 <div id="annualPriceFields" style="display:none;">
                     <div class="form-group">
                         <label class="form-label" for="planAnnualPrice">Preço Mensal (R$)</label>
-                        <input class="form-control" id="planAnnualPrice" type="number" min="0" step="0.01" placeholder="24.90" />
-                        <span class="form-helper">Equivalente mensal ao cobrar anualmente. Total anual = valor × 12.</span>
+                        <input class="form-control" id="planAnnualPrice" type="number" min="0" step="0.01" placeholder="24.90" oninput="updateAnnualHelper('planAnnualPrice','createAnnualHelper')" />
+                        <span class="form-helper" id="createAnnualHelper">Equivalente mensal ao cobrar anualmente.</span>
                     </div>
                     <div class="form-group">
                         <label class="form-label" for="planAnnualObservation">Observação Anual</label>
@@ -500,17 +500,22 @@
                 <input class="form-control" id="editPlanObservation" type="text" placeholder="Nota junto ao preço mensal (opcional)" />
             </div>
             <!-- Annual pricing -->
-            <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:4px;">
-                <span style="font-size:13px;font-weight:600;color:var(--text-muted);">Versão anual</span>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:10px;">
-                    <div class="form-group">
-                        <label class="form-label" for="editPlanAnnualPrice">Preço Mensal (R$)</label>
-                        <input class="form-control" id="editPlanAnnualPrice" type="number" min="0" step="0.01" placeholder="Vazio = sem versão anual" />
-                        <span class="form-helper">Equivalente mensal ao cobrar anualmente.</span>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="editPlanAnnualObservation">Observação (anual)</label>
-                        <input class="form-control" id="editPlanAnnualObservation" type="text" placeholder="Ex: 2 meses grátis" />
+            <div id="editAnnualSection" style="border-top:1px solid var(--border);padding-top:14px;margin-top:4px;">
+                <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-muted);cursor:pointer;margin-bottom:10px;">
+                    <input type="checkbox" id="editAnnualToggle" onchange="toggleEditAnnualFields()" style="width:16px;height:16px;cursor:pointer;" />
+                    Habilitar versão anual
+                </label>
+                <div id="editAnnualFields" style="display:none;">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+                        <div class="form-group">
+                            <label class="form-label" for="editPlanAnnualPrice">Preço Mensal (R$)</label>
+                            <input class="form-control" id="editPlanAnnualPrice" type="number" min="0" step="0.01" placeholder="24.90" oninput="updateAnnualHelper('editPlanAnnualPrice','editAnnualHelper')" />
+                            <span class="form-helper" id="editAnnualHelper">Equivalente mensal ao cobrar anualmente.</span>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="editPlanAnnualObservation">Observação (anual)</label>
+                            <input class="form-control" id="editPlanAnnualObservation" type="text" placeholder="Ex: 2 meses grátis" />
+                        </div>
                     </div>
                 </div>
             </div>
