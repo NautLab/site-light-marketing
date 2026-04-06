@@ -373,9 +373,11 @@ function openFreeAccessModal(userId, userName) {
     selectedUserName = userName;
     document.getElementById('freeAccessUserName').textContent = userName;
 
-    // Populate plan select from loaded plans (exclude free plans)
+    // Populate plan select from loaded plans (exclude free plans, sorted alphabetically)
     const select = document.getElementById('freeAccessPlanSelect');
-    const paidPlans = allPlans.filter(p => !p.is_free && !p.is_archived && p.is_active);
+    const paidPlans = allPlans
+        .filter(p => !p.is_free && !p.is_archived && p.is_active)
+        .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     if (paidPlans.length > 0) {
         select.innerHTML = paidPlans.map(p =>
             `<option value="${p.id}">${escHtml(p.name)}</option>`
@@ -537,7 +539,16 @@ function renderPlans() {
         return;
     }
 
-    container.innerHTML = `<div class="plans-grid">${visible.map(buildPlanCard).join('')}</div>`;
+    const sortVal = document.getElementById('planSortSelect')?.value || 'default';
+    const sorted = [...visible].sort((a, b) => {
+        if (sortVal === 'name-asc')   return (a.name || '').localeCompare(b.name || '');
+        if (sortVal === 'name-desc')  return (b.name || '').localeCompare(a.name || '');
+        if (sortVal === 'price-asc')  return (parseFloat(a.price_brl) || 0) - (parseFloat(b.price_brl) || 0);
+        if (sortVal === 'price-desc') return (parseFloat(b.price_brl) || 0) - (parseFloat(a.price_brl) || 0);
+        return 0;
+    });
+
+    container.innerHTML = `<div class="plans-grid">${sorted.map(buildPlanCard).join('')}</div>`;
 }
 
 function buildPlanCard(p) {

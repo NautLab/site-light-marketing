@@ -177,6 +177,16 @@
                     </div>
                 </div>
 
+                <div class="table-toolbar" style="margin-bottom:16px;">
+                    <select class="filter-select" id="planSortSelect" onchange="renderPlans()">
+                        <option value="default">Ordem padrão</option>
+                        <option value="name-asc">Nome (A–Z)</option>
+                        <option value="name-desc">Nome (Z–A)</option>
+                        <option value="price-asc">Preço (menor)</option>
+                        <option value="price-desc">Preço (maior)</option>
+                    </select>
+                </div>
+
                 <div id="plansContainer">
                     <div class="empty-state"><p class="empty-state-text">Carregando planos…</p></div>
                 </div>

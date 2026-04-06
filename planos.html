@@ -212,6 +212,9 @@
             font-size: 12px;
             color: rgba(255,255,255,0.35);
             margin-top: 4px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         .plan-divider {
@@ -484,7 +487,6 @@
         <div class="plans-grid" id="plansGrid">
             <!-- Free card (always static) -->
             <div class="plan-card" id="freePlanCard">
-                <div class="plan-tier-label">Gratuito</div>
                 <div class="plan-name">Free</div>
                 <div class="plan-description">Para quem está começando. Experimente sem compromisso.</div>
                 <div class="plan-price-block">
@@ -763,8 +765,11 @@ async function loadPlans() {
 
 function renderPaidPlans() {
     const container = document.getElementById('paidPlansContainer');
-    // All plans are now single rows (interval='month') with optional annual_price_brl
-    const plans = allPlans.filter(p => p.interval === 'month');
+    // When annual toggle is active, only show plans that have annual pricing
+    const plans = allPlans.filter(p =>
+        p.interval === 'month' &&
+        (currentInterval === 'month' || !!p.annual_price_brl)
+    );
     container.innerHTML = plans.map(p => buildPlanCard(p)).join('');
 }
 
@@ -781,13 +786,11 @@ function buildPlanCard(p) {
         ? annualMonthly.toFixed(2).replace('.', ',')
         : monthlyPrice.toFixed(2).replace('.', ',');
 
-    const obs = currentInterval === 'year' && p.annual_observation
-        ? escHtml(p.annual_observation)
-        : p.observation ? escHtml(p.observation) : '';
+    const obs = p.observation ? escHtml(p.observation) : '';
 
     let priceNote = '';
     if (isAnnual) {
-        priceNote = `<div class="plan-price-annual">R$ ${annualTotal.toFixed(2).replace('.', ',')} cobrado anualmente${obs ? ` — ${obs}` : ''}</div>`;
+        priceNote = `<div class="plan-price-annual">R$ ${annualTotal.toFixed(2).replace('.', ',')} cobrado anualmente</div>`;
     } else if (obs) {
         priceNote = `<div class="plan-price-obs">${obs}</div>`;
     }
