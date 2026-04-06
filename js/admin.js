@@ -76,16 +76,11 @@ async function initAdmin() {
         }
 
         // Render sidebar user info
-        const initials = (profile.full_name || profile.email || '?')
-            .split(' ')
-            .slice(0, 2)
-            .map(n => n[0])
-            .join('')
-            .toUpperCase();
+        const initials = getInitials(profile.full_name, profile.email);
 
         document.getElementById('sidebarAvatar').textContent = initials;
         document.getElementById('sidebarName').textContent   = profile.full_name || profile.email;
-        document.getElementById('sidebarRole').textContent   = profile.role === 'super_admin' ? 'Super Admin' : 'Admin';
+        document.getElementById('sidebarRole').textContent   = 'Admin';
 
         // Hide super_admin option for non-super_admins in role modal
         if (profile.role !== 'super_admin') {
@@ -252,8 +247,7 @@ function openUserDetail(userId) {
     const u = allUsers.find(u => u.id === userId);
     if (!u) return;
 
-    const initials = (u.full_name || u.email || '?')
-        .split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase();
+    const initials = getInitials(u.full_name, u.email);
     const date    = u.created_at ? new Date(u.created_at).toLocaleDateString('pt-BR') : '—';
     const isSelf  = u.id === currentProfile.id;
     const canEditRole = currentProfile.role === 'super_admin' || u.role !== 'super_admin';
@@ -320,8 +314,7 @@ function openUserDetail(userId) {
 }
 
 function buildUserRow(u) {
-    const initials = (u.full_name || u.email || '?')
-        .split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase();
+    const initials = getInitials(u.full_name, u.email);
 
     const tierBadge = `<span class="badge badge-${u.subscription_tier}">${tierLabel(u.subscription_tier)}</span>`;
     const roleBadge = `<span class="badge ${roleBadgeClass(u.role)}">${roleLabel(u.role)}</span>`;
@@ -546,6 +539,7 @@ function renderPlans() {
         if (sortVal === 'price-asc')  return (parseFloat(a.price_brl) || 0) - (parseFloat(b.price_brl) || 0);
         if (sortVal === 'price-desc') return (parseFloat(b.price_brl) || 0) - (parseFloat(a.price_brl) || 0);
         if (sortVal === 'updated-desc') return new Date(b.updated_at || 0) - new Date(a.updated_at || 0);
+        if (sortVal === 'updated-asc')  return new Date(a.updated_at || 0) - new Date(b.updated_at || 0);
         if (sortVal === 'created-desc') return new Date(b.created_at || 0) - new Date(a.created_at || 0);
         if (sortVal === 'created-asc')  return new Date(a.created_at || 0) - new Date(b.created_at || 0);
         return 0;
@@ -577,7 +571,7 @@ function buildPlanCard(p) {
     // Annual pricing info
     const annualInfo = p.annual_price_brl
         ? `<div style="font-size:11px;color:var(--primary);margin-top:4px;">Anual: R$ ${parseFloat(p.annual_price_brl).toFixed(2).replace('.', ',')} /ano (R$ ${(parseFloat(p.annual_price_brl)/12).toFixed(2).replace('.', ',')} /mês)</div>`
-        : '';
+        : (!p.is_free ? `<div style="font-size:11px;color:var(--primary);margin-top:4px;">Apenas mensal</div>` : '');
 
     let footerActions = '';
     if (p.is_free) {
@@ -1457,6 +1451,15 @@ function escHtml(str) {
         .replace(/'/g, '&#039;');
 }
 
+function getInitials(name, email) {
+    if (name && name.trim()) {
+        const parts = name.trim().split(/\s+/);
+        if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+        return name.substring(0, 2).toUpperCase();
+    }
+    return email ? email.substring(0, 2).toUpperCase() : '?';
+}
+
 function tierLabel(tier) {
     return { free: 'Free', paid: 'Pagante' }[tier] || tier || '—';
 }
@@ -1468,7 +1471,7 @@ function planNameById(planId) {
 }
 
 function roleLabel(role) {
-    return { user: 'Usuário', admin: 'Admin', super_admin: 'Super Admin' }[role] || role || '—';
+    return { user: 'Usuário', admin: 'Admin', super_admin: 'Admin' }[role] || role || '—';
 }
 
 function roleBadgeClass(role) {

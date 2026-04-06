@@ -1032,6 +1032,13 @@ body.admin-body {
 
 /* ── Form Fields ───────────────────────────────────── */
 
+#annualPriceFields,
+#editAnnualFields {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
 .form-group {
     display: flex;
     flex-direction: column;

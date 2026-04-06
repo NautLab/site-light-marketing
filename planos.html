@@ -763,13 +763,33 @@ async function loadPlans() {
     }
 
     allPlans = data;
+    const freePlan = data.find(p => p.is_free);
+    if (freePlan) updateFreePlanCard(freePlan);
     renderPaidPlans();
+}
+
+function updateFreePlanCard(plan) {
+    const card = document.getElementById('freePlanCard');
+    if (!card) return;
+    const nameEl = card.querySelector('.plan-name');
+    if (nameEl) nameEl.textContent = plan.name || 'Free';
+    const descEl = card.querySelector('.plan-description');
+    if (descEl) descEl.textContent = plan.description || '';
+    const featuresEl = card.querySelector('.plan-features');
+    if (featuresEl) {
+        const features = buildFeatures(plan);
+        featuresEl.innerHTML = features.map(f =>
+            `<li class="${f.ok ? '' : 'disabled'}"><span class="check">${f.ok ? '\u2713' : '\u2717'}</span> ${f.text}</li>`
+        ).join('');
+    }
 }
 
 function renderPaidPlans() {
     const container = document.getElementById('paidPlansContainer');
     // When annual toggle is active, only show plans that have annual pricing
+    // Exclude the free plan (shown in its own static card)
     const plans = allPlans.filter(p =>
+        !p.is_free &&
         p.interval === 'month' &&
         (currentInterval === 'month' || !!p.annual_price_brl)
     );
@@ -794,6 +814,9 @@ function buildPlanCard(p) {
     let priceNote = '';
     if (isAnnual) {
         priceNote = `<div class="plan-price-annual">R$ ${annualTotal.toFixed(2).replace('.', ',')} cobrado anualmente</div>`;
+        if (p.annual_observation) {
+            priceNote += `<div class="plan-price-annual">${escHtml(p.annual_observation)}</div>`;
+        }
     } else if (obs) {
         priceNote = `<div class="plan-price-obs">${obs}</div>`;
     }
