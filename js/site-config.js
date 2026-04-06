@@ -1,8 +1,9 @@
 // Configuração centralizada do site - Light Marketing
-// Altere os dados aqui e serão refletidos em todo o site e documentos legais.
-// Versão: 1.0
+// Os valores padrão são usados como fallback.
+// Quando a tabela site_settings estiver preenchida, esses valores são sobrescritos.
+// Versão: 2.0
 
-const SITE_CONFIG = Object.freeze({
+const SITE_CONFIG = {
     // Dados da empresa
     empresa: {
         razaoSocial: 'Light Marketing Gestão de Marketplace LTDA',
@@ -29,7 +30,8 @@ const SITE_CONFIG = Object.freeze({
         uf: 'MG',
         cep: '35520-063',
         get completo() {
-            return `${this.logradouro}, ${this.numero}, ${this.complemento}, ${this.bairro}, ${this.cidade} - ${this.uf}, CEP ${this.cep}`;
+            const parts = [this.logradouro, this.numero, this.complemento].filter(Boolean);
+            return `${parts.join(', ')}, ${this.cidade} - ${this.uf}, CEP ${this.cep}`;
         }
     },
 
@@ -61,7 +63,21 @@ const SITE_CONFIG = Object.freeze({
         dataTermos: '27/03/2026',
         dataPolitica: '27/03/2026'
     }
-});
+};
+
+// Mapeamento: chave do DB → função que atualiza SITE_CONFIG
+const _dbKeyMap = {
+    company_name: (v) => { if (v) SITE_CONFIG.empresa.nomeFantasia = v; },
+    cnpj:         (v) => { if (v) SITE_CONFIG.empresa.cnpj = v; },
+    phone:        (v) => { if (v) SITE_CONFIG.contato.telefone = v; },
+    email:        (v) => { if (v) { SITE_CONFIG.contato.email = v; SITE_CONFIG.legal.dpo.email = v; } },
+    street:       (v) => { if (v) SITE_CONFIG.endereco.logradouro = v; },
+    number:       (v) => { if (v) SITE_CONFIG.endereco.numero = v; },
+    complement:   (v) => { SITE_CONFIG.endereco.complemento = v || ''; },
+    city:         (v) => { if (v) SITE_CONFIG.endereco.cidade = v; },
+    state:        (v) => { if (v) SITE_CONFIG.endereco.uf = v; },
+    zip:          (v) => { if (v) SITE_CONFIG.endereco.cep = v; },
+};
 
 // Função utilitária para injetar dados da empresa em elementos HTML
 function injectSiteConfig() {
@@ -99,9 +115,37 @@ function injectSiteConfig() {
     });
 }
 
+// Carrega valores da tabela site_settings e re-injeta
+async function loadSiteConfigFromDB() {
+    try {
+        const SUPABASE_URL  = 'https://tyymvawnrapoirshxskj.supabase.co';
+        const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR5eW12YXducmFwb2lyc2h4c2tqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU0NTc3NzQsImV4cCI6MjA4MTAzMzc3NH0.K43mjTGurBle5cwDjjehX8GRxBFYXKW3V4se4gtHaWc';
+
+        const res = await fetch(
+            `${SUPABASE_URL}/rest/v1/site_settings?select=key,value`,
+            { headers: { 'apikey': SUPABASE_ANON, 'Accept': 'application/json' } }
+        );
+        if (!res.ok) return;
+
+        const rows = await res.json();
+        rows.forEach(({ key, value }) => {
+            if (_dbKeyMap[key]) _dbKeyMap[key](value);
+        });
+
+        // Re-injeta com os valores atualizados do banco
+        injectSiteConfig();
+    } catch {
+        // Em caso de falha, os valores padrão já foram injetados
+    }
+}
+
 // Auto-executa quando o DOM estiver pronto
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', injectSiteConfig);
+    document.addEventListener('DOMContentLoaded', () => {
+        injectSiteConfig();
+        loadSiteConfigFromDB();
+    });
 } else {
     injectSiteConfig();
+    loadSiteConfigFromDB();
 }
