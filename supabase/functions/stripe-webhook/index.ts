@@ -63,6 +63,17 @@ Deno.serve(async (req) => {
 
         const stripeSub = await stripe.subscriptions.retrieve(subId);
 
+        // Fetch plan name for snapshot
+        let planNameSnapshot = '';
+        if (planId) {
+          const { data: planRow } = await adminClient
+            .from('plans')
+            .select('name')
+            .eq('id', planId)
+            .single();
+          planNameSnapshot = planRow?.name || '';
+        }
+
         // Upsert subscription
         await adminClient.from('subscriptions').upsert({
           user_id: userId,
@@ -74,6 +85,7 @@ Deno.serve(async (req) => {
           current_period_end:   new Date(stripeSub.current_period_end   * 1000).toISOString(),
           cancel_at_period_end: stripeSub.cancel_at_period_end,
           billing_interval: billingInterval,
+          plan_name_snapshot: planNameSnapshot,
         }, { onConflict: 'stripe_subscription_id' });
 
         // Update profile – mark as paid subscriber
@@ -149,17 +161,27 @@ Deno.serve(async (req) => {
           canceled_at: new Date().toISOString(),
         }).eq('stripe_subscription_id', sub.id);
 
-        // Downgrade profile (only if not free_access)
-        const { data: profile } = await adminClient
-          .from('profiles')
-          .select('free_access')
-          .eq('id', dbSub.user_id)
-          .single();
+        // Check if user has another active/trialing subscription
+        const { count: otherActiveSubs } = await adminClient
+          .from('subscriptions')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', dbSub.user_id)
+          .in('status', ['active', 'trialing'])
+          .neq('stripe_subscription_id', sub.id);
 
-        if (!profile?.free_access) {
-          await adminClient.from('profiles').update({
-            subscription_tier: 'free',
-          }).eq('id', dbSub.user_id);
+        // Downgrade profile only if no other active subs and not free_access
+        if ((otherActiveSubs || 0) === 0) {
+          const { data: profile } = await adminClient
+            .from('profiles')
+            .select('free_access')
+            .eq('id', dbSub.user_id)
+            .single();
+
+          if (!profile?.free_access) {
+            await adminClient.from('profiles').update({
+              subscription_tier: 'free',
+            }).eq('id', dbSub.user_id);
+          }
         }
 
         break;

@@ -1,8 +1,10 @@
 // Edge Function: admin-update-user
-// Handles: update_role, grant_free_access, revoke_free_access
+// Handles: update_role, grant_free_access, revoke_free_access,
+//          block_account, unblock_account, revoke_paid_subscription, refund
 // Requires: caller must be admin or super_admin
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import Stripe from 'npm:stripe';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -138,6 +140,95 @@ Deno.serve(async (req) => {
 
       if (error) throw error;
       return json({ success: true, free_access: false });
+    }
+
+    // ── ACTION: block_account ─────────────────────────
+    if (action === 'block_account') {
+      const { error } = await adminClient
+        .from('profiles')
+        .update({ is_blocked: true })
+        .eq('id', target_user_id);
+
+      if (error) throw error;
+      return json({ success: true, is_blocked: true });
+    }
+
+    // ── ACTION: unblock_account ───────────────────────
+    if (action === 'unblock_account') {
+      const { error } = await adminClient
+        .from('profiles')
+        .update({ is_blocked: false })
+        .eq('id', target_user_id);
+
+      if (error) throw error;
+      return json({ success: true, is_blocked: false });
+    }
+
+    // ── ACTION: revoke_paid_subscription ─────────────
+    if (action === 'revoke_paid_subscription') {
+      const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!, { apiVersion: '2024-06-20' });
+
+      // Find active subscription
+      const { data: activeSub } = await adminClient
+        .from('subscriptions')
+        .select('id, stripe_subscription_id')
+        .eq('user_id', target_user_id)
+        .in('status', ['active', 'trialing'])
+        .limit(1)
+        .single();
+
+      if (!activeSub) return json({ error: 'No active subscription found' }, 404);
+
+      // Cancel in Stripe immediately
+      if (activeSub.stripe_subscription_id) {
+        await stripe.subscriptions.cancel(activeSub.stripe_subscription_id);
+      }
+
+      // Update DB
+      await adminClient.from('subscriptions').update({
+        status: 'canceled',
+        canceled_at: new Date().toISOString(),
+      }).eq('id', activeSub.id);
+
+      await adminClient.from('profiles').update({
+        subscription_tier: 'free',
+      }).eq('id', target_user_id);
+
+      return json({ success: true, subscription_canceled: true });
+    }
+
+    // ── ACTION: refund ───────────────────────────────
+    if (action === 'refund') {
+      const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!, { apiVersion: '2024-06-20' });
+      const amountCents = body.amount ? Math.round(parseFloat(body.amount) * 100) : undefined;
+
+      // Find active subscription
+      const { data: activeSub } = await adminClient
+        .from('subscriptions')
+        .select('stripe_subscription_id')
+        .eq('user_id', target_user_id)
+        .in('status', ['active', 'trialing', 'past_due'])
+        .limit(1)
+        .single();
+
+      if (!activeSub?.stripe_subscription_id) return json({ error: 'No active subscription found' }, 404);
+
+      // Get latest invoice from Stripe subscription
+      const stripeSub = await stripe.subscriptions.retrieve(activeSub.stripe_subscription_id);
+      const invoiceId = stripeSub.latest_invoice as string;
+      if (!invoiceId) return json({ error: 'No invoice found for subscription' }, 404);
+
+      const invoice = await stripe.invoices.retrieve(invoiceId);
+      const paymentIntentId = invoice.payment_intent as string;
+      if (!paymentIntentId) return json({ error: 'No payment intent found for invoice' }, 404);
+
+      // Create refund (full or partial)
+      const refundParams: Record<string, unknown> = { payment_intent: paymentIntentId };
+      if (amountCents) refundParams.amount = amountCents;
+
+      const refund = await stripe.refunds.create(refundParams as Stripe.RefundCreateParams);
+
+      return json({ success: true, refund_id: refund.id, amount: refund.amount, status: refund.status });
     }
 
     return json({ error: 'Unknown action' }, 400);

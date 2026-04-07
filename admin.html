@@ -394,6 +394,31 @@
 </div>
 
 <!-- ══════════════════════════════════════════════════
+     MODAL: Reembolso
+══════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="refundModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="refundModalTitle">
+        <div class="modal-header">
+            <h3 class="modal-title" id="refundModalTitle">Reembolsar Pagamento</h3>
+            <button class="modal-close-btn" onclick="closeModal('refundModal')">×</button>
+        </div>
+        <div class="modal-body">
+            <p style="font-size:13px;color:var(--text-muted);">Reembolsar o último pagamento de <strong id="refundUserName" style="color:var(--text);">—</strong>.</p>
+            <div class="form-group">
+                <label class="form-label" for="refundAmount">Valor (R$)</label>
+                <input class="form-control" id="refundAmount" type="text" inputmode="decimal" placeholder="Deixe vazio para reembolso total" />
+                <span class="form-helper">Se preenchido, será um reembolso parcial. Use ponto ou vírgula como separador decimal.</span>
+            </div>
+            <div class="info-row warning">O reembolso será processado diretamente no Stripe. Essa ação não pode ser desfeita.</div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('refundModal')">Cancelar</button>
+            <button class="btn btn-danger" id="refundConfirmBtn" onclick="submitRefund()">Reembolsar</button>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
      MODAL: Promover / Rebaixar Admin
 ══════════════════════════════════════════════════ -->
 <div class="modal-overlay" id="roleModal">

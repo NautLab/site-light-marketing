@@ -58,6 +58,26 @@ Deno.serve(async (req) => {
       apiVersion: '2024-06-20',
     });
 
+    // ── Cancel existing active subscriptions at period end ──
+    const { data: existingSubs } = await adminClient
+      .from('subscriptions')
+      .select('id, stripe_subscription_id')
+      .eq('user_id', user.id)
+      .in('status', ['active', 'trialing']);
+
+    if (existingSubs && existingSubs.length > 0) {
+      for (const sub of existingSubs) {
+        if (sub.stripe_subscription_id) {
+          await stripe.subscriptions.update(sub.stripe_subscription_id, {
+            cancel_at_period_end: true,
+          });
+        }
+        await adminClient.from('subscriptions').update({
+          cancel_at_period_end: true,
+        }).eq('id', sub.id);
+      }
+    }
+
     // Get or create Stripe customer
     const { data: profile } = await adminClient
       .from('profiles')

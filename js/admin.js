@@ -169,7 +169,7 @@ async function loadUsers() {
 
     const { data, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select('*, subscriptions:subscriptions(id, plan_name_snapshot, status, stripe_subscription_id, cancel_at_period_end)')
         .order('created_at', { ascending: false });
 
     if (error) {
@@ -251,12 +251,16 @@ function openUserDetail(userId) {
     const date    = u.created_at ? new Date(u.created_at).toLocaleDateString('pt-BR') : '—';
     const isSelf  = u.id === currentProfile.id;
     const canEditRole = currentProfile.role === 'super_admin' || u.role !== 'super_admin';
+    const activeSub = getUserActiveSub(u);
 
-    const tierBadge = `<span class="badge badge-${u.subscription_tier}">${tierLabel(u.subscription_tier)}</span>`;
+    const planDisplay = activeSub?.plan_name_snapshot
+        ? `<span class="badge badge-paid">${escHtml(activeSub.plan_name_snapshot)}</span>`
+        : `<span class="badge badge-${u.subscription_tier}">${tierLabel(u.subscription_tier)}</span>`;
     const roleBadge = `<span class="badge ${roleBadgeClass(u.role)}">${roleLabel(u.role)}</span>`;
     const freeAccBadge = u.free_access
         ? `<span class="badge badge-gift">${escHtml(planNameById(u.free_access_plan_id))}</span>`
         : `<span style="color:var(--text-dim);font-size:12px;">—</span>`;
+    const blockedBadge = u.is_blocked ? `<span class="badge badge-danger">Bloqueado</span>` : `<span style="color:var(--text-dim);font-size:12px;">Não</span>`;
 
     const usageMonth = u.usage_month || '';
     const currentMonth = new Date().toISOString().slice(0, 7);
@@ -273,7 +277,7 @@ function openUserDetail(userId) {
         <div class="user-detail-grid">
             <div class="user-detail-item">
                 <span class="user-detail-item-label">Plano</span>
-                ${tierBadge}
+                ${planDisplay}
             </div>
             <div class="user-detail-item">
                 <span class="user-detail-item-label">Função</span>
@@ -284,6 +288,10 @@ function openUserDetail(userId) {
                 ${freeAccBadge}
             </div>
             <div class="user-detail-item">
+                <span class="user-detail-item-label">Bloqueado</span>
+                ${blockedBadge}
+            </div>
+            <div class="user-detail-item">
                 <span class="user-detail-item-label">Cadastro</span>
                 <span style="font-size:13px;color:var(--text);">${date}</span>
             </div>
@@ -291,7 +299,7 @@ function openUserDetail(userId) {
                 <span class="user-detail-item-label">Uso este mês</span>
                 <span style="font-size:13px;color:var(--text);">${usageCount} processamento${usageCount !== 1 ? 's' : ''}</span>
             </div>
-            <div class="user-detail-item">
+            <div class="user-detail-item" style="grid-column: 1 / -1;">
                 <span class="user-detail-item-label">ID</span>
                 <span style="font-size:10px;color:var(--text-dim);word-break:break-all;">${u.id}</span>
             </div>
@@ -304,6 +312,12 @@ function openUserDetail(userId) {
             ${u.free_access ? `
             <button class="btn btn-danger" style="width:100%;justify-content:center;" onclick="closeModal('userDetailModal'); revokeFreeAccess('${u.id}', '${escHtml(u.full_name || u.email)}')">Revogar acesso gratuito</button>` : `
             <button class="btn btn-success" style="width:100%;justify-content:center;" onclick="closeModal('userDetailModal'); openFreeAccessModal('${u.id}', '${escHtml(u.full_name || u.email)}')">Conceder acesso gratuito</button>`}
+            ${(!isSelf && canEditRole) ? (u.is_blocked ? `
+            <button class="btn btn-success" style="width:100%;justify-content:center;" onclick="closeModal('userDetailModal'); unblockAccount('${u.id}', '${escHtml(u.full_name || u.email)}')">Desbloquear conta</button>` : `
+            <button class="btn btn-danger" style="width:100%;justify-content:center;" onclick="closeModal('userDetailModal'); blockAccount('${u.id}', '${escHtml(u.full_name || u.email)}')">Bloquear conta</button>`) : ''}
+            ${(activeSub && !u.free_access) ? `
+            <button class="btn btn-danger" style="width:100%;justify-content:center;" onclick="closeModal('userDetailModal'); revokePaidSubscription('${u.id}', '${escHtml(u.full_name || u.email)}')">Revogar plano pago</button>
+            <button class="btn btn-secondary" style="width:100%;justify-content:center;" onclick="closeModal('userDetailModal'); openRefundModal('${u.id}', '${escHtml(u.full_name || u.email)}')">Reembolsar</button>` : ''}
         </div>
     `;
 
@@ -312,11 +326,17 @@ function openUserDetail(userId) {
 
     openModal('userDetailModal');
 }
+    if (!u.subscriptions || !Array.isArray(u.subscriptions)) return null;
+    return u.subscriptions.find(s => s.status === 'active' || s.status === 'trialing') || null;
+}
 
 function buildUserRow(u) {
     const initials = getInitials(u.full_name, u.email);
+    const activeSub = getUserActiveSub(u);
 
-    const tierBadge = `<span class="badge badge-${u.subscription_tier}">${tierLabel(u.subscription_tier)}</span>`;
+    const planDisplay = activeSub?.plan_name_snapshot
+        ? `<span class="badge badge-paid">${escHtml(activeSub.plan_name_snapshot)}</span>`
+        : `<span class="badge badge-${u.subscription_tier}">${tierLabel(u.subscription_tier)}</span>`;
     const roleBadge = `<span class="badge ${roleBadgeClass(u.role)}">${roleLabel(u.role)}</span>`;
     const giftBadge = u.free_access ? `<span class="badge badge-gift">${escHtml(planNameById(u.free_access_plan_id))}</span>` : `<span style="color:var(--text-dim);font-size:12px;">—</span>`;
     const date      = u.created_at ? new Date(u.created_at).toLocaleDateString('pt-BR') : '—';
@@ -335,18 +355,26 @@ Revogar</button>`
         : `<button class="btn btn-sm btn-success" onclick="openFreeAccessModal('${u.id}', '${escHtml(u.full_name || u.email)}')">
 Acesso</button>`;
 
+    const blockBtn = (!isSelf && canEditRole) ? (u.is_blocked
+        ? `<button class="btn btn-sm btn-success" onclick="unblockAccount('${u.id}', '${escHtml(u.full_name || u.email)}')">Desbloquear</button>`
+        : `<button class="btn btn-sm btn-danger" onclick="blockAccount('${u.id}', '${escHtml(u.full_name || u.email)}')">Bloquear</button>`) : '';
+
+    const revokeSubBtn = (activeSub && !u.free_access) ? `<button class="btn btn-sm btn-danger" onclick="revokePaidSubscription('${u.id}', '${escHtml(u.full_name || u.email)}')">Revogar plano</button>` : '';
+
+    const refundBtn = (activeSub && !u.free_access) ? `<button class="btn btn-sm btn-secondary" onclick="openRefundModal('${u.id}', '${escHtml(u.full_name || u.email)}')">Reembolsar</button>` : '';
+
     return `
     <tr class="user-row-clickable" onclick="openUserDetail('${u.id}')">
         <td>
             <div class="user-cell">
                 <div class="user-avatar-sm">${initials}</div>
                 <div>
-                    <div class="user-name">${escHtml(u.full_name || '—')}</div>
+                    <div class="user-name">${escHtml(u.full_name || '—')}${u.is_blocked ? ' <span class="badge badge-danger" style="font-size:10px;">Bloqueado</span>' : ''}</div>
                     <div class="user-email">${escHtml(u.email)}</div>
                 </div>
             </div>
         </td>
-        <td>${tierBadge}</td>
+        <td>${planDisplay}</td>
         <td>${roleBadge}</td>
         <td>${giftBadge}</td>
         <td style="color:var(--text-muted);font-size:12px;">${date}</td>
@@ -354,9 +382,117 @@ Acesso</button>`;
             <div class="actions-cell">
                 ${roleBtn}
                 ${freeAccessBtn}
+                ${blockBtn}
+                ${revokeSubBtn}
+                ${refundBtn}
             </div>
         </td>
     </tr>`;
+}
+
+// ─── Block / Unblock ─────────────────────────────────────────
+
+async function blockAccount(userId, userName) {
+    if (!confirm(\`Bloquear a conta de \${userName}? O usuário não conseguirá fazer login.\`)) return;
+    try {
+        const session = await supabase.auth.getSession();
+        const res = await callFunction('admin-update-user', {
+            target_user_id: userId,
+            action: 'block_account',
+        }, session.data.session.access_token);
+        if (!res.ok) { const b = await res.json(); throw new Error(b.error || 'Erro'); }
+        const user = allUsers.find(u => u.id === userId);
+        if (user) user.is_blocked = true;
+        renderUsersTable();
+        showToast('Conta bloqueada com sucesso.', 'success');
+    } catch (err) { showToast('Erro: ' + err.message, 'error'); }
+}
+
+async function unblockAccount(userId, userName) {
+    if (!confirm(\`Desbloquear a conta de \${userName}?\`)) return;
+    try {
+        const session = await supabase.auth.getSession();
+        const res = await callFunction('admin-update-user', {
+            target_user_id: userId,
+            action: 'unblock_account',
+        }, session.data.session.access_token);
+        if (!res.ok) { const b = await res.json(); throw new Error(b.error || 'Erro'); }
+        const user = allUsers.find(u => u.id === userId);
+        if (user) user.is_blocked = false;
+        renderUsersTable();
+        showToast('Conta desbloqueada com sucesso.', 'success');
+    } catch (err) { showToast('Erro: ' + err.message, 'error'); }
+}
+
+// ─── Revoke Paid Subscription ────────────────────────────────
+
+async function revokePaidSubscription(userId, userName) {
+    if (!confirm(\`Revogar o plano pago de \${userName}? A assinatura será cancelada imediatamente no Stripe.\`)) return;
+    try {
+        const session = await supabase.auth.getSession();
+        const res = await callFunction('admin-update-user', {
+            target_user_id: userId,
+            action: 'revoke_paid_subscription',
+        }, session.data.session.access_token);
+        if (!res.ok) { const b = await res.json(); throw new Error(b.error || 'Erro'); }
+        const user = allUsers.find(u => u.id === userId);
+        if (user) {
+            user.subscription_tier = 'free';
+            if (user.subscriptions) {
+                user.subscriptions.forEach(s => {
+                    if (s.status === 'active' || s.status === 'trialing') s.status = 'canceled';
+                });
+            }
+        }
+        renderUsersTable();
+        updateUserStats();
+        showToast('Plano pago revogado com sucesso.', 'success');
+    } catch (err) { showToast('Erro: ' + err.message, 'error'); }
+}
+
+// ─── Refund ──────────────────────────────────────────────────
+
+function openRefundModal(userId, userName) {
+    selectedUserId   = userId;
+    selectedUserName = userName;
+    document.getElementById('refundUserName').textContent = userName;
+    document.getElementById('refundAmount').value = '';
+    openModal('refundModal');
+}
+
+async function submitRefund() {
+    const amountStr = document.getElementById('refundAmount').value.trim();
+    const amount = amountStr ? parseFloat(amountStr.replace(',', '.')) : undefined;
+
+    if (amount !== undefined && (isNaN(amount) || amount <= 0)) {
+        showToast('Valor de reembolso inválido.', 'error');
+        return;
+    }
+
+    const btn = document.getElementById('refundConfirmBtn');
+    btn.disabled = true;
+    btn.textContent = 'Processando…';
+
+    try {
+        const session = await supabase.auth.getSession();
+        const res = await callFunction('admin-update-user', {
+            target_user_id: selectedUserId,
+            action: 'refund',
+            amount: amount,
+        }, session.data.session.access_token);
+
+        const body = await res.json();
+        if (!res.ok) throw new Error(body.error || 'Erro');
+
+        closeModal('refundModal');
+        const refundedAmount = (body.amount / 100).toFixed(2).replace('.', ',');
+        showToast(\`Reembolso de R$ \${refundedAmount} processado com sucesso.\`, 'success');
+    } catch (err) {
+        showToast('Erro: ' + err.message, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Reembolsar';
+    }
 }
 
 // ─── Free Access ─────────────────────────────────────────────

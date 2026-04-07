@@ -17,17 +17,17 @@
         :root {
             --primary: #0C7E92;
             --primary-dark: #096a7b;
-            --bg: #f5f7fa;
-            --surface: #ffffff;
-            --text: #1a1a2e;
-            --text-secondary: #64748b;
-            --border: #e2e8f0;
-            --radius: 12px;
+            --bg: #0a0a0a;
+            --surface: rgba(255, 255, 255, 0.05);
+            --text: #ffffff;
+            --text-secondary: rgba(255, 255, 255, 0.6);
+            --border: rgba(255, 255, 255, 0.1);
+            --radius: 16px;
         }
 
         body {
             font-family: 'Poppins', sans-serif;
-            background: var(--bg);
+            background: linear-gradient(135deg, #000000 0%, #1a1a1a 100%);
             color: var(--text);
             min-height: 100vh;
             display: flex;
@@ -36,17 +36,17 @@
 
         /* ── Header ─────────────────────────────────────────── */
         .checkout-header {
-            background: var(--surface);
-            border-bottom: 1px solid var(--border);
+            background: rgba(0, 0, 0, 0.95);
+            border-bottom: 1px solid rgba(12, 126, 146, 0.2);
             padding: 16px 24px;
             display: flex;
             align-items: center;
             gap: 16px;
+            backdrop-filter: blur(20px);
         }
 
         .checkout-header img {
             height: 36px;
-            filter: brightness(0);
         }
 
         .checkout-header .back-link {
@@ -85,11 +85,12 @@
         /* ── Summary Card ───────────────────────────────────── */
         .summary-card {
             background: var(--surface);
-            border: 1px solid var(--border);
+            border: 1px solid rgba(12, 126, 146, 0.3);
             border-radius: var(--radius);
             padding: 28px;
             position: sticky;
             top: 24px;
+            backdrop-filter: blur(20px);
         }
 
         .summary-card h2 {
@@ -146,11 +147,11 @@
         .summary-coupon {
             margin-top: 16px;
             padding: 8px 12px;
-            background: #ecfdf5;
-            border: 1px solid #a7f3d0;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
             border-radius: 8px;
             font-size: 13px;
-            color: #065f46;
+            color: #34d399;
             font-weight: 500;
         }
 
@@ -163,7 +164,7 @@
             color: var(--text-secondary);
         }
 
-        .summary-secure svg { flex-shrink: 0; }
+        .summary-secure svg { flex-shrink: 0; color: var(--primary); }
 
         /* ── Checkout Mount ──────────────────────────────────── */
         .checkout-form-area h2 {
@@ -206,7 +207,7 @@
         }
 
         .checkout-error p {
-            color: #dc2626;
+            color: #f87171;
             font-size: 15px;
             margin-bottom: 16px;
         }
@@ -354,10 +355,10 @@
                 <span class="summary-value">R$ ${price.toFixed(2).replace('.', ',')}</span>
             </div>
             ${couponData ? `
-            <div class="summary-row" style="color:#16a34a;">
+            <div class="summary-row" style="color:#34d399;">
                 <span>Cupom (${escHtml(coupon)})</span>
                 <span style="font-weight:600;">${discountDisplay}</span>
-            </div>` : coupon ? `<div class="summary-coupon" style="background:#fef2f2;border-color:#fca5a5;color:#991b1b;">Cupom &quot;${escHtml(coupon)}&quot; não encontrado</div>` : ''}
+            </div>` : coupon ? `<div class="summary-coupon" style="background:rgba(239,68,68,0.1);border-color:rgba(239,68,68,0.3);color:#f87171;">Cupom &quot;${escHtml(coupon)}&quot; não encontrado</div>` : ''}
             <div class="summary-total">
                 <span class="label">Total</span>
                 <span>
