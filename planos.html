@@ -1105,6 +1105,7 @@ async function applyCoupon() {
 const params = new URLSearchParams(window.location.search);
 if (params.get('checkout') === 'success') {
     setTimeout(() => showToast('Assinatura realizada com sucesso! Seu plano foi ativado.', 'success'), 500);
+    setTimeout(async () => { await loadActiveSubscription(); renderPlans(); }, 3000);
 } else if (params.get('checkout') === 'canceled') {
     setTimeout(() => showToast('Checkout cancelado. Você não foi cobrado.', 'info'), 500);
 }

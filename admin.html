@@ -180,14 +180,14 @@
                 <div class="table-toolbar" style="margin-bottom:16px;">
                     <input class="search-input" id="planSearch" type="search" placeholder="Buscar plano…" oninput="renderPlans()" />
                     <select class="filter-select" id="planSortSelect" onchange="renderPlans()">
-                        <option value="default">Ordem padrão</option>
+                        <option value="default">Mais recentes</option>
+                        <option value="created-asc">Mais antigos</option>
                         <option value="name-asc">Nome (A–Z)</option>
                         <option value="name-desc">Nome (Z–A)</option>
                         <option value="price-asc">Preço (menor)</option>
                         <option value="price-desc">Preço (maior)</option>
                         <option value="updated-desc">Edição (mais recente)</option>
                         <option value="updated-asc">Edição (mais antigo)</option>
-                        <option value="created-asc">Mais antigos</option>
                     </select>
                 </div>
 
@@ -253,14 +253,14 @@
                 <div class="table-toolbar" style="margin-bottom:16px;">
                     <input class="search-input" id="couponSearch" type="search" placeholder="Buscar cupom…" oninput="renderCoupons()" />
                     <select class="filter-select" id="couponSortSelect" onchange="renderCoupons()">
-                        <option value="default">Ordem padrão</option>
+                        <option value="default">Mais recentes</option>
+                        <option value="created-asc">Mais antigos</option>
                         <option value="code-asc">Código (A–Z)</option>
                         <option value="code-desc">Código (Z–A)</option>
                         <option value="value-asc">Desconto (menor)</option>
                         <option value="value-desc">Desconto (maior)</option>
                         <option value="updated-desc">Edição (mais recente)</option>
                         <option value="updated-asc">Edição (mais antigo)</option>
-                        <option value="created-asc">Mais antigos</option>
                     </select>
                 </div>
 
@@ -434,7 +434,6 @@
                 <select class="form-control form-select" id="roleSelectInput">
                     <option value="user">Usuário</option>
                     <option value="admin">Admin</option>
-                    <option value="super_admin" id="superAdminOption">Super Admin</option>
                 </select>
             </div>
         </div>

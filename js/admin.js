@@ -326,6 +326,8 @@ function openUserDetail(userId) {
 
     openModal('userDetailModal');
 }
+
+function getUserActiveSub(u) {
     if (!u.subscriptions || !Array.isArray(u.subscriptions)) return null;
     return u.subscriptions.find(s => s.status === 'active' || s.status === 'trialing') || null;
 }
@@ -1479,13 +1481,38 @@ function toggleEditCouponTypeHint() {
 function toggleDurationMonths() {
     const dur   = document.getElementById('couponDuration').value;
     const group = document.getElementById('couponDurationMonthsGroup');
-    group.style.display = dur === 'repeating' ? 'flex' : 'none';
+    const input = document.getElementById('couponDurationMonths');
+    if (dur === 'repeating') {
+        group.style.display = '';
+        input.readOnly = false;
+        input.style.opacity = '';
+        if (!input.value || input.value === '1') input.value = '';
+    } else if (dur === 'once') {
+        group.style.display = '';
+        input.value = '1';
+        input.readOnly = true;
+        input.style.opacity = '0.6';
+    } else {
+        group.style.display = 'none';
+    }
 }
 
 function toggleEditDurationMonths() {
     const dur   = document.getElementById('editCouponDuration').value;
     const group = document.getElementById('editCouponDurationMonthsGroup');
-    group.style.display = dur === 'repeating' ? '' : 'none';
+    const input = document.getElementById('editCouponDurationMonths');
+    if (dur === 'repeating') {
+        group.style.display = '';
+        input.readOnly = false;
+        input.style.opacity = '';
+    } else if (dur === 'once') {
+        group.style.display = '';
+        input.value = '1';
+        input.readOnly = true;
+        input.style.opacity = '0.6';
+    } else {
+        group.style.display = 'none';
+    }
 }
 
 function clearCouponForm() {
@@ -1494,7 +1521,7 @@ function clearCouponForm() {
     });
     document.getElementById('couponType').value     = 'percent';
     document.getElementById('couponDuration').value = 'once';
-    document.getElementById('couponDurationMonthsGroup').style.display = 'none';
+    toggleDurationMonths();
     toggleCouponTypeHint();
 }
 
