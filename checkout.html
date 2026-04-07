@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Checkout – Light Marketing</title>
+    <link rel="icon" type="image/x-icon" href="favicon.ico" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+    <script src="https://js.stripe.com/v3/"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --primary: #0C7E92;
+            --primary-dark: #096a7b;
+            --bg: #f5f7fa;
+            --surface: #ffffff;
+            --text: #1a1a2e;
+            --text-secondary: #64748b;
+            --border: #e2e8f0;
+            --radius: 12px;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ── Header ─────────────────────────────────────────── */
+        .checkout-header {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .checkout-header img {
+            height: 36px;
+            filter: brightness(0);
+        }
+
+        .checkout-header .back-link {
+            margin-left: auto;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: color .2s;
+        }
+
+        .checkout-header .back-link:hover { color: var(--primary); }
+
+        /* ── Layout ─────────────────────────────────────────── */
+        .checkout-wrapper {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            padding: 40px 20px 60px;
+            gap: 40px;
+            max-width: 1100px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .checkout-summary {
+            flex: 0 0 340px;
+        }
+
+        .checkout-form-area {
+            flex: 1;
+            min-width: 0;
+            max-width: 560px;
+        }
+
+        /* ── Summary Card ───────────────────────────────────── */
+        .summary-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 28px;
+            position: sticky;
+            top: 24px;
+        }
+
+        .summary-card h2 {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 20px;
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            font-size: 14px;
+        }
+
+        .summary-row + .summary-row { border-top: 1px solid var(--border); }
+
+        .summary-label { color: var(--text-secondary); }
+
+        .summary-value {
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .summary-total {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 2px solid var(--primary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .summary-total .label {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .summary-total .price {
+            font-size: 22px;
+            font-weight: 800;
+            color: var(--primary);
+        }
+
+        .summary-total .interval {
+            font-size: 13px;
+            font-weight: 400;
+            color: var(--text-secondary);
+        }
+
+        .summary-coupon {
+            margin-top: 16px;
+            padding: 8px 12px;
+            background: #ecfdf5;
+            border: 1px solid #a7f3d0;
+            border-radius: 8px;
+            font-size: 13px;
+            color: #065f46;
+            font-weight: 500;
+        }
+
+        .summary-secure {
+            margin-top: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .summary-secure svg { flex-shrink: 0; }
+
+        /* ── Checkout Mount ──────────────────────────────────── */
+        .checkout-form-area h2 {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 24px;
+            color: var(--text);
+        }
+
+        #checkout-mount {
+            min-height: 360px;
+        }
+
+        /* ── Loading / Error states ──────────────────────────── */
+        .checkout-loading {
+            text-align: center;
+            padding: 80px 20px;
+        }
+
+        .checkout-loading .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin .8s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .checkout-loading p {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .checkout-error {
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        .checkout-error p {
+            color: #dc2626;
+            font-size: 15px;
+            margin-bottom: 16px;
+        }
+
+        .checkout-error a {
+            color: var(--primary);
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        /* ── Responsive ──────────────────────────────────────── */
+        @media (max-width: 768px) {
+            .checkout-wrapper {
+                flex-direction: column;
+                padding: 20px 16px 40px;
+                gap: 24px;
+            }
+
+            .checkout-summary {
+                flex: none;
+                width: 100%;
+            }
+
+            .summary-card { position: static; }
+
+            .checkout-form-area { max-width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <header class="checkout-header">
+        <img src="logo-light-marketing.png?v=3" alt="Light Marketing" />
+        <a href="planos.html" class="back-link">Voltar aos planos</a>
+    </header>
+
+    <!-- Main -->
+    <div class="checkout-wrapper">
+
+        <!-- Left: Summary -->
+        <aside class="checkout-summary">
+            <div class="summary-card">
+                <h2>Resumo do pedido</h2>
+                <div id="summaryContent">
+                    <div class="checkout-loading">
+                        <div class="spinner"></div>
+                        <p>Carregando...</p>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Right: Stripe Checkout -->
+        <section class="checkout-form-area">
+            <h2>Pagamento</h2>
+            <div id="checkout-mount">
+                <div class="checkout-loading">
+                    <div class="spinner"></div>
+                    <p>Preparando checkout seguro...</p>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <script src="js/supabase-config.js"></script>
+    <script>
+    (async () => {
+        const SUPABASE_FUNCTIONS_URL = `${SUPABASE_URL}/functions/v1`;
+        const STRIPE_PUBLISHABLE_KEY = 'pk_test_PLACEHOLDER'; // Replace with your Stripe publishable key
+
+        // ── Parse URL params ──────────────────────────────
+        const params  = new URLSearchParams(window.location.search);
+        const planId  = params.get('plan_id');
+        const coupon  = params.get('coupon');
+        const interval = params.get('interval') || 'month';
+
+        if (!planId) {
+            showError('Nenhum plano selecionado.');
+            return;
+        }
+
+        // ── Auth check ────────────────────────────────────
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+            sessionStorage.setItem('checkout_plan_id', planId);
+            window.location.href = 'login.html?next=planos.html';
+            return;
+        }
+
+        // ── Load plan details ─────────────────────────────
+        const { data: plan } = await supabase
+            .from('plans')
+            .select('*')
+            .eq('id', planId)
+            .eq('is_active', true)
+            .single();
+
+        if (!plan) { showError('Plano não encontrado ou inativo.'); return; }
+
+        const useAnnual = interval === 'year' && plan.annual_price_brl;
+        const price = useAnnual ? parseFloat(plan.annual_price_brl) : parseFloat(plan.price_brl);
+        const intervalLabel = interval === 'year' ? '/ano' : '/mês';
+
+        // Render summary
+        document.getElementById('summaryContent').innerHTML = `
+            <div class="summary-row">
+                <span class="summary-label">Plano</span>
+                <span class="summary-value">${escHtml(plan.name)}</span>
+            </div>
+            <div class="summary-row">
+                <span class="summary-label">Cobrança</span>
+                <span class="summary-value">${interval === 'year' ? 'Anual' : 'Mensal'}</span>
+            </div>
+            ${coupon ? `<div class="summary-coupon">Cupom aplicado: <strong>${escHtml(coupon)}</strong></div>` : ''}
+            <div class="summary-total">
+                <span class="label">Total</span>
+                <span>
+                    <span class="price">R$ ${price.toFixed(2).replace('.', ',')}</span>
+                    <span class="interval">${intervalLabel}</span>
+                </span>
+            </div>
+            <div class="summary-secure">
+                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                Pagamento seguro processado pelo Stripe
+            </div>
+        `;
+
+        // ── Create checkout session (embedded) ────────────
+        try {
+            const res = await fetch(`${SUPABASE_FUNCTIONS_URL}/create-checkout-session`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session.access_token}`,
+                    'apikey': SUPABASE_ANON_KEY,
+                },
+                body: JSON.stringify({
+                    plan_id: planId,
+                    coupon_code: coupon || undefined,
+                    billing_interval: interval,
+                    ui_mode: 'embedded',
+                }),
+            });
+
+            const body = await res.json();
+            if (!res.ok) throw new Error(body.error || 'Erro ao criar sessão de checkout');
+
+            // ── Mount Stripe Embedded Checkout ─────────────
+            const stripe = Stripe(STRIPE_PUBLISHABLE_KEY);
+            const checkout = await stripe.initEmbeddedCheckout({
+                clientSecret: body.clientSecret,
+            });
+
+            document.getElementById('checkout-mount').innerHTML = '';
+            checkout.mount('#checkout-mount');
+
+        } catch (err) {
+            showError(err.message);
+        }
+
+        // ── Helpers ────────────────────────────────────────
+        function showError(msg) {
+            document.getElementById('checkout-mount').innerHTML = `
+                <div class="checkout-error">
+                    <p>${escHtml(msg)}</p>
+                    <a href="planos.html">Voltar aos planos</a>
+                </div>`;
+        }
+
+        function escHtml(s) {
+            const d = document.createElement('div');
+            d.textContent = s || '';
+            return d.innerHTML;
+        }
+    })();
+    </script>
+</body>
+</html>

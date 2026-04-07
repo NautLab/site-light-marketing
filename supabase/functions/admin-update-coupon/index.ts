@@ -1,5 +1,5 @@
 // Edge Function: admin-update-coupon
-// Actions: create, toggle (activate/deactivate)
+// Actions: create, edit, toggle, archive, delete
 // Requires: admin or super_admin
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -146,6 +146,101 @@ Deno.serve(async (req) => {
       if (error) throw error;
 
       return json({ success: true, is_active });
+    }
+
+    // ── ACTION: edit ─────────────────────────────────────
+    if (action === 'edit') {
+      const { coupon_id, name, max_redemptions, redeem_by } = body;
+
+      if (!coupon_id) return json({ error: 'Missing coupon_id' }, 400);
+      if (!name) return json({ error: 'Missing name' }, 400);
+
+      // Fetch coupon to get Stripe IDs
+      const { data: coupon } = await adminClient
+        .from('coupons')
+        .select('stripe_coupon_id, stripe_promotion_code_id')
+        .eq('id', coupon_id)
+        .single();
+
+      if (!coupon) return json({ error: 'Coupon not found' }, 404);
+
+      // Update Stripe coupon name
+      await stripe.coupons.update(coupon.stripe_coupon_id, { name });
+
+      // Update DB
+      const { error } = await adminClient
+        .from('coupons')
+        .update({
+          name,
+          max_redemptions: max_redemptions || null,
+          redeem_by: redeem_by || null,
+        })
+        .eq('id', coupon_id);
+
+      if (error) throw error;
+
+      return json({ success: true });
+    }
+
+    // ── ACTION: archive ───────────────────────────────────
+    if (action === 'archive') {
+      const { coupon_id, is_archived } = body;
+
+      if (!coupon_id) return json({ error: 'Missing coupon_id' }, 400);
+
+      const updates: Record<string, unknown> = { is_archived };
+      if (is_archived) updates.is_active = false;
+
+      // If archiving, deactivate the promo code in Stripe too
+      const { data: coupon } = await adminClient
+        .from('coupons')
+        .select('stripe_promotion_code_id')
+        .eq('id', coupon_id)
+        .single();
+
+      if (coupon?.stripe_promotion_code_id && is_archived) {
+        await stripe.promotionCodes.update(coupon.stripe_promotion_code_id, { active: false });
+      }
+
+      const { error } = await adminClient
+        .from('coupons')
+        .update(updates)
+        .eq('id', coupon_id);
+
+      if (error) throw error;
+
+      return json({ success: true });
+    }
+
+    // ── ACTION: delete ────────────────────────────────────
+    if (action === 'delete') {
+      const { coupon_id } = body;
+
+      if (!coupon_id) return json({ error: 'Missing coupon_id' }, 400);
+
+      const { data: coupon } = await adminClient
+        .from('coupons')
+        .select('stripe_coupon_id')
+        .eq('id', coupon_id)
+        .single();
+
+      if (!coupon) return json({ error: 'Coupon not found' }, 404);
+
+      // Delete Stripe coupon (also deletes associated promo codes)
+      try {
+        await stripe.coupons.del(coupon.stripe_coupon_id);
+      } catch (stripeErr) {
+        console.warn('Stripe coupon delete failed (may already be deleted):', stripeErr.message);
+      }
+
+      const { error } = await adminClient
+        .from('coupons')
+        .delete()
+        .eq('id', coupon_id);
+
+      if (error) throw error;
+
+      return json({ success: true });
     }
 
     return json({ error: 'Unknown action' }, 400);

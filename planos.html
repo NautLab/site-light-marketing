@@ -922,34 +922,13 @@ async function handleSubscribe(planId, planName) {
         return;
     }
 
-    const btn = [...document.querySelectorAll('.plan-btn-primary')]
-        .find(b => b.getAttribute('onclick')?.includes(planId));
-    if (btn) { btn.disabled = true; btn.textContent = 'Aguarde…'; }
-
-    try {
-        const res = await fetch(`${SUPABASE_FUNCTIONS_URL}/create-checkout-session`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${session.access_token}`,
-                'apikey': SUPABASE_ANON_KEY,
-            },
-            body: JSON.stringify({
-                plan_id: planId,
-                coupon_code: activeCouponCode || undefined,
-                billing_interval: currentInterval,
-            }),
-        });
-
-        const body = await res.json();
-        if (!res.ok) throw new Error(body.error || 'Erro ao iniciar checkout');
-
-        window.location.href = body.url;
-
-    } catch (err) {
-        showToast('Erro: ' + err.message, 'error');
-        if (btn) { btn.disabled = false; btn.textContent = 'Assinar agora'; }
-    }
+    // Redirect to custom checkout page
+    const params = new URLSearchParams({
+        plan_id: planId,
+        interval: currentInterval,
+    });
+    if (activeCouponCode) params.set('coupon', activeCouponCode);
+    window.location.href = `checkout.html?${params.toString()}`;
 }
 
 function handleFreePlan() {
@@ -1100,7 +1079,7 @@ async function applyCoupon() {
 // ─────────────────────────────────────────────────────────────
 const params = new URLSearchParams(window.location.search);
 if (params.get('checkout') === 'success') {
-    setTimeout(() => showToast('🎉 Assinatura realizada com sucesso! Seu plano foi ativado.', 'success'), 500);
+    setTimeout(() => showToast('Assinatura realizada com sucesso! Seu plano foi ativado.', 'success'), 500);
 } else if (params.get('checkout') === 'canceled') {
     setTimeout(() => showToast('Checkout cancelado. Você não foi cobrado.', 'info'), 500);
 }

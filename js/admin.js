@@ -527,7 +527,12 @@ function toggleArchivedPlans() {
 
 function renderPlans() {
     const container = document.getElementById('plansContainer');
-    const visible = allPlans.filter(p => !!p.is_archived === showArchivedPlans);
+    const q = (document.getElementById('planSearch')?.value || '').toLowerCase();
+    const visible = allPlans.filter(p => {
+        if (!!p.is_archived !== showArchivedPlans) return false;
+        if (q && !(p.name || '').toLowerCase().includes(q) && !(p.description || '').toLowerCase().includes(q)) return false;
+        return true;
+    });
 
     if (visible.length === 0) {
         const msg = showArchivedPlans ? 'Nenhum plano arquivado' : 'Nenhum plano encontrado';
@@ -1011,15 +1016,41 @@ async function loadCoupons() {
     renderCoupons();
 }
 
+let showArchivedCoupons = false;
+
+function toggleArchivedCoupons() {
+    showArchivedCoupons = !showArchivedCoupons;
+    const btn = document.getElementById('toggleArchivedCouponsBtn');
+    if (btn) btn.textContent = showArchivedCoupons ? 'Ver ativos' : 'Ver arquivados';
+    renderCoupons();
+}
+
 function renderCoupons() {
     const container = document.getElementById('couponsContainer');
+    const q = (document.getElementById('couponSearch')?.value || '').toLowerCase();
+    const visible = allCoupons.filter(c => {
+        if (!!c.is_archived !== showArchivedCoupons) return false;
+        if (q && !(c.code || '').toLowerCase().includes(q) && !(c.name || '').toLowerCase().includes(q)) return false;
+        return true;
+    });
 
-    if (allCoupons.length === 0) {
-        container.innerHTML = `<div class="empty-state"><p class="empty-state-text">Nenhum cupom encontrado</p><p class="empty-state-sub">Clique em "+ Criar Cupom" para começar.</p></div>`;
+    if (visible.length === 0) {
+        const msg = showArchivedCoupons ? 'Nenhum cupom arquivado' : 'Nenhum cupom encontrado';
+        container.innerHTML = `<div class="empty-state"><p class="empty-state-text">${msg}</p>${!showArchivedCoupons ? '<p class="empty-state-sub">Clique em "+ Criar Cupom" para começar.</p>' : ''}</div>`;
         return;
     }
 
-    container.innerHTML = `<div class="coupons-grid">${allCoupons.map(buildCouponCard).join('')}</div>`;
+    const sortVal = document.getElementById('couponSortSelect')?.value || 'default';
+    const sorted = [...visible].sort((a, b) => {
+        if (sortVal === 'code-asc')   return (a.code || '').localeCompare(b.code || '');
+        if (sortVal === 'code-desc')  return (b.code || '').localeCompare(a.code || '');
+        if (sortVal === 'value-asc')  return (parseFloat(a.discount_value) || 0) - (parseFloat(b.discount_value) || 0);
+        if (sortVal === 'value-desc') return (parseFloat(b.discount_value) || 0) - (parseFloat(a.discount_value) || 0);
+        if (sortVal === 'created-asc') return new Date(a.created_at || 0) - new Date(b.created_at || 0);
+        return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+    });
+
+    container.innerHTML = `<div class="coupons-grid">${sorted.map(buildCouponCard).join('')}</div>`;
 }
 
 function buildCouponCard(c) {
@@ -1035,9 +1066,28 @@ function buildCouponCard(c) {
         ? `${c.times_redeemed} / ${c.max_redemptions} usos`
         : `${c.times_redeemed} usos`;
 
-    const status = c.is_active
-        ? `<span class="badge badge-active">Ativo</span>`
-        : `<span class="badge badge-canceled">Inativo</span>`;
+    const status = c.is_archived
+        ? `<span class="badge badge-canceled">Arquivado</span>`
+        : c.is_active
+            ? `<span class="badge badge-active">Ativo</span>`
+            : `<span class="badge badge-canceled">Inativo</span>`;
+
+    let footerActions = '';
+    if (c.is_archived) {
+        footerActions = `
+            <button class="btn btn-sm btn-success" onclick="archiveCoupon('${c.id}', false)">Desarquivar</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteCoupon('${c.id}', '${escHtml(c.code)}')">Excluir</button>`;
+    } else {
+        const toggleLabel = c.is_active ? 'Desativar' : 'Ativar';
+        const toggleClass = c.is_active ? 'btn-danger' : 'btn-success';
+        const archiveBtn = !c.is_active
+            ? `<button class="btn btn-sm btn-secondary" onclick="archiveCoupon('${c.id}', true)">Arquivar</button>`
+            : '';
+        footerActions = `
+            <button class="btn btn-sm btn-secondary" onclick="openEditCouponModal('${c.id}')">Editar</button>
+            <button class="btn btn-sm ${toggleClass}" onclick="toggleCoupon('${c.id}', ${c.is_active})">${toggleLabel}</button>
+            ${archiveBtn}`;
+    }
 
     return `
     <div class="coupon-card">
@@ -1050,9 +1100,7 @@ function buildCouponCard(c) {
         </div>
         <div class="coupon-card-footer">
             ${status}
-            <button class="btn btn-sm ${c.is_active ? 'btn-danger' : 'btn-success'}" onclick="toggleCoupon('${c.id}', ${c.is_active})">
-                ${c.is_active ? 'Desativar' : 'Ativar'}
-            </button>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">${footerActions}</div>
         </div>
     </div>`;
 }
@@ -1067,13 +1115,13 @@ async function submitCreateCoupon() {
     const maxRedemptions  = parseInt(document.getElementById('couponMaxRedemptions').value) || null;
     const redeemBy        = document.getElementById('couponRedeemBy').value || null;
 
-    if (!code || !name || isNaN(value) || value <= 0) {
-        showToast('Preencha código, nome e valor corretamente.', 'error');
-        return;
-    }
-
-    if (type === 'percent' && (value < 1 || value > 100)) {
-        showToast('O desconto percentual deve estar entre 1 e 100.', 'error');
+    const errors = [];
+    if (!code) errors.push('Código é obrigatório');
+    if (!name) errors.push('Nome é obrigatório');
+    if (isNaN(value) || value <= 0) errors.push('Valor do desconto é obrigatório');
+    if (type === 'percent' && value > 100) errors.push('Percentual não pode ser maior que 100');
+    if (errors.length > 0) {
+        showToast(errors.join('. ') + '.', 'error');
         return;
     }
 
@@ -1107,6 +1155,59 @@ async function submitCreateCoupon() {
     }
 }
 
+function openEditCouponModal(couponId) {
+    const c = allCoupons.find(x => x.id === couponId);
+    if (!c) return;
+    document.getElementById('editCouponId').value = c.id;
+    document.getElementById('editCouponCode').value = c.code;
+    document.getElementById('editCouponName').value = c.name || '';
+    document.getElementById('editCouponType').value = c.discount_type === 'percent' ? 'Percentual (%)' : 'Valor fixo (R$)';
+    document.getElementById('editCouponValue').value = c.discount_value;
+    document.getElementById('editCouponValueLabel').textContent = c.discount_type === 'percent' ? 'Desconto (%)' : 'Desconto (R$)';
+    document.getElementById('editCouponMaxRedemptions').value = c.max_redemptions || '';
+    document.getElementById('editCouponRedeemBy').value = c.redeem_by ? c.redeem_by.split('T')[0] : '';
+    openModal('editCouponModal');
+}
+
+async function submitEditCoupon() {
+    const id = document.getElementById('editCouponId').value;
+    const name = document.getElementById('editCouponName').value.trim();
+    const maxRedemptions = parseInt(document.getElementById('editCouponMaxRedemptions').value) || null;
+    const redeemBy = document.getElementById('editCouponRedeemBy').value || null;
+
+    if (!name) { showToast('Nome é obrigatório.', 'error'); return; }
+
+    const btn = document.getElementById('editCouponBtn');
+    btn.disabled = true;
+    btn.textContent = 'Salvando…';
+
+    try {
+        const session = await supabase.auth.getSession();
+        const res = await callFunction('admin-update-coupon', {
+            action: 'edit',
+            coupon_id: id,
+            name,
+            max_redemptions: maxRedemptions,
+            redeem_by: redeemBy,
+        }, session.data.session.access_token);
+
+        const body = await res.json();
+        if (!res.ok) throw new Error(body.error || 'Erro ao editar cupom');
+
+        const idx = allCoupons.findIndex(c => c.id === id);
+        if (idx !== -1) Object.assign(allCoupons[idx], { name, max_redemptions: maxRedemptions, redeem_by: redeemBy });
+
+        renderCoupons();
+        closeModal('editCouponModal');
+        showToast('Cupom atualizado.', 'success');
+    } catch (err) {
+        showToast('Erro: ' + err.message, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Salvar';
+    }
+}
+
 async function toggleCoupon(couponId, currentActive) {
     try {
         const session = await supabase.auth.getSession();
@@ -1126,6 +1227,60 @@ async function toggleCoupon(couponId, currentActive) {
 
         renderCoupons();
         showToast(`Cupom ${!currentActive ? 'ativado' : 'desativado'}.`, 'success');
+    } catch (err) {
+        showToast('Erro: ' + err.message, 'error');
+    }
+}
+
+async function archiveCoupon(couponId, archive) {
+    const label = archive ? 'arquivar' : 'desarquivar';
+    if (!confirm(`Deseja ${label} este cupom?`)) return;
+
+    try {
+        const updates = archive
+            ? { is_archived: true, is_active: false }
+            : { is_archived: false };
+
+        const session = await supabase.auth.getSession();
+        const res = await callFunction('admin-update-coupon', {
+            action: 'archive',
+            coupon_id: couponId,
+            is_archived: archive,
+        }, session.data.session.access_token);
+
+        if (!res.ok) {
+            const body = await res.json();
+            throw new Error(body.error || 'Erro ao atualizar cupom');
+        }
+
+        const coupon = allCoupons.find(c => c.id === couponId);
+        if (coupon) { coupon.is_archived = archive; if (archive) coupon.is_active = false; }
+
+        renderCoupons();
+        showToast(`Cupom ${archive ? 'arquivado' : 'desarquivado'}.`, 'success');
+    } catch (err) {
+        showToast('Erro: ' + err.message, 'error');
+    }
+}
+
+async function deleteCoupon(couponId, code) {
+    if (!confirm(`Excluir o cupom "${code}" permanentemente?`)) return;
+
+    try {
+        const session = await supabase.auth.getSession();
+        const res = await callFunction('admin-update-coupon', {
+            action: 'delete',
+            coupon_id: couponId,
+        }, session.data.session.access_token);
+
+        if (!res.ok) {
+            const body = await res.json();
+            throw new Error(body.error || 'Erro ao excluir cupom');
+        }
+
+        allCoupons = allCoupons.filter(c => c.id !== couponId);
+        renderCoupons();
+        showToast('Cupom excluído.', 'success');
     } catch (err) {
         showToast('Erro: ' + err.message, 'error');
     }

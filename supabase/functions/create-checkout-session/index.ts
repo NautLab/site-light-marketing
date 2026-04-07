@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
     const { data: { user } } = await callerClient.auth.getUser();
     if (!user) return json({ error: 'Unauthorized' }, 401);
 
-    const { plan_id, coupon_code, billing_interval } = await req.json();
+    const { plan_id, coupon_code, billing_interval, ui_mode } = await req.json();
     if (!plan_id) return json({ error: 'Missing plan_id' }, 400);
 
     // Load plan from DB
@@ -91,13 +91,11 @@ Deno.serve(async (req) => {
     }
 
     // Build session
-    const session = await stripe.checkout.sessions.create({
+    const sessionParams: Record<string, unknown> = {
       customer: customerId,
       mode: 'subscription',
       line_items: [{ price: stripePriceId, quantity: 1 }],
       discounts,
-      success_url: `${SITE_URL}/planos.html?checkout=success`,
-      cancel_url:  `${SITE_URL}/planos.html?checkout=canceled`,
       metadata: {
         user_id: user.id,
         plan_id,
@@ -106,8 +104,21 @@ Deno.serve(async (req) => {
         metadata: { user_id: user.id, plan_id },
       },
       locale: 'pt-BR',
-    });
+    };
 
+    if (ui_mode === 'embedded') {
+      sessionParams.ui_mode = 'embedded';
+      sessionParams.return_url = `${SITE_URL}/planos.html?checkout=success`;
+    } else {
+      sessionParams.success_url = `${SITE_URL}/planos.html?checkout=success`;
+      sessionParams.cancel_url  = `${SITE_URL}/planos.html?checkout=canceled`;
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionParams as Stripe.Checkout.SessionCreateParams);
+
+    if (ui_mode === 'embedded') {
+      return json({ clientSecret: session.client_secret });
+    }
     return json({ url: session.url });
 
   } catch (err) {

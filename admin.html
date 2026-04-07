@@ -178,6 +178,7 @@
                 </div>
 
                 <div class="table-toolbar" style="margin-bottom:16px;">
+                    <input class="search-input" id="planSearch" type="search" placeholder="Buscar plano…" oninput="renderPlans()" />
                     <select class="filter-select" id="planSortSelect" onchange="renderPlans()">
                         <option value="default">Ordem padrão</option>
                         <option value="name-asc">Nome (A–Z)</option>
@@ -244,7 +245,22 @@
                         <h2 class="section-title">Cupons</h2>
                         <p class="section-subtitle">Criar e gerir cupons de desconto no Stripe</p>
                     </div>
-                    <button class="btn btn-primary" onclick="openModal('createCouponModal')">+ Criar Cupom</button>
+                    <div style="display:flex;gap:8px;">
+                        <button class="btn btn-secondary" id="toggleArchivedCouponsBtn" onclick="toggleArchivedCoupons()">Ver arquivados</button>
+                        <button class="btn btn-primary" onclick="openModal('createCouponModal')">+ Criar Cupom</button>
+                    </div>
+                </div>
+
+                <div class="table-toolbar" style="margin-bottom:16px;">
+                    <input class="search-input" id="couponSearch" type="search" placeholder="Buscar cupom…" oninput="renderCoupons()" />
+                    <select class="filter-select" id="couponSortSelect" onchange="renderCoupons()">
+                        <option value="default">Mais recentes</option>
+                        <option value="code-asc">Código (A–Z)</option>
+                        <option value="code-desc">Código (Z–A)</option>
+                        <option value="value-asc">Desconto (menor)</option>
+                        <option value="value-desc">Desconto (maior)</option>
+                        <option value="created-asc">Mais antigos</option>
+                    </select>
                 </div>
 
                 <div id="couponsContainer">
@@ -597,6 +613,55 @@
         <div class="modal-footer">
             <button class="btn btn-secondary" onclick="closeModal('createCouponModal')">Cancelar</button>
             <button class="btn btn-primary" id="createCouponBtn" onclick="submitCreateCoupon()">Criar no Stripe</button>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     MODAL: Editar Cupom
+══════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="editCouponModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="editCouponModalTitle">
+        <div class="modal-header">
+            <h3 class="modal-title" id="editCouponModalTitle">Editar Cupom</h3>
+            <button class="modal-close-btn" onclick="closeModal('editCouponModal')">×</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="editCouponId" />
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+                <div class="form-group">
+                    <label class="form-label" for="editCouponCode">Código</label>
+                    <input class="form-control" id="editCouponCode" type="text" disabled style="text-transform:uppercase;opacity:.6" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="editCouponName">Nome interno</label>
+                    <input class="form-control" id="editCouponName" type="text" placeholder="Promoção de Maio" />
+                </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+                <div class="form-group">
+                    <label class="form-label">Tipo</label>
+                    <input class="form-control" id="editCouponType" type="text" disabled style="opacity:.6" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="editCouponValue" id="editCouponValueLabel">Desconto</label>
+                    <input class="form-control" id="editCouponValue" type="number" min="0" step="0.01" disabled style="opacity:.6" />
+                </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+                <div class="form-group">
+                    <label class="form-label" for="editCouponMaxRedemptions">Limite de usos</label>
+                    <input class="form-control" id="editCouponMaxRedemptions" type="number" min="1" placeholder="Ilimitado" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="editCouponRedeemBy">Validade</label>
+                    <input class="form-control" id="editCouponRedeemBy" type="date" />
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('editCouponModal')">Cancelar</button>
+            <button class="btn btn-primary" id="editCouponBtn" onclick="submitEditCoupon()">Salvar</button>
         </div>
     </div>
 </div>
