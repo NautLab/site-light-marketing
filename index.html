@@ -510,7 +510,7 @@
                             const overlay = document.createElement('div');
                             overlay.className = 'tool-lock-overlay';
                             overlay.innerHTML = `<div class="tool-lock-inner">
-                                    <div class="tool-lock-icon">⚡</div>
+                                    <div class="tool-lock-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M13 2L4.5 13.5H12L11 22L19.5 10.5H12L13 2Z" stroke="#0C7E92" stroke-width="2" stroke-linejoin="round"/></svg></div>
                                     <h3>Limite mensal atingido</h3>
                                     <p>Você utilizou ${usageCount} de ${monthlyLimit} processamentos este mês.</p>
                                     <a href="planos.html" class="tool-lock-btn">Ver planos</a>
@@ -534,7 +534,7 @@
                                         overlay.className = 'tool-lock-overlay';
                                         const isFreeTier = tier === 'free';
                                         overlay.innerHTML = `<div class="tool-lock-inner">
-                                            <div class="tool-lock-icon">🔒</div>
+                                            <div class="tool-lock-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="5" y="11" width="14" height="10" rx="2" stroke="#0C7E92" stroke-width="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4" stroke="#0C7E92" stroke-width="2" stroke-linecap="round"/></svg></div>
                                             <h3>${isFreeTier ? 'Disponível em planos pagos' : 'Recurso não disponível'}</h3>
                                             <p>${isFreeTier
                                                 ? 'Este marketplace não está disponível no plano Free. Faça upgrade para desbloquear.'

@@ -394,44 +394,53 @@ section *, .hero *, .how-to-use *, .footer * {
 .tool-lock-overlay {
     position: absolute;
     inset: 0;
-    background: rgba(10, 10, 10, 0.88);
-    backdrop-filter: blur(5px);
+    background: #0d1014;
     border-radius: inherit;
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 10;
+    border: 1px solid rgba(12, 126, 146, 0.18);
 }
 .tool-lock-inner {
     text-align: center;
-    padding: 32px 24px;
-    max-width: 320px;
+    padding: 32px 28px;
+    max-width: 300px;
 }
 .tool-lock-icon {
-    font-size: 40px;
-    margin-bottom: 14px;
+    width: 52px;
+    height: 52px;
+    background: rgba(12, 126, 146, 0.1);
+    border: 1px solid rgba(12, 126, 146, 0.3);
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
 }
 .tool-lock-inner h3 {
     color: #fff;
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 600;
-    margin: 0 0 10px;
+    margin: 0 0 8px;
+    font-family: 'Poppins', sans-serif;
 }
 .tool-lock-inner p {
-    color: rgba(255, 255, 255, 0.5);
-    font-size: 14px;
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 13px;
     line-height: 1.6;
     margin: 0 0 22px;
 }
 .tool-lock-btn {
     display: inline-block;
-    padding: 12px 28px;
+    padding: 10px 28px;
     background: #0C7E92;
     color: #fff;
-    border-radius: 10px;
+    border-radius: 8px;
     text-decoration: none;
     font-weight: 600;
-    font-size: 14px;
+    font-size: 13px;
+    font-family: 'Poppins', sans-serif;
     transition: background 0.2s;
 }
 .tool-lock-btn:hover {

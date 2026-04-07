@@ -775,9 +775,9 @@ function updateFreePlanCard(plan) {
         </div>
         <div class="plan-divider"></div>
         <ul class="plan-features">${featuresHtml}</ul>
-        <button class="plan-btn plan-btn-outline" id="freePlanBtn" onclick="handleFreePlan()" style="visibility:hidden">
+        <button class="plan-btn plan-btn-outline" id="freePlanBtn" onclick="handleFreePlan()" >
         </button>`;
-    // Button text/state revealed by updateFreePlanBtn() once auth resolves
+    updateFreePlanBtn();
 }
 
 function renderPaidPlans() {
@@ -860,6 +860,7 @@ function updateFreePlanBtn() {
         btn.textContent = 'Começar grátis';
         btn.onclick = () => window.location.href = 'register.html';
         btn.className = 'plan-btn plan-btn-outline';
+        btn.disabled = false;
     } else if (currentProfile.subscription_tier === 'free') {
         btn.textContent = '✓ Plano atual';
         btn.className = 'plan-btn plan-btn-current';
