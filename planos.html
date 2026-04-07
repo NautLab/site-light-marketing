@@ -595,6 +595,7 @@ function buildFeatures(plan) {
 document.addEventListener('DOMContentLoaded', async () => {
     await Promise.all([initAuthHeader(), loadPlans()]);
     renderPaidPlans(); // Re-render once both profile + plans are ready
+    updateFreePlanBtn(); // Final authoritative button state after both promises settle
 });
 
 async function initAuthHeader() {
@@ -774,11 +775,9 @@ function updateFreePlanCard(plan) {
         </div>
         <div class="plan-divider"></div>
         <ul class="plan-features">${featuresHtml}</ul>
-        <button class="plan-btn plan-btn-outline" id="freePlanBtn" onclick="handleFreePlan()">
-            Plano atual
+        <button class="plan-btn plan-btn-outline" id="freePlanBtn" onclick="handleFreePlan()" style="visibility:hidden">
         </button>`;
-    // Refresh button state after rebuild
-    updateFreePlanBtn();
+    // Button text/state revealed by updateFreePlanBtn() once auth resolves
 }
 
 function renderPaidPlans() {

@@ -483,6 +483,17 @@
                                 if (faPlan) planFeatures = faPlan;
                             } catch (_) { /* silent */ }
                         }
+                    } else {
+                        // Free tier: load free plan features from DB
+                        try {
+                            const { data: freePlan } = await supabase
+                                .from('plans')
+                                .select('monthly_limit, unlocked_screens')
+                                .eq('is_free', true)
+                                .eq('is_active', true)
+                                .maybeSingle();
+                            if (freePlan) planFeatures = freePlan;
+                        } catch (_) { /* silent */ }
                     }
 
                     // Determine access
@@ -509,10 +520,11 @@
                             if (processBtn) processBtn.disabled = true;
                         }
                     } else {
-                        // Per-marketplace screen lock for paid users.
+                        // Per-marketplace screen lock.
                         // Legacy plans that still have 'label-processor' are treated as all-unlocked.
                         if (planFeatures) {
-                            const unlockedScreens = planFeatures.unlocked_screens || [];
+                            const rawScreens = planFeatures.unlocked_screens || [];
+                            const unlockedScreens = Array.isArray(rawScreens) ? rawScreens : JSON.parse(rawScreens);
                             const legacyAllUnlocked = unlockedScreens.includes('label-processor');
                             if (!legacyAllUnlocked) {
                                 document.querySelectorAll('.marketplace-content').forEach(function(content) {
@@ -520,11 +532,14 @@
                                     if (!unlockedScreens.includes(marketplace)) {
                                         const overlay = document.createElement('div');
                                         overlay.className = 'tool-lock-overlay';
+                                        const isFreeTier = tier === 'free';
                                         overlay.innerHTML = `<div class="tool-lock-inner">
                                             <div class="tool-lock-icon">🔒</div>
-                                            <h3>Recurso não disponível</h3>
-                                            <p>Este marketplace não está incluído no seu plano atual.</p>
-                                            <a href="planos.html" class="tool-lock-btn">Atualizar plano</a>
+                                            <h3>${isFreeTier ? 'Disponível em planos pagos' : 'Recurso não disponível'}</h3>
+                                            <p>${isFreeTier
+                                                ? 'Este marketplace não está disponível no plano Free. Faça upgrade para desbloquear.'
+                                                : 'Este marketplace não está incluído no seu plano atual.'}</p>
+                                            <a href="planos.html" class="tool-lock-btn">Ver planos</a>
                                            </div>`;
                                         content.style.position = 'relative';
                                         content.appendChild(overlay);
