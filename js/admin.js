@@ -1042,11 +1042,13 @@ function renderCoupons() {
 
     const sortVal = document.getElementById('couponSortSelect')?.value || 'default';
     const sorted = [...visible].sort((a, b) => {
-        if (sortVal === 'code-asc')   return (a.code || '').localeCompare(b.code || '');
-        if (sortVal === 'code-desc')  return (b.code || '').localeCompare(a.code || '');
-        if (sortVal === 'value-asc')  return (parseFloat(a.discount_value) || 0) - (parseFloat(b.discount_value) || 0);
-        if (sortVal === 'value-desc') return (parseFloat(b.discount_value) || 0) - (parseFloat(a.discount_value) || 0);
-        if (sortVal === 'created-asc') return new Date(a.created_at || 0) - new Date(b.created_at || 0);
+        if (sortVal === 'code-asc')     return (a.code || '').localeCompare(b.code || '');
+        if (sortVal === 'code-desc')    return (b.code || '').localeCompare(a.code || '');
+        if (sortVal === 'value-asc')    return (parseFloat(a.discount_value) || 0) - (parseFloat(b.discount_value) || 0);
+        if (sortVal === 'value-desc')   return (parseFloat(b.discount_value) || 0) - (parseFloat(a.discount_value) || 0);
+        if (sortVal === 'updated-desc') return new Date(b.updated_at || 0) - new Date(a.updated_at || 0);
+        if (sortVal === 'updated-asc')  return new Date(a.updated_at || 0) - new Date(b.updated_at || 0);
+        if (sortVal === 'created-asc')  return new Date(a.created_at || 0) - new Date(b.created_at || 0);
         return new Date(b.created_at || 0) - new Date(a.created_at || 0);
     });
 
@@ -1091,7 +1093,10 @@ function buildCouponCard(c) {
 
     return `
     <div class="coupon-card">
-        <div class="coupon-code-display">${escHtml(c.code)}</div>
+        <div class="coupon-card-header">
+            <div class="coupon-code-display">${escHtml(c.code)}</div>
+            ${status}
+        </div>
         <div class="coupon-discount">${discount}</div>
         <div class="coupon-meta">
             <span>Validade: ${validade}</span>
@@ -1099,7 +1104,6 @@ function buildCouponCard(c) {
             <span>${usos}</span>
         </div>
         <div class="coupon-card-footer">
-            ${status}
             <div style="display:flex;gap:6px;flex-wrap:wrap;">${footerActions}</div>
         </div>
     </div>`;
@@ -1164,6 +1168,18 @@ function openEditCouponModal(couponId) {
     document.getElementById('editCouponType').value = c.discount_type === 'percent' ? 'Percentual (%)' : 'Valor fixo (R$)';
     document.getElementById('editCouponValue').value = c.discount_value;
     document.getElementById('editCouponValueLabel').textContent = c.discount_type === 'percent' ? 'Desconto (%)' : 'Desconto (R$)';
+    const durLabels = { once: 'Única vez', repeating: 'Repetido', forever: 'Para sempre' };
+    document.getElementById('editCouponDuration').value = durLabels[c.duration] || c.duration;
+    const monthsGroup = document.getElementById('editCouponDurationMonthsGroup');
+    if (c.duration === 'repeating' && c.duration_in_months) {
+        monthsGroup.style.display = '';
+        document.getElementById('editCouponDurationMonths').value = c.duration_in_months;
+    } else {
+        monthsGroup.style.display = 'none';
+    }
+    const timesRedeemed = c.times_redeemed || 0;
+    document.getElementById('editCouponTimesRedeemed').value = timesRedeemed;
+    document.getElementById('editCouponTimesRedeemedDisplay').value = timesRedeemed;
     document.getElementById('editCouponMaxRedemptions').value = c.max_redemptions || '';
     document.getElementById('editCouponRedeemBy').value = c.redeem_by ? c.redeem_by.split('T')[0] : '';
     openModal('editCouponModal');
@@ -1174,8 +1190,13 @@ async function submitEditCoupon() {
     const name = document.getElementById('editCouponName').value.trim();
     const maxRedemptions = parseInt(document.getElementById('editCouponMaxRedemptions').value) || null;
     const redeemBy = document.getElementById('editCouponRedeemBy').value || null;
+    const timesRedeemed = parseInt(document.getElementById('editCouponTimesRedeemed').value) || 0;
 
     if (!name) { showToast('Nome é obrigatório.', 'error'); return; }
+    if (maxRedemptions !== null && maxRedemptions < timesRedeemed) {
+        showToast(`Limite de usos não pode ser menor que ${timesRedeemed} (usos já realizados).`, 'error');
+        return;
+    }
 
     const btn = document.getElementById('editCouponBtn');
     btn.disabled = true;

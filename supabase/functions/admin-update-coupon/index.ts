@@ -164,6 +164,18 @@ Deno.serve(async (req) => {
 
       if (!coupon) return json({ error: 'Coupon not found' }, 404);
 
+      // Validate max_redemptions >= times_redeemed
+      if (max_redemptions != null) {
+        const { data: currentCoupon } = await adminClient
+          .from('coupons')
+          .select('times_redeemed')
+          .eq('id', coupon_id)
+          .single();
+        if (currentCoupon && max_redemptions < (currentCoupon.times_redeemed || 0)) {
+          return json({ error: `Limite de usos não pode ser menor que ${currentCoupon.times_redeemed} (usos já realizados)` }, 400);
+        }
+      }
+
       // Update Stripe coupon name
       await stripe.coupons.update(coupon.stripe_coupon_id, { name });
 

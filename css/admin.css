@@ -711,11 +711,19 @@ body.admin-body {
 .coupon-card-footer {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-end;
     gap: 8px;
     flex-wrap: wrap;
     padding-top: 6px;
     border-top: 1px solid var(--border);
+    margin-top: auto;
+}
+
+.coupon-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
 }
 
 /* ── Notification cards ──────────────────────────── */

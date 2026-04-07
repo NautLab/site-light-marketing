@@ -9,6 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://js.stripe.com/v3/"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -311,6 +312,33 @@
         const price = useAnnual ? parseFloat(plan.annual_price_brl) : parseFloat(plan.price_brl);
         const intervalLabel = interval === 'year' ? '/ano' : '/mês';
 
+        // ── Load coupon details if provided ───────────────
+        let couponData = null;
+        if (coupon) {
+            const { data: couponRow } = await supabase
+                .from('coupons')
+                .select('discount_type, discount_value')
+                .eq('code', coupon.toUpperCase())
+                .eq('is_active', true)
+                .maybeSingle();
+            couponData = couponRow;
+        }
+
+        // Calculate discounted price (never negative)
+        let finalPrice = price;
+        let discountDisplay = null;
+        if (couponData) {
+            if (couponData.discount_type === 'percent') {
+                const off = price * (parseFloat(couponData.discount_value) / 100);
+                finalPrice = Math.max(0, price - off);
+                discountDisplay = `-${couponData.discount_value}%`;
+            } else {
+                const off = parseFloat(couponData.discount_value);
+                finalPrice = Math.max(0, price - off);
+                discountDisplay = `-R$ ${Math.min(off, price).toFixed(2).replace('.', ',')}`;
+            }
+        }
+
         // Render summary
         document.getElementById('summaryContent').innerHTML = `
             <div class="summary-row">
@@ -321,11 +349,19 @@
                 <span class="summary-label">Cobrança</span>
                 <span class="summary-value">${interval === 'year' ? 'Anual' : 'Mensal'}</span>
             </div>
-            ${coupon ? `<div class="summary-coupon">Cupom aplicado: <strong>${escHtml(coupon)}</strong></div>` : ''}
+            <div class="summary-row">
+                <span class="summary-label">Valor</span>
+                <span class="summary-value">R$ ${price.toFixed(2).replace('.', ',')}</span>
+            </div>
+            ${couponData ? `
+            <div class="summary-row" style="color:#16a34a;">
+                <span>Cupom (${escHtml(coupon)})</span>
+                <span style="font-weight:600;">${discountDisplay}</span>
+            </div>` : coupon ? `<div class="summary-coupon" style="background:#fef2f2;border-color:#fca5a5;color:#991b1b;">Cupom &quot;${escHtml(coupon)}&quot; não encontrado</div>` : ''}
             <div class="summary-total">
                 <span class="label">Total</span>
                 <span>
-                    <span class="price">R$ ${price.toFixed(2).replace('.', ',')}</span>
+                    <span class="price">R$ ${finalPrice.toFixed(2).replace('.', ',')}</span>
                     <span class="interval">${intervalLabel}</span>
                 </span>
             </div>
