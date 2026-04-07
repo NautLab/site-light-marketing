@@ -1064,10 +1064,6 @@ function buildCouponCard(c) {
         ? `Válido até ${new Date(c.redeem_by).toLocaleDateString('pt-BR')}`
         : 'Sem prazo';
 
-    const usos = c.max_redemptions
-        ? `${c.times_redeemed} / ${c.max_redemptions} usos`
-        : `${c.times_redeemed} usos`;
-
     const limiteIndividual = c.max_redemptions_per_user
         ? `Limite individual: ${c.max_redemptions_per_user}/usuário`
         : '';
@@ -1105,7 +1101,7 @@ function buildCouponCard(c) {
         <div class="coupon-meta">
             <span>Validade: ${validade}</span>
             <span>Duração: ${durationLabel(c.duration)}</span>
-            <span>${usos}</span>
+            ${c.max_redemptions ? `<span>Limite total: ${c.max_redemptions} usos</span>` : ''}
             ${limiteIndividual ? `<span>${limiteIndividual}</span>` : ''}
         </div>
         <div class="coupon-card-footer">

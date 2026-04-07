@@ -187,7 +187,6 @@
                         <option value="price-desc">Preço (maior)</option>
                         <option value="updated-desc">Edição (mais recente)</option>
                         <option value="updated-asc">Edição (mais antigo)</option>
-                        <option value="created-desc">Mais recentes</option>
                         <option value="created-asc">Mais antigos</option>
                     </select>
                 </div>
@@ -261,7 +260,6 @@
                         <option value="value-desc">Desconto (maior)</option>
                         <option value="updated-desc">Edição (mais recente)</option>
                         <option value="updated-asc">Edição (mais antigo)</option>
-                        <option value="created-desc">Mais recentes</option>
                         <option value="created-asc">Mais antigos</option>
                     </select>
                 </div>
@@ -499,6 +497,7 @@
         </div>
         <div class="modal-body">
             <input type="hidden" id="editPlanId" />
+            <p style="font-size:12px;color:var(--text-muted);margin:0 0 10px;line-height:1.4;">Assinaturas existentes mantêm o plano e o preço anterior até o próximo ciclo.</p>
             <div class="form-group">
                 <label class="form-label" for="editPlanName">Nome</label>
                 <input class="form-control" id="editPlanName" type="text" placeholder="Ex: Plano Básico" />
@@ -609,7 +608,7 @@
                 </div>
                 <div class="form-group">
                     <label class="form-label" for="couponMaxPerUser">Limite por usuário</label>
-                    <input class="form-control" id="couponMaxPerUser" type="number" min="1" placeholder="Ilimitado" />
+                    <input class="form-control" id="couponMaxPerUser" type="number" min="1" placeholder="Ilimitado" value="1" />
                 </div>
             </div>
             <div class="form-group">
@@ -636,7 +635,7 @@
         <div class="modal-body">
             <input type="hidden" id="editCouponId" />
             <input type="hidden" id="editCouponTimesRedeemed" />
-            <p style="font-size:12px;color:#f59e0b;margin:0 0 10px;line-height:1.4;">Alterar código, tipo, valor ou duração recria o cupom no Stripe. Assinaturas existentes mantêm o desconto anterior.</p>
+            <p style="font-size:12px;color:var(--text-muted);margin:0 0 10px;line-height:1.4;">Assinaturas existentes mantêm o desconto anterior.</p>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
                 <div class="form-group">
                     <label class="form-label" for="editCouponCode">Código</label>
@@ -687,7 +686,7 @@
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
                 <div class="form-group">
                     <label class="form-label" for="editCouponMaxPerUser">Limite por usuário</label>
-                    <input class="form-control" id="editCouponMaxPerUser" type="number" min="1" placeholder="Ilimitado" />
+                    <input class="form-control" id="editCouponMaxPerUser" type="number" min="1" placeholder="Ilimitado" value="1" />
                 </div>
                 <div class="form-group">
                     <label class="form-label" for="editCouponRedeemBy">Validade</label>

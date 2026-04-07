@@ -545,7 +545,7 @@
         <div class="coupon-section">
             <label for="couponInput">Tem um cupom de desconto?</label>
             <div class="coupon-row">
-                <input class="coupon-input" id="couponInput" type="text" placeholder="CÓDIGO" />
+                <input class="coupon-input" id="couponInput" type="text" placeholder="CÓDIGO" onkeydown="if(event.key==='Enter') applyCoupon()" />
                 <button class="coupon-apply-btn" onclick="applyCoupon()">Aplicar</button>
             </div>
             <div class="coupon-feedback" id="couponFeedback"></div>
