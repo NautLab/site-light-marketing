@@ -85,7 +85,7 @@
 
                 <!-- Lado Direito - Ferramenta -->
                 <div class="hero-right">
-                    <div class="tool-card">
+                    <div class="tool-card" style="opacity:0;transition:opacity .15s">
                         <div class="tool-header">
                             <h2>Processar Etiquetas</h2>
                         </div>
@@ -568,6 +568,9 @@
                             } catch (_) { /* silent */ }
                         });
                     }
+                    // Reveal tool card now that locks are in place
+                    const tc = document.querySelector('.tool-card');
+                    if (tc) tc.style.opacity = '1';
                 })();
 
             } catch (err) {

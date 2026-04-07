@@ -836,8 +836,11 @@ function buildPlanCard(p) {
     }
 
     // Cancel subscription button for current paid plan
+    const isFreeAccess = currentProfile?.free_access && !currentSubscription;
     let cancelBtnHtml = '';
-    if (isCurrent && currentSubscription && currentProfile?.subscription_tier !== 'free') {
+    if (isCurrent && isFreeAccess) {
+        cancelBtnHtml = `<div class="plan-cancel-notice" style="background:rgba(12,126,146,0.08);border-color:rgba(12,126,146,0.2);color:#0C7E92;">Acesso concedido pelo administrador</div>`;
+    } else if (isCurrent && currentSubscription && currentProfile?.subscription_tier !== 'free') {
         if (!currentSubscription.cancel_at_period_end) {
             cancelBtnHtml = `<button class="plan-btn plan-btn-danger" onclick="handleCancelSubscription()">Cancelar assinatura</button>`;
         } else {
@@ -956,25 +959,40 @@ function handleFreePlan() {
 }
 
 function showDowngradeModal() {
-    let endDateStr = '';
-    if (currentSubscription?.current_period_end) {
-        endDateStr = new Date(currentSubscription.current_period_end).toLocaleDateString('pt-BR');
-    }
+    // Free access granted by admin — no Stripe subscription to cancel
+    const isFreeAccess = currentProfile?.free_access && !currentSubscription;
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
     modal.id = 'downgradeModal';
-    modal.innerHTML = `
-        <div class="modal-box">
-            <h3>Voltar para o plano Free?</h3>
-            <p>Sua assinatura paga será cancelada.${endDateStr
-                ? ` Você mantém acesso ao plano atual até <span class="highlight">${endDateStr}</span>.`
-                : ''} Após esse período, sua conta será migrada automaticamente para o plano Free com os recursos básicos.</p>
-            <p style="margin-bottom:0;font-size:13px;">Você pode assinar novamente a qualquer momento.</p>
-            <div class="modal-actions">
-                <button class="modal-btn-cancel" onclick="closeDowngradeModal()">Cancelar</button>
-                <button class="modal-btn-confirm" id="confirmDowngradeBtn" onclick="confirmDowngrade()">Confirmar</button>
-            </div>
-        </div>`;
+
+    if (isFreeAccess) {
+        modal.innerHTML = `
+            <div class="modal-box">
+                <h3>Acesso concedido pelo administrador</h3>
+                <p>Seu acesso ao plano atual foi concedido pela equipe administrativa e só pode ser alterado pelo painel Admin.</p>
+                <p style="margin-bottom:0;font-size:13px;">Entre em contato com o administrador para solicitar alterações.</p>
+                <div class="modal-actions">
+                    <button class="modal-btn-cancel" onclick="closeDowngradeModal()">Entendi</button>
+                </div>
+            </div>`;
+    } else {
+        let endDateStr = '';
+        if (currentSubscription?.current_period_end) {
+            endDateStr = new Date(currentSubscription.current_period_end).toLocaleDateString('pt-BR');
+        }
+        modal.innerHTML = `
+            <div class="modal-box">
+                <h3>Voltar para o plano Free?</h3>
+                <p>Sua assinatura paga será cancelada.${endDateStr
+                    ? ` Você mantém acesso aos recursos do plano atual até <span class="highlight">${endDateStr}</span>.`
+                    : ''} Após esse período, sua conta será migrada automaticamente para o plano Free com os recursos básicos.</p>
+                <p style="margin-bottom:0;font-size:13px;">Você pode assinar novamente a qualquer momento.</p>
+                <div class="modal-actions">
+                    <button class="modal-btn-cancel" onclick="closeDowngradeModal()">Cancelar</button>
+                    <button class="modal-btn-confirm" id="confirmDowngradeBtn" onclick="confirmDowngrade()">Confirmar</button>
+                </div>
+            </div>`;
+    }
     document.body.appendChild(modal);
     modal.addEventListener('click', e => { if (e.target === modal) closeDowngradeModal(); });
 }
