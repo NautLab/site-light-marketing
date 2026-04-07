@@ -361,10 +361,13 @@ Acesso</button>`;
 
 // ─── Free Access ─────────────────────────────────────────────
 
-function openFreeAccessModal(userId, userName) {
+async function openFreeAccessModal(userId, userName) {
     selectedUserId   = userId;
     selectedUserName = userName;
     document.getElementById('freeAccessUserName').textContent = userName;
+
+    // Ensure plans are loaded (not loaded if Plans section was never visited)
+    if (allPlans.length === 0) await loadPlans();
 
     // Populate plan select from loaded plans (exclude free plans, sorted alphabetically)
     const select = document.getElementById('freeAccessPlanSelect');
@@ -766,6 +769,10 @@ async function submitEditPlan() {
     const annual_observation = annualEnabled ? (document.getElementById('editPlanAnnualObservation')?.value.trim() || '') : '';
 
     if (!name) { showToast('Nome é obrigatório.', 'error'); return; }
+    if (annualEnabled && (isNaN(annualMonthly) || !annualMonthly || annualMonthly <= 0)) {
+        showToast('Preencha o preço mensal da versão anual corretamente.', 'error');
+        return;
+    }
 
     const btn = document.getElementById('editPlanBtn');
     btn.disabled    = true;
