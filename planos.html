@@ -723,7 +723,7 @@ async function loadActiveSubscription() {
         if (!session) return;
         const { data } = await supabase
             .from('subscriptions')
-            .select('id, status, cancel_at_period_end, current_period_end, plan_id')
+            .select('id, status, cancel_at_period_end, current_period_end, plan_id, billing_interval')
             .eq('user_id', session.user.id)
             .in('status', ['active', 'trialing'])
             .order('created_at', { ascending: false })
@@ -818,6 +818,13 @@ function buildPlanCard(p) {
     const features  = buildFeatures(p);
     const isCurrent = currentSubscription?.plan_id === p.id || (currentProfile?.free_access && currentProfile?.free_access_plan_id === p.id);
     const isFeatured = false;
+
+    // Cross-tab indicator: if subscribed on a different interval
+    const subInterval = currentSubscription?.billing_interval || 'month';
+    const isOtherInterval = isCurrent && !currentSubscription?.cancel_at_period_end && subInterval !== currentInterval;
+    const intervalNote = isOtherInterval
+        ? (subInterval === 'year' ? ' (anual)' : ' (mensal)')
+        : '';
     const monthlyPrice = parseFloat(p.price_brl);
     const annualTotal  = p.annual_price_brl ? parseFloat(p.annual_price_brl) : null;
     const annualMonthly = annualTotal ? annualTotal / 12 : null;
@@ -856,7 +863,7 @@ function buildPlanCard(p) {
     }
 
     const btnHtml = isCurrent
-        ? `<button class="plan-btn plan-btn-current" disabled>✓ Plano atual</button>${cancelBtnHtml}`
+        ? `<button class="plan-btn plan-btn-current" disabled>✓ Plano atual${intervalNote}</button>${cancelBtnHtml}`
         : `<button class="plan-btn plan-btn-primary" onclick="handleSubscribe('${p.id}', '${escHtml(p.name)}')">Assinar agora</button>`;
 
     const featuresHtml = features.map(f =>
@@ -1037,7 +1044,7 @@ async function applyCoupon() {
 
     const { data, error } = await supabase
         .from('coupons')
-        .select('code, discount_type, discount_value, redeem_by, max_redemptions, times_redeemed')
+        .select('code, discount_type, discount_value, redeem_by, max_redemptions, times_redeemed, max_redemptions_per_user, id')
         .eq('code', code)
         .eq('is_active', true)
         .single();
@@ -1063,6 +1070,24 @@ async function applyCoupon() {
         feedback.className   = 'coupon-feedback error';
         activeCouponCode     = null;
         return;
+    }
+
+    // Check per-user limit
+    if (data.max_redemptions_per_user) {
+        const { data: { session: sess } } = await supabase.auth.getSession();
+        if (sess) {
+            const { count } = await supabase
+                .from('coupon_redemptions')
+                .select('id', { count: 'exact', head: true })
+                .eq('coupon_id', data.id)
+                .eq('user_id', sess.user.id);
+            if ((count || 0) >= data.max_redemptions_per_user) {
+                feedback.textContent = '✗ Você já atingiu o limite individual deste cupom.';
+                feedback.className   = 'coupon-feedback error';
+                activeCouponCode     = null;
+                return;
+            }
+        }
     }
 
     const discountText = data.discount_type === 'percent'

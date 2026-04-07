@@ -1068,6 +1068,10 @@ function buildCouponCard(c) {
         ? `${c.times_redeemed} / ${c.max_redemptions} usos`
         : `${c.times_redeemed} usos`;
 
+    const limiteIndividual = c.max_redemptions_per_user
+        ? `Limite individual: ${c.max_redemptions_per_user}/usuário`
+        : '';
+
     const status = c.is_archived
         ? `<span class="badge badge-canceled">Arquivado</span>`
         : c.is_active
@@ -1102,6 +1106,7 @@ function buildCouponCard(c) {
             <span>Validade: ${validade}</span>
             <span>Duração: ${durationLabel(c.duration)}</span>
             <span>${usos}</span>
+            ${limiteIndividual ? `<span>${limiteIndividual}</span>` : ''}
         </div>
         <div class="coupon-card-footer">
             <div style="display:flex;gap:6px;flex-wrap:wrap;">${footerActions}</div>
@@ -1117,6 +1122,7 @@ async function submitCreateCoupon() {
     const duration        = document.getElementById('couponDuration').value;
     const durationMonths  = parseInt(document.getElementById('couponDurationMonths').value) || null;
     const maxRedemptions  = parseInt(document.getElementById('couponMaxRedemptions').value) || null;
+    const maxPerUser      = parseInt(document.getElementById('couponMaxPerUser').value) || null;
     const redeemBy        = document.getElementById('couponRedeemBy').value || null;
 
     const errors = [];
@@ -1140,6 +1146,7 @@ async function submitCreateCoupon() {
             code, name, discount_type: type, discount_value: value,
             duration, duration_in_months: duration === 'repeating' ? durationMonths : null,
             max_redemptions: maxRedemptions,
+            max_redemptions_per_user: maxPerUser,
             redeem_by: redeemBy,
         }, session.data.session.access_token);
 
@@ -1165,36 +1172,46 @@ function openEditCouponModal(couponId) {
     document.getElementById('editCouponId').value = c.id;
     document.getElementById('editCouponCode').value = c.code;
     document.getElementById('editCouponName').value = c.name || '';
-    document.getElementById('editCouponType').value = c.discount_type === 'percent' ? 'Percentual (%)' : 'Valor fixo (R$)';
+    document.getElementById('editCouponType').value = c.discount_type;
     document.getElementById('editCouponValue').value = c.discount_value;
-    document.getElementById('editCouponValueLabel').textContent = c.discount_type === 'percent' ? 'Desconto (%)' : 'Desconto (R$)';
-    const durLabels = { once: 'Única vez', repeating: 'Repetido', forever: 'Para sempre' };
-    document.getElementById('editCouponDuration').value = durLabels[c.duration] || c.duration;
-    const monthsGroup = document.getElementById('editCouponDurationMonthsGroup');
+    toggleEditCouponTypeHint();
+    document.getElementById('editCouponDuration').value = c.duration;
+    toggleEditDurationMonths();
     if (c.duration === 'repeating' && c.duration_in_months) {
-        monthsGroup.style.display = '';
         document.getElementById('editCouponDurationMonths').value = c.duration_in_months;
-    } else {
-        monthsGroup.style.display = 'none';
     }
     const timesRedeemed = c.times_redeemed || 0;
     document.getElementById('editCouponTimesRedeemed').value = timesRedeemed;
     document.getElementById('editCouponTimesRedeemedDisplay').value = timesRedeemed;
     document.getElementById('editCouponMaxRedemptions').value = c.max_redemptions || '';
+    document.getElementById('editCouponMaxPerUser').value = c.max_redemptions_per_user || '';
     document.getElementById('editCouponRedeemBy').value = c.redeem_by ? c.redeem_by.split('T')[0] : '';
     openModal('editCouponModal');
 }
 
 async function submitEditCoupon() {
-    const id = document.getElementById('editCouponId').value;
-    const name = document.getElementById('editCouponName').value.trim();
-    const maxRedemptions = parseInt(document.getElementById('editCouponMaxRedemptions').value) || null;
-    const redeemBy = document.getElementById('editCouponRedeemBy').value || null;
-    const timesRedeemed = parseInt(document.getElementById('editCouponTimesRedeemed').value) || 0;
+    const id               = document.getElementById('editCouponId').value;
+    const code             = document.getElementById('editCouponCode').value.trim().toUpperCase();
+    const name             = document.getElementById('editCouponName').value.trim();
+    const discountType     = document.getElementById('editCouponType').value;
+    const discountValue    = parseFloat(document.getElementById('editCouponValue').value);
+    const duration         = document.getElementById('editCouponDuration').value;
+    const durationMonths   = parseInt(document.getElementById('editCouponDurationMonths').value) || null;
+    const maxRedemptions   = parseInt(document.getElementById('editCouponMaxRedemptions').value) || null;
+    const maxPerUser       = parseInt(document.getElementById('editCouponMaxPerUser').value) || null;
+    const redeemBy         = document.getElementById('editCouponRedeemBy').value || null;
+    const timesRedeemed    = parseInt(document.getElementById('editCouponTimesRedeemed').value) || 0;
 
-    if (!name) { showToast('Nome é obrigatório.', 'error'); return; }
+    const errors = [];
+    if (!code) errors.push('Código é obrigatório');
+    if (!name) errors.push('Nome é obrigatório');
+    if (isNaN(discountValue) || discountValue <= 0) errors.push('Valor do desconto é obrigatório');
+    if (discountType === 'percent' && discountValue > 100) errors.push('Percentual não pode ser maior que 100');
     if (maxRedemptions !== null && maxRedemptions < timesRedeemed) {
-        showToast(`Limite de usos não pode ser menor que ${timesRedeemed} (usos já realizados).`, 'error');
+        errors.push(`Limite de usos não pode ser menor que ${timesRedeemed} (usos já realizados)`);
+    }
+    if (errors.length > 0) {
+        showToast(errors.join('. ') + '.', 'error');
         return;
     }
 
@@ -1207,16 +1224,24 @@ async function submitEditCoupon() {
         const res = await callFunction('admin-update-coupon', {
             action: 'edit',
             coupon_id: id,
-            name,
+            code, name,
+            discount_type: discountType,
+            discount_value: discountValue,
+            duration,
+            duration_in_months: duration === 'repeating' ? durationMonths : null,
             max_redemptions: maxRedemptions,
+            max_redemptions_per_user: maxPerUser,
             redeem_by: redeemBy,
         }, session.data.session.access_token);
 
         const body = await res.json();
         if (!res.ok) throw new Error(body.error || 'Erro ao editar cupom');
 
+        // Update local data with returned coupon
         const idx = allCoupons.findIndex(c => c.id === id);
-        if (idx !== -1) Object.assign(allCoupons[idx], { name, max_redemptions: maxRedemptions, redeem_by: redeemBy });
+        if (idx !== -1 && body.coupon) {
+            Object.assign(allCoupons[idx], body.coupon);
+        }
 
         renderCoupons();
         closeModal('editCouponModal');
@@ -1313,14 +1338,26 @@ function toggleCouponTypeHint() {
     label.textContent = type === 'percent' ? 'Desconto (%)' : 'Desconto (R$)';
 }
 
+function toggleEditCouponTypeHint() {
+    const type  = document.getElementById('editCouponType').value;
+    const label = document.getElementById('editCouponValueLabel');
+    label.textContent = type === 'percent' ? 'Desconto (%)' : 'Desconto (R$)';
+}
+
 function toggleDurationMonths() {
     const dur   = document.getElementById('couponDuration').value;
     const group = document.getElementById('couponDurationMonthsGroup');
     group.style.display = dur === 'repeating' ? 'flex' : 'none';
 }
 
+function toggleEditDurationMonths() {
+    const dur   = document.getElementById('editCouponDuration').value;
+    const group = document.getElementById('editCouponDurationMonthsGroup');
+    group.style.display = dur === 'repeating' ? '' : 'none';
+}
+
 function clearCouponForm() {
-    ['couponCode', 'couponName', 'couponValue', 'couponMaxRedemptions', 'couponRedeemBy'].forEach(id => {
+    ['couponCode', 'couponName', 'couponValue', 'couponMaxRedemptions', 'couponMaxPerUser', 'couponRedeemBy'].forEach(id => {
         document.getElementById(id).value = '';
     });
     document.getElementById('couponType').value     = 'percent';

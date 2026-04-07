@@ -84,6 +84,26 @@ Deno.serve(async (req) => {
     // Resolve optional promotion code
     let discounts: { promotion_code: string }[] | undefined;
     if (coupon_code) {
+      // Validate per-user limit before creating session
+      const { data: couponRow } = await adminClient
+        .from('coupons')
+        .select('id, max_redemptions_per_user')
+        .eq('code', coupon_code.toUpperCase())
+        .eq('is_active', true)
+        .single();
+
+      if (couponRow?.max_redemptions_per_user) {
+        const { count } = await adminClient
+          .from('coupon_redemptions')
+          .select('id', { count: 'exact', head: true })
+          .eq('coupon_id', couponRow.id)
+          .eq('user_id', user.id);
+
+        if ((count || 0) >= couponRow.max_redemptions_per_user) {
+          return json({ error: 'Você já atingiu o limite individual de usos deste cupom.' }, 400);
+        }
+      }
+
       const codes = await stripe.promotionCodes.list({ code: coupon_code, active: true, limit: 1 });
       if (codes.data.length > 0) {
         discounts = [{ promotion_code: codes.data[0].id }];
@@ -99,9 +119,11 @@ Deno.serve(async (req) => {
       metadata: {
         user_id: user.id,
         plan_id,
+        coupon_code: coupon_code || '',
+        billing_interval: billing_interval || 'month',
       },
       subscription_data: {
-        metadata: { user_id: user.id, plan_id },
+        metadata: { user_id: user.id, plan_id, coupon_code: coupon_code || '', billing_interval: billing_interval || 'month' },
       },
       locale: 'pt-BR',
     };

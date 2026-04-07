@@ -54,6 +54,8 @@ Deno.serve(async (req) => {
 
         const userId    = session.metadata?.user_id;
         const planId    = session.metadata?.plan_id;
+        const couponCode = session.metadata?.coupon_code;
+        const billingInterval = session.metadata?.billing_interval || 'month';
         const subId     = session.subscription as string;
         const custId    = session.customer as string;
 
@@ -71,6 +73,7 @@ Deno.serve(async (req) => {
           current_period_start: new Date(stripeSub.current_period_start * 1000).toISOString(),
           current_period_end:   new Date(stripeSub.current_period_end   * 1000).toISOString(),
           cancel_at_period_end: stripeSub.cancel_at_period_end,
+          billing_interval: billingInterval,
         }, { onConflict: 'stripe_subscription_id' });
 
         // Update profile – mark as paid subscriber
@@ -78,6 +81,30 @@ Deno.serve(async (req) => {
           subscription_tier: 'paid',
           stripe_customer_id: custId,
         }).eq('id', userId);
+
+        // ── Increment coupon usage ───────────────────────
+        if (couponCode) {
+          const { data: couponRow } = await adminClient
+            .from('coupons')
+            .select('id, times_redeemed')
+            .eq('code', couponCode.toUpperCase())
+            .single();
+
+          if (couponRow) {
+            await adminClient
+              .from('coupons')
+              .update({ times_redeemed: (couponRow.times_redeemed || 0) + 1 })
+              .eq('id', couponRow.id);
+
+            await adminClient
+              .from('coupon_redemptions')
+              .insert({
+                coupon_id: couponRow.id,
+                user_id: userId,
+                stripe_checkout_session_id: session.id,
+              });
+          }
+        }
 
         break;
       }

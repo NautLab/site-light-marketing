@@ -604,13 +604,17 @@
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
                 <div class="form-group">
-                    <label class="form-label" for="couponMaxRedemptions">Limite de usos</label>
+                    <label class="form-label" for="couponMaxRedemptions">Limite de usos total</label>
                     <input class="form-control" id="couponMaxRedemptions" type="number" min="1" placeholder="Ilimitado" />
                 </div>
                 <div class="form-group">
-                    <label class="form-label" for="couponRedeemBy">Validade</label>
-                    <input class="form-control" id="couponRedeemBy" type="date" />
+                    <label class="form-label" for="couponMaxPerUser">Limite por usuário</label>
+                    <input class="form-control" id="couponMaxPerUser" type="number" min="1" placeholder="Ilimitado" />
                 </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="couponRedeemBy">Validade</label>
+                <input class="form-control" id="couponRedeemBy" type="date" />
             </div>
         </div>
         <div class="modal-footer">
@@ -632,10 +636,11 @@
         <div class="modal-body">
             <input type="hidden" id="editCouponId" />
             <input type="hidden" id="editCouponTimesRedeemed" />
+            <p style="font-size:12px;color:#f59e0b;margin:0 0 10px;line-height:1.4;">Alterar código, tipo, valor ou duração recria o cupom no Stripe. Assinaturas existentes mantêm o desconto anterior.</p>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
                 <div class="form-group">
-                    <label class="form-label">Código</label>
-                    <input class="form-control" id="editCouponCode" type="text" disabled style="text-transform:uppercase;opacity:.6" />
+                    <label class="form-label" for="editCouponCode">Código</label>
+                    <input class="form-control" id="editCouponCode" type="text" style="text-transform:uppercase" />
                 </div>
                 <div class="form-group">
                     <label class="form-label" for="editCouponName">Nome interno</label>
@@ -644,22 +649,29 @@
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
                 <div class="form-group">
-                    <label class="form-label">Tipo</label>
-                    <input class="form-control" id="editCouponType" type="text" disabled style="opacity:.6" />
+                    <label class="form-label" for="editCouponType">Tipo</label>
+                    <select class="form-control form-select" id="editCouponType" onchange="toggleEditCouponTypeHint()">
+                        <option value="percent">Percentual (%)</option>
+                        <option value="fixed">Valor fixo (R$)</option>
+                    </select>
                 </div>
                 <div class="form-group">
-                    <label class="form-label" id="editCouponValueLabel">Desconto</label>
-                    <input class="form-control" id="editCouponValue" type="number" disabled style="opacity:.6" />
+                    <label class="form-label" for="editCouponValue" id="editCouponValueLabel">Desconto (%)</label>
+                    <input class="form-control" id="editCouponValue" type="number" min="0" step="0.01" placeholder="20" />
                 </div>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
                 <div class="form-group">
-                    <label class="form-label">Duração</label>
-                    <input class="form-control" id="editCouponDuration" type="text" disabled style="opacity:.6" />
+                    <label class="form-label" for="editCouponDuration">Duração</label>
+                    <select class="form-control form-select" id="editCouponDuration" onchange="toggleEditDurationMonths()">
+                        <option value="once">Única vez</option>
+                        <option value="repeating">Repetido</option>
+                        <option value="forever">Para sempre</option>
+                    </select>
                 </div>
-                <div class="form-group" id="editCouponDurationMonthsGroup">
-                    <label class="form-label">Meses</label>
-                    <input class="form-control" id="editCouponDurationMonths" type="number" disabled style="opacity:.6" />
+                <div class="form-group" id="editCouponDurationMonthsGroup" style="display:none;">
+                    <label class="form-label" for="editCouponDurationMonths">Meses</label>
+                    <input class="form-control" id="editCouponDurationMonths" type="number" min="1" placeholder="3" />
                 </div>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
@@ -668,13 +680,19 @@
                     <input class="form-control" id="editCouponTimesRedeemedDisplay" type="number" disabled style="opacity:.6" />
                 </div>
                 <div class="form-group">
-                    <label class="form-label" for="editCouponMaxRedemptions">Limite de usos</label>
+                    <label class="form-label" for="editCouponMaxRedemptions">Limite de usos total</label>
                     <input class="form-control" id="editCouponMaxRedemptions" type="number" min="1" placeholder="Ilimitado" />
                 </div>
             </div>
-            <div class="form-group">
-                <label class="form-label" for="editCouponRedeemBy">Validade</label>
-                <input class="form-control" id="editCouponRedeemBy" type="date" />
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+                <div class="form-group">
+                    <label class="form-label" for="editCouponMaxPerUser">Limite por usuário</label>
+                    <input class="form-control" id="editCouponMaxPerUser" type="number" min="1" placeholder="Ilimitado" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="editCouponRedeemBy">Validade</label>
+                    <input class="form-control" id="editCouponRedeemBy" type="date" />
+                </div>
             </div>
         </div>
         <div class="modal-footer">
