@@ -395,7 +395,7 @@ section *, .hero *, .how-to-use *, .footer * {
     position: absolute;
     inset: 0;
     background: #0d1014;
-    border-radius: inherit;
+    border-radius: 16px;
     display: flex;
     align-items: center;
     justify-content: center;

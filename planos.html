@@ -418,6 +418,30 @@
         .toast-error   { background:#1c0a0a; color:#ef4444; border:1px solid rgba(239,68,68,.3); }
         .toast-info    { background:#0d1b35; color:#93c5fd; border:1px solid rgba(59,130,246,.3); }
 
+        /* ── Downgrade modal ──────────────────────────── */
+        .modal-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 9999;
+        }
+        .modal-box {
+            background: #141820; border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px; padding: 32px 28px; max-width: 420px; width: 90%;
+            text-align: center;
+        }
+        .modal-box h3 { color: #fff; font-size: 18px; font-weight: 700; margin: 0 0 16px; }
+        .modal-box p { color: rgba(255,255,255,0.55); font-size: 14px; line-height: 1.7; margin: 0 0 20px; }
+        .modal-box .highlight { color: #f59e0b; font-weight: 600; }
+        .modal-actions { display: flex; gap: 12px; justify-content: center; margin-top: 24px; }
+        .modal-actions button {
+            padding: 11px 24px; border-radius: 10px; font-size: 14px; font-weight: 600;
+            font-family: 'Poppins', sans-serif; cursor: pointer; border: none; transition: opacity 0.2s;
+        }
+        .modal-btn-cancel { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.7); }
+        .modal-btn-confirm { background: #ef4444; color: #fff; }
+        .modal-btn-cancel:hover { opacity: 0.8; }
+        .modal-btn-confirm:hover { opacity: 0.85; }
+
         /* ── Responsive ──────────────────────────────────── */
         @media (max-width: 600px) {
             .plans-page { padding: 48px 16px 80px; }
@@ -677,10 +701,6 @@ async function initAuthHeader() {
             window.location.href = 'login.html';
         });
 
-        // Update free plan button state
-        updateFreePlanBtn();
-        renderPaidPlans();
-
     } catch(e) {
         console.error(e);
         authSection.innerHTML = `<a href="login.html" class="auth-btn-header">Entrar</a>`;
@@ -756,7 +776,6 @@ async function loadPlans() {
     allPlans = data;
     const freePlan = data.find(p => p.is_free);
     if (freePlan) updateFreePlanCard(freePlan);
-    renderPaidPlans();
 }
 
 function updateFreePlanCard(plan) {
@@ -775,9 +794,8 @@ function updateFreePlanCard(plan) {
         </div>
         <div class="plan-divider"></div>
         <ul class="plan-features">${featuresHtml}</ul>
-        <button class="plan-btn plan-btn-outline" id="freePlanBtn" onclick="handleFreePlan()" >
+        <button class="plan-btn plan-btn-outline" id="freePlanBtn" onclick="handleFreePlan()" style="display:none">
         </button>`;
-    updateFreePlanBtn();
 }
 
 function renderPaidPlans() {
@@ -866,10 +884,11 @@ function updateFreePlanBtn() {
         btn.className = 'plan-btn plan-btn-current';
         btn.disabled = true;
     } else {
-        btn.textContent = 'Ver plano free';
+        btn.textContent = 'Voltar para plano free';
         btn.className = 'plan-btn plan-btn-outline';
         btn.disabled = false;
     }
+    btn.style.display = '';
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -929,6 +948,65 @@ async function handleSubscribe(planId, planName) {
 function handleFreePlan() {
     if (!currentProfile) {
         window.location.href = 'register.html';
+        return;
+    }
+    if (currentProfile.subscription_tier !== 'free') {
+        showDowngradeModal();
+    }
+}
+
+function showDowngradeModal() {
+    let endDateStr = '';
+    if (currentSubscription?.current_period_end) {
+        endDateStr = new Date(currentSubscription.current_period_end).toLocaleDateString('pt-BR');
+    }
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.id = 'downgradeModal';
+    modal.innerHTML = `
+        <div class="modal-box">
+            <h3>Voltar para o plano Free?</h3>
+            <p>Sua assinatura paga será cancelada.${endDateStr
+                ? ` Você mantém acesso ao plano atual até <span class="highlight">${endDateStr}</span>.`
+                : ''} Após esse período, sua conta será migrada automaticamente para o plano Free com os recursos básicos.</p>
+            <p style="margin-bottom:0;font-size:13px;">Você pode assinar novamente a qualquer momento.</p>
+            <div class="modal-actions">
+                <button class="modal-btn-cancel" onclick="closeDowngradeModal()">Cancelar</button>
+                <button class="modal-btn-confirm" id="confirmDowngradeBtn" onclick="confirmDowngrade()">Confirmar</button>
+            </div>
+        </div>`;
+    document.body.appendChild(modal);
+    modal.addEventListener('click', e => { if (e.target === modal) closeDowngradeModal(); });
+}
+
+function closeDowngradeModal() {
+    document.getElementById('downgradeModal')?.remove();
+}
+
+async function confirmDowngrade() {
+    if (!currentSubscription) return;
+    const btn = document.getElementById('confirmDowngradeBtn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Processando…'; }
+    try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const res = await fetch(`${SUPABASE_FUNCTIONS_URL}/cancel-subscription`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.access_token}`,
+                'apikey': SUPABASE_ANON_KEY,
+            },
+            body: JSON.stringify({ subscription_id: currentSubscription.id, cancel_at_period_end: true }),
+        });
+        const body = await res.json();
+        if (!res.ok) throw new Error(body.error || 'Erro ao cancelar');
+        currentSubscription.cancel_at_period_end = true;
+        closeDowngradeModal();
+        renderPaidPlans();
+        showToast('Assinatura cancelada. Acesso mantido até o fim do período.', 'success');
+    } catch (err) {
+        showToast('Erro: ' + err.message, 'error');
+        if (btn) { btn.disabled = false; btn.textContent = 'Confirmar'; }
     }
 }
 
