@@ -511,7 +511,7 @@
         </div>
 
         <!-- Cards -->
-        <div class="plans-grid" id="plansGrid">
+        <div class="plans-grid" id="plansGrid" style="opacity:0">
             <!-- Free card (populated from DB) -->
             <div class="plan-card" id="freePlanCard" style="gap:16px;">
                 <div class="skeleton" style="height:14px;width:50%;"></div>
@@ -618,8 +618,14 @@ function buildFeatures(plan) {
 // ─────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
     await Promise.all([initAuthHeader(), loadPlans()]);
-    renderPaidPlans(); // Re-render once both profile + plans are ready
-    updateFreePlanBtn(); // Final authoritative button state after both promises settle
+    // Render everything at once so all cards appear simultaneously
+    const freePlan = allPlans.find(p => p.is_free);
+    if (freePlan) updateFreePlanCard(freePlan);
+    renderPaidPlans();
+    updateFreePlanBtn();
+    // Fade the grid in now that all cards are ready
+    const grid = document.getElementById('plansGrid');
+    if (grid) { grid.style.transition = 'opacity .2s'; grid.style.opacity = '1'; }
 });
 
 async function initAuthHeader() {
@@ -774,8 +780,6 @@ async function loadPlans() {
     }
 
     allPlans = data;
-    const freePlan = data.find(p => p.is_free);
-    if (freePlan) updateFreePlanCard(freePlan);
 }
 
 function updateFreePlanCard(plan) {
@@ -969,8 +973,8 @@ function showDowngradeModal() {
         modal.innerHTML = `
             <div class="modal-box">
                 <h3>Acesso concedido pelo administrador</h3>
-                <p>Seu acesso ao plano atual foi concedido pela equipe administrativa e só pode ser alterado pelo painel Admin.</p>
-                <p style="margin-bottom:0;font-size:13px;">Entre em contato com o administrador para solicitar alterações.</p>
+                <p>Seu acesso ao plano atual foi concedido pela equipe administrativa e só pode ser alterado por ela.</p>
+                <p style="margin-bottom:0;font-size:13px;">Entre em contato com o suporte para solicitar alterações.</p>
                 <div class="modal-actions">
                     <button class="modal-btn-cancel" onclick="closeDowngradeModal()">Entendi</button>
                 </div>
