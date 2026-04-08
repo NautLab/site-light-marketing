@@ -88,17 +88,16 @@ async function initAdmin() {
             if (saOpt) saOpt.remove();
         }
 
+        // Restore last-visited section from URL hash BEFORE making app visible (no flash)
+        const savedSection = location.hash.slice(1);
+        if (savedSection && Object.keys(sectionTitles).includes(savedSection) && savedSection !== 'users') {
+            showSection(savedSection);
+        }
+
         // Show app (may already be visible via sessionStorage pre-render)
         if (!window._adminPreRendered) {
             document.getElementById('authLoading').style.display = 'none';
             document.getElementById('adminApp').style.display    = 'flex';
-        }
-
-        // Restore last-visited section from URL hash BEFORE loading data so the
-        // correct section is shown immediately (Item 4)
-        const savedSection = location.hash.slice(1);
-        if (savedSection && Object.keys(sectionTitles).includes(savedSection) && savedSection !== 'users') {
-            showSection(savedSection);
         }
 
         // Load initial section data (plans too, so free_access plan names resolve in users table)

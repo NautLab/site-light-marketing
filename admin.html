@@ -861,6 +861,19 @@ try {
         document.getElementById('sidebarAvatar').textContent = _ui || (_un || _ue || '?').charAt(0).toUpperCase();
         document.getElementById('sidebarName').textContent   = _un || _ue || '—';
         document.getElementById('sidebarRole').textContent   = _r === 'super_admin' ? 'Super Admin' : 'Admin';
+        // Apply correct section from URL hash BEFORE making app visible (no flash)
+        var _hash = location.hash.slice(1);
+        var _secTitles = {users:'Usuários',plans:'Planos',subscriptions:'Assinaturas',coupons:'Cupons',notifications:'Notificações','site-data':'Dados do site'};
+        if (_hash && _secTitles[_hash] && _hash !== 'users') {
+            document.querySelectorAll('.admin-section').forEach(function(s){s.classList.remove('active');});
+            var _sec = document.getElementById('section-' + _hash);
+            if (_sec) _sec.classList.add('active');
+            document.querySelectorAll('.nav-item').forEach(function(b){b.classList.remove('active');});
+            var _nav = document.querySelector('.nav-item[data-section="' + _hash + '"]');
+            if (_nav) _nav.classList.add('active');
+            var _tb = document.getElementById('topbarTitle');
+            if (_tb) _tb.textContent = _secTitles[_hash];
+        }
         document.getElementById('authLoading').style.display = 'none';
         document.getElementById('adminApp').style.display    = 'flex';
         window._adminPreRendered = true;
