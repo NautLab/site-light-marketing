@@ -518,7 +518,6 @@ async function submitRefund() {
         showToast('Erro: ' + err.message, 'error');
     } finally {
         btn.disabled = false;
-    document.getElementById('freeAccessExpiresAt').value = '';
         btn.textContent = 'Reembolsar';
     }
 }
@@ -529,6 +528,7 @@ async function openFreeAccessModal(userId, userName) {
     selectedUserId   = userId;
     selectedUserName = userName;
     document.getElementById('freeAccessUserName').textContent = userName;
+    document.getElementById('freeAccessExpiresAt').value = '';
 
     // Ensure plans are loaded (not loaded if Plans section was never visited)
     if (allPlans.length === 0) await loadPlans();
@@ -540,8 +540,7 @@ async function openFreeAccessModal(userId, userName) {
         .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     if (paidPlans.length > 0) {
         select.innerHTML = paidPlans.map(p =>
-            `<opt   = document.getElementById('freeAccessPlanSelect').value;
-    const expiresAt = document.getElementById('freeAccessExpiresAt').value || null
+            `<option value="${p.id}">${escHtml(p.name)}</option>`
         ).join('');
     } else {
         select.innerHTML = '<option value="">Nenhum plano pago disponível</option>';
@@ -551,11 +550,11 @@ async function openFreeAccessModal(userId, userName) {
 }
 
 async function confirmFreeAccess() {
-    const planId = document.getElementById('freeAccessPlanSelect').value;
+    const planId    = document.getElementById('freeAccessPlanSelect').value;
+    const expiresAt = document.getElementById('freeAccessExpiresAt').value || null;
     if (!planId) { showToast('Selecione um plano.', 'error'); return; }
     const btn  = document.getElementById('freeAccessConfirmBtn');
-    free_access_expires_at: expiresAt,
-        
+
     btn.disabled = true;
     btn.textContent = 'A processar…';
 
@@ -565,10 +564,10 @@ async function confirmFreeAccess() {
             target_user_id: selectedUserId,
             action: 'grant_free_access',
             free_access_plan_id: planId,
+            free_access_expires_at: expiresAt,
         }, session.data.session.access_token);
 
-        if (!res.free_access_expires_at = expiresAt || null;
-            user.ok) {
+        if (!res.ok) {
             const body = await res.json();
             throw new Error(body.error || 'Erro desconhecido');
         }
@@ -578,6 +577,7 @@ async function confirmFreeAccess() {
         if (user) {
             user.free_access          = true;
             user.free_access_plan_id  = planId;
+            user.free_access_expires_at = expiresAt || null;
             user.subscription_tier    = 'paid';
         }
 
