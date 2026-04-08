@@ -174,7 +174,7 @@ async function loadUsers() {
 
     if (profilesResult.error) {
         showToast('Erro ao carregar usuários: ' + profilesResult.error.message, 'error');
-        tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><p class="empty-state-text">Erro ao carregar usuários</p></div></td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state"><p class="empty-state-text">Erro ao carregar usuários</p></div></td></tr>`;
         return;
     }
 
@@ -242,7 +242,7 @@ function renderUsersTable() {
     document.getElementById('usersNextBtn').disabled = usersCurrentPage >= totalPages;
 
     if (page.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><p class="empty-state-text">Nenhum usuário encontrado</p></div></td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state"><p class="empty-state-text">Nenhum usuário encontrado</p></div></td></tr>`;
         return;
     }
 
@@ -259,13 +259,12 @@ function openUserDetail(userId) {
     const canEditRole = currentProfile.role === 'super_admin' || u.role !== 'super_admin';
     const activeSub = getUserActiveSub(u);
 
-    const planDisplay = activeSub?.plan_name_snapshot
-        ? `<span class="badge badge-paid">${escHtml(activeSub.plan_name_snapshot)}</span>`
-        : `<span class="badge badge-${u.subscription_tier}">${tierLabel(u.subscription_tier)}</span>`;
+    const planDisplay = u.free_access
+        ? `<span class="badge badge-gift">${escHtml(planNameById(u.free_access_plan_id))}</span><span style="font-size:10px;color:var(--text-dim);display:block;margin-top:2px;">Concedido</span>`
+        : activeSub?.plan_name_snapshot
+            ? `<span class="badge badge-paid">${escHtml(activeSub.plan_name_snapshot)}</span>`
+            : `<span class="badge badge-${u.subscription_tier}">${tierLabel(u.subscription_tier)}</span>`;
     const roleBadge = `<span class="badge ${roleBadgeClass(u.role)}">${roleLabel(u.role)}</span>`;
-    const freeAccBadge = u.free_access
-        ? `<span class="badge badge-gift">${escHtml(planNameById(u.free_access_plan_id))}</span>`
-        : `<span style="color:var(--text-dim);font-size:12px;">—</span>`;
     const blockedBadge = u.is_blocked ? `<span class="badge badge-danger">Bloqueado</span>` : `<span style="color:var(--text-dim);font-size:12px;">Não</span>`;
 
     const usageMonth = u.usage_month || '';
@@ -288,10 +287,6 @@ function openUserDetail(userId) {
             <div class="user-detail-item">
                 <span class="user-detail-item-label">Função</span>
                 ${roleBadge}
-            </div>
-            <div class="user-detail-item">
-                <span class="user-detail-item-label">Acesso gratuito</span>
-                ${freeAccBadge}
             </div>
             <div class="user-detail-item">
                 <span class="user-detail-item-label">Bloqueado</span>
@@ -339,11 +334,12 @@ function buildUserRow(u) {
     const initials = getInitials(u.full_name, u.email);
     const activeSub = getUserActiveSub(u);
 
-    const planDisplay = activeSub?.plan_name_snapshot
-        ? `<span class="badge badge-paid">${escHtml(activeSub.plan_name_snapshot)}</span>`
-        : `<span class="badge badge-${u.subscription_tier}">${tierLabel(u.subscription_tier)}</span>`;
+    const planDisplay = u.free_access
+        ? `<span class="badge badge-gift">${escHtml(planNameById(u.free_access_plan_id))}</span><span style="font-size:10px;color:var(--text-dim);display:block;margin-top:2px;">Concedido</span>`
+        : activeSub?.plan_name_snapshot
+            ? `<span class="badge badge-paid">${escHtml(activeSub.plan_name_snapshot)}</span>`
+            : `<span class="badge badge-${u.subscription_tier}">${tierLabel(u.subscription_tier)}</span>`;
     const roleBadge = `<span class="badge ${roleBadgeClass(u.role)}">${roleLabel(u.role)}</span>`;
-    const giftBadge = u.free_access ? `<span class="badge badge-gift">${escHtml(planNameById(u.free_access_plan_id))}</span>` : `<span style="color:var(--text-dim);font-size:12px;">—</span>`;
     const date      = u.created_at ? new Date(u.created_at).toLocaleDateString('pt-BR') : '—';
 
     const canEditRole = currentProfile.role === 'super_admin' || u.role !== 'super_admin';
@@ -377,7 +373,6 @@ Acesso</button>`;
         </td>
         <td>${planDisplay}</td>
         <td>${roleBadge}</td>
-        <td>${giftBadge}</td>
         <td style="color:var(--text-muted);font-size:12px;">${date}</td>
         <td onclick="event.stopPropagation()">
             <div class="actions-cell">
