@@ -1308,8 +1308,8 @@ function buildCouponCard(c) {
         footerActions = `
             <button class="btn btn-sm btn-secondary" onclick="openEditCouponModal('${c.id}')">Editar</button>
             <button class="btn btn-sm ${toggleClass}" onclick="toggleCoupon('${c.id}', ${c.is_active})">${toggleLabel}</button>
-            ${artimes_redeemed != null ? `<span>Usos realizados: ${c.times_redeemed}</span>` : ''}
-            ${c.chiveBtn}`;
+            ${c.times_redeemed != null ? `<span>Usos realizados: ${c.times_redeemed}</span>` : ''}
+            ${archiveBtn}`;
     }
 
     return `
