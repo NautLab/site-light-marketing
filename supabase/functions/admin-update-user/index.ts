@@ -157,10 +157,7 @@ Deno.serve(async (req) => {
         .eq('id', target_user_id);
 
       if (error) throw error;
-      // Force the user's session to be invalidated immediately
-      try {
-        await adminClient.auth.admin.signOut(target_user_id, { scope: 'others' } as any);
-      } catch (_) { /* non-critical */ }
+      // Do NOT sign out the user — Realtime will push the block in real time (Item 19)
       return json({ success: true, is_blocked: true });
     }
 

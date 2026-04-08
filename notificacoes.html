@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Suas notificações – Light Marketing" />
+    <title>Notificações – Light Marketing</title>
+    <link rel="icon" type="image/x-icon" href="favicon.ico" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="style.css?v=22.0" />
+    <link rel="stylesheet" href="css/auth.css?v=1.0" />
+
+    <style>
+        .notif-page {
+            min-height: calc(100vh - 70px);
+            padding: 60px 20px 100px;
+        }
+        .notif-page-header {
+            max-width: 700px;
+            margin: 0 auto 40px;
+        }
+        .notif-page-header h1 {
+            font-size: clamp(22px, 4vw, 34px);
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 6px;
+        }
+        .notif-page-header p {
+            color: var(--text-dim);
+            font-size: 14px;
+        }
+        .notif-list {
+            max-width: 700px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+        .notif-item {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 20px 24px;
+            display: flex;
+            gap: 16px;
+            align-items: flex-start;
+            transition: border-color .2s;
+        }
+        .notif-item.unread {
+            border-color: rgba(12, 126, 146, 0.5);
+            background: rgba(12, 126, 146, 0.06);
+        }
+        .notif-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(12, 126, 146, .15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .notif-body { flex: 1; min-width: 0; }
+        .notif-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .notif-badge-unread {
+            background: #0C7E92;
+            color: #fff;
+            font-size: 10px;
+            font-weight: 600;
+            border-radius: 20px;
+            padding: 2px 8px;
+            letter-spacing: .03em;
+        }
+        .notif-message {
+            font-size: 13px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            white-space: pre-wrap;
+        }
+        .notif-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 10px;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .notif-date { font-size: 11px; color: var(--text-dim); }
+        .notif-read-btn {
+            font-size: 12px;
+            color: #0C7E92;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0;
+            text-decoration: underline;
+        }
+        .notif-read-btn:hover { opacity: .7; }
+        .empty-notif {
+            max-width: 700px;
+            margin: 60px auto;
+            text-align: center;
+            color: var(--text-dim);
+        }
+        .empty-notif svg { opacity: .3; margin-bottom: 16px; }
+        .empty-notif p { font-size: 15px; }
+    </style>
+</head>
+<body>
+
+<!-- ── Header ──────────────────────────────────────────────── -->
+<header class="header" id="main-header">
+    <div class="container header-inner">
+        <a href="index.html" class="logo">
+            <img src="logo-light-marketing.png?v=3" alt="Light Marketing" height="44" />
+        </a>
+        <nav class="nav" id="main-nav">
+            <a href="index.html">Início</a>
+            <a href="planos.html">Planos</a>
+            <a href="admin.html" id="admin-nav-link" style="display:none;">Admin</a>
+            <script>try{var _r=sessionStorage.getItem('lm_user_role');if(_r==='admin'||_r==='super_admin')document.getElementById('admin-nav-link').style.display='';}catch(e){}</script>
+        </nav>
+        <div class="header-right">
+            <div id="auth-section" style="display:none;"></div>
+            <script>try{var _ui=sessionStorage.getItem('lm_user_initials'),_un=sessionStorage.getItem('lm_user_name'),_ue=sessionStorage.getItem('lm_user_email');if(_ui&&(_un||_ue)){var _as=document.getElementById('auth-section');_as.innerHTML='<div class="user-account"><button class="user-account-btn" style="cursor:default;"><div class="user-avatar">'+_ui+'</div><span>'+(_un||_ue.split('@')[0])+'</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6 9L12 15L18 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>';_as.style.display='block';}}catch(e){}</script>
+            <button class="menu-toggle" aria-label="Menu">
+                <span></span><span></span><span></span>
+            </button>
+        </div>
+    </div>
+</header>
+
+<!-- ── Main ────────────────────────────────────────────────── -->
+<main>
+    <section class="notif-page">
+        <div class="notif-page-header">
+            <h1>Notificações</h1>
+            <p>Avisos e comunicados enviados pela equipe Light Marketing.</p>
+        </div>
+        <div class="notif-list" id="notifList">
+            <div class="empty-notif">
+                <p>Carregando…</p>
+            </div>
+        </div>
+    </section>
+</main>
+
+<!-- ── Toast ───────────────────────────────────────────────── -->
+<div id="toastContainer" style="position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:8px;"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase-config.js"></script>
+<script src="js/auth.js?v=1.0"></script>
+<script src="script.js"></script>
+
+<script>
+let currentUserId   = null;
+let currentProfile  = null;
+let allNotifications = [];
+let readIds          = new Set();
+
+// ── Boot ──────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', async () => {
+    const authSection = document.getElementById('auth-section');
+    try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+            window.location.href = 'login.html';
+            return;
+        }
+
+        const user  = session.user;
+        currentUserId = user.id;
+        const name    = user.user_metadata?.full_name || '';
+        const email   = user.email || '';
+        const initials = getUserInitials(name, email);
+
+        sessionStorage.setItem('lm_user_name', name);
+        sessionStorage.setItem('lm_user_email', email);
+        sessionStorage.setItem('lm_user_initials', initials);
+
+        try {
+            const res = await getUserProfile();
+            if (res) {
+                currentProfile = res;
+                sessionStorage.setItem('lm_user_role', res.role || 'user');
+            }
+        } catch(_) {}
+
+        const userRole = currentProfile?.role || 'user';
+
+        if (['admin', 'super_admin'].includes(userRole)) {
+            const adminNavLink = document.getElementById('admin-nav-link');
+            if (adminNavLink) adminNavLink.style.display = '';
+        }
+
+        const adminLink = ['admin', 'super_admin'].includes(userRole) ? `
+            <a href="admin.html" class="user-dropdown-item" style="text-decoration:none;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                Painel Admin
+            </a>` : '';
+
+        authSection.innerHTML = `
+            <div class="user-account">
+                <button class="user-account-btn" id="user-account-btn">
+                    <div class="user-avatar">${initials}</div>
+                    <span>${name || email.split('@')[0]}</span>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6 9L12 15L18 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+                <div class="user-dropdown" id="user-dropdown">
+                    <div class="user-dropdown-header">
+                        <div class="user-name">${name || 'Usuário'}</div>
+                        <div class="user-email">${email}</div>
+                    </div>
+                    ${adminLink}
+                    <a href="notificacoes.html" class="user-dropdown-item" style="text-decoration:none;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M13.73 21a2 2 0 0 1-3.46 0" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        Notificações
+                    </a>
+                    <button class="user-dropdown-item logout" id="logout-btn">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M9 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H9M16 17L21 12M21 12L16 7M21 12H9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        Sair
+                    </button>
+                </div>
+            </div>`;
+
+        authSection.style.display = 'block';
+
+        document.getElementById('user-account-btn').addEventListener('click', e => {
+            e.stopPropagation();
+            document.getElementById('user-dropdown').classList.toggle('active');
+        });
+        document.addEventListener('click', () => {
+            document.getElementById('user-dropdown')?.classList.remove('active');
+        });
+        document.getElementById('logout-btn').addEventListener('click', async () => {
+            await signOut();
+            window.location.href = 'login.html';
+        });
+
+        await loadNotifications();
+
+    } catch (err) {
+        console.error('Auth error:', err);
+        window.location.href = 'login.html';
+    }
+});
+
+// ── Load ──────────────────────────────────────────────────────
+async function loadNotifications() {
+    try {
+        const { data: notifications, error: nErr } = await supabase
+            .from('admin_notifications')
+            .select('*')
+            .eq('is_active', true)
+            .order('created_at', { ascending: false });
+
+        if (nErr) throw nErr;
+
+        const { data: reads } = await supabase
+            .from('notification_reads')
+            .select('notification_id')
+            .eq('user_id', currentUserId);
+
+        readIds = new Set((reads || []).map(r => r.notification_id));
+
+        // Filter by target
+        allNotifications = (notifications || []).filter(n => {
+            if (n.target_type === 'all') return true;
+            if (n.target_type === 'role') {
+                const r = currentProfile?.role || 'user';
+                return (n.target_roles || []).some(t => t === r || (t === 'admin' && r === 'super_admin'));
+            }
+            if (n.target_type === 'tier' || n.target_type === 'plan')
+                return (n.target_tiers || []).includes(currentProfile?.subscription_tier || 'free');
+            if (n.target_type === 'specific')
+                return (n.target_user_ids || []).includes(currentUserId);
+            return false;
+        });
+
+        renderNotifications();
+    } catch (err) {
+        document.getElementById('notifList').innerHTML =
+            `<div class="empty-notif"><p>Erro ao carregar notificações.</p></div>`;
+    }
+}
+
+// ── Render ────────────────────────────────────────────────────
+function renderNotifications() {
+    const container = document.getElementById('notifList');
+    if (allNotifications.length === 0) {
+        container.innerHTML = `
+            <div class="empty-notif">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5">
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                </svg>
+                <p>Nenhuma notificação disponível.</p>
+            </div>`;
+        return;
+    }
+
+    container.innerHTML = allNotifications.map(n => {
+        const isUnread = !readIds.has(n.id);
+        const date = n.created_at
+            ? new Date(n.created_at).toLocaleDateString('pt-BR', { day:'2-digit', month:'short', year:'numeric' })
+            : '';
+        return `
+        <div class="notif-item${isUnread ? ' unread' : ''}" id="notif-${n.id}">
+            <div class="notif-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0C7E92" stroke-width="2" stroke-linecap="round">
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                </svg>
+            </div>
+            <div class="notif-body">
+                <div class="notif-title">
+                    ${escHtml(n.title)}
+                    ${isUnread ? '<span class="notif-badge-unread">Nova</span>' : ''}
+                </div>
+                <div class="notif-message">${escHtml(n.message)}</div>
+                <div class="notif-footer">
+                    <span class="notif-date">${date}</span>
+                    ${isUnread
+                        ? `<button class="notif-read-btn" onclick="markRead('${n.id}')">Marcar como lida</button>`
+                        : ''}
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+// ── Mark as read ──────────────────────────────────────────────
+async function markRead(notificationId) {
+    try {
+        await supabase.from('notification_reads').insert({
+            user_id: currentUserId,
+            notification_id: notificationId
+        });
+        readIds.add(notificationId);
+        renderNotifications();
+    } catch(err) {
+        showToast('Erro ao marcar como lida.', 'error');
+    }
+}
+
+// ── Helpers ───────────────────────────────────────────────────
+function escHtml(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+function showToast(message, type = 'info') {
+    const container = document.getElementById('toastContainer');
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.textContent = message;
+    container.appendChild(toast);
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(20px)';
+        toast.style.transition = 'opacity .3s, transform .3s';
+        setTimeout(() => toast.remove(), 320);
+    }, 4000);
+}
+</script>
+</body>
+</html>

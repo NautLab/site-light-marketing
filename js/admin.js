@@ -94,14 +94,15 @@ async function initAdmin() {
             document.getElementById('adminApp').style.display    = 'flex';
         }
 
-        // Load initial section data (plans too, so free_access plan names resolve in users table)
-        await Promise.all([loadUsers(), loadPlans()]);
-
-        // Restore last-visited section from URL hash
+        // Restore last-visited section from URL hash BEFORE loading data so the
+        // correct section is shown immediately (Item 4)
         const savedSection = location.hash.slice(1);
         if (savedSection && Object.keys(sectionTitles).includes(savedSection) && savedSection !== 'users') {
             showSection(savedSection);
         }
+
+        // Load initial section data (plans too, so free_access plan names resolve in users table)
+        await Promise.all([loadUsers(), loadPlans()]);
 
     } catch (err) {
         console.error('Admin init error:', err);
@@ -269,7 +270,7 @@ function openUserDetail(userId) {
     const planDisplay = u.free_access
         ? (() => {
             const expiryText = u.free_access_expires_at
-                ? `Concedido até ${new Date(u.free_access_expires_at).toLocaleDateString('pt-BR')}`
+                ? `Concedido até ${new Date(u.free_access_expires_at).toLocaleDateString('pt-BR', {timeZone:'America/Sao_Paulo'})}`
                 : 'Concedido';
             return `<span class="badge badge-gift">${escHtml(planNameById(u.free_access_plan_id))}</span><span style="font-size:10px;color:var(--text-dim);display:block;margin-top:2px;">${expiryText}</span>`;
           })()
@@ -349,7 +350,7 @@ function buildUserRow(u) {
     const planDisplay = u.free_access
         ? (() => {
             const expiryText = u.free_access_expires_at
-                ? `Concedido até ${new Date(u.free_access_expires_at).toLocaleDateString('pt-BR')}`
+                ? `Concedido até ${new Date(u.free_access_expires_at).toLocaleDateString('pt-BR', {timeZone:'America/Sao_Paulo'})}`
                 : 'Concedido';
             return `<span class="badge badge-gift">${escHtml(planNameById(u.free_access_plan_id))}</span><span style="font-size:10px;color:var(--text-dim);display:block;margin-top:2px;">${expiryText}</span>`;
           })()
@@ -406,7 +407,7 @@ Acesso</button>`;
 async function blockAccount(userId) {
     const u = allUsers.find(x => x.id === userId);
     const userName = u?.full_name || u?.email || userId;
-    if (!confirm(`Bloquear a conta de ${userName}? O usuário não conseguirá fazer login.`)) return;
+    if (!confirm(`Bloquear a conta de ${userName}? O usuário perderá os acessos imediatamente mas continuará logado.`)) return;
     try {
         const session = await supabase.auth.getSession();
         const res = await callFunction('admin-update-user', {
@@ -529,6 +530,8 @@ async function openFreeAccessModal(userId, userName) {
     selectedUserName = userName;
     document.getElementById('freeAccessUserName').textContent = userName;
     document.getElementById('freeAccessExpiresAt').value = '';
+    // Prevent selecting past dates (Item 1)
+    document.getElementById('freeAccessExpiresAt').min = new Date().toISOString().split('T')[0];
 
     // Ensure plans are loaded (not loaded if Plans section was never visited)
     if (allPlans.length === 0) await loadPlans();
@@ -551,7 +554,9 @@ async function openFreeAccessModal(userId, userName) {
 
 async function confirmFreeAccess() {
     const planId    = document.getElementById('freeAccessPlanSelect').value;
-    const expiresAt = document.getElementById('freeAccessExpiresAt').value || null;
+    // Convert YYYY-MM-DD to end-of-day in BRT so the day itself is still valid (Item 2)
+    const expiresAtRaw = document.getElementById('freeAccessExpiresAt').value || null;
+    const expiresAt    = expiresAtRaw ? expiresAtRaw + 'T23:59:59.999-03:00' : null;
     if (!planId) { showToast('Selecione um plano.', 'error'); return; }
     const btn  = document.getElementById('freeAccessConfirmBtn');
 
@@ -1308,7 +1313,6 @@ function buildCouponCard(c) {
         footerActions = `
             <button class="btn btn-sm btn-secondary" onclick="openEditCouponModal('${c.id}')">Editar</button>
             <button class="btn btn-sm ${toggleClass}" onclick="toggleCoupon('${c.id}', ${c.is_active})">${toggleLabel}</button>
-            ${c.times_redeemed != null ? `<span>Usos realizados: ${c.times_redeemed}</span>` : ''}
             ${archiveBtn}`;
     }
 
@@ -1324,6 +1328,7 @@ function buildCouponCard(c) {
             <span>Duração: ${durationLabel(c.duration)}</span>
             ${c.max_redemptions ? `<span>Limite total: ${c.max_redemptions} usos</span>` : ''}
             ${limiteIndividual ? `<span>${limiteIndividual}</span>` : ''}
+            ${c.times_redeemed != null ? `<span>Usos realizados: ${c.times_redeemed}</span>` : ''}
         </div>
         <div class="coupon-card-footer">
             <div style="display:flex;gap:6px;flex-wrap:wrap;">${footerActions}</div>
@@ -1403,7 +1408,10 @@ function openEditCouponModal(couponId) {
     document.getElementById('editCouponTimesRedeemedDisplay').value = timesRedeemed;
     document.getElementById('editCouponMaxRedemptions').value = c.max_redemptions || '';
     document.getElementById('editCouponMaxPerUser').value = c.max_redemptions_per_user || '';
-    document.getElementById('editCouponRedeemBy').value = c.redeem_by ? c.redeem_by.split('T')[0] : '';
+    // Use locale-aware date extraction to avoid UTC off-by-one (Item 12)
+    document.getElementById('editCouponRedeemBy').value = c.redeem_by
+        ? new Date(c.redeem_by).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
+        : '';
     openModal('editCouponModal');
 }
 
@@ -1597,6 +1605,7 @@ function toggleEditDurationMonths() {
         input.type = 'number';
         input.readOnly = false;
         input.style.opacity = '';
+        if (!input.value || input.value === '1') input.value = '3'; // Item 13
     } else if (dur === 'once') {
         group.style.display = '';
         input.type = 'number';
@@ -1649,13 +1658,17 @@ async function loadNotifications() {
 function filterNotifications() {
     const status = document.getElementById('notifStatusFilter').value;
     const target = document.getElementById('notifTargetFilter').value;
+    const q      = (document.getElementById('notifSearchInput')?.value || '').toLowerCase();
 
     filteredNotifications = allNotifications.filter(n => {
         const matchStatus = !status
             || (status === 'active' && n.is_active)
             || (status === 'inactive' && !n.is_active);
         const matchTarget = !target || n.target_type === target;
-        return matchStatus && matchTarget;
+        const matchSearch = !q
+            || (n.title || '').toLowerCase().includes(q)
+            || (n.message || '').toLowerCase().includes(q);
+        return matchStatus && matchTarget && matchSearch;
     });
     renderNotifications();
 }
@@ -1679,6 +1692,10 @@ function buildNotificationCard(n) {
 
     const targetDesc = notifTargetDesc(n);
 
+    const deleteBtn = !n.is_active
+        ? `<button class="btn btn-sm btn-danger" onclick="deleteNotification('${n.id}')">Excluir</button>`
+        : '';
+
     return `
     <div class="notification-card${n.is_active ? '' : ' notification-card--inactive'}">
         <div class="notification-card-header">
@@ -1692,6 +1709,7 @@ function buildNotificationCard(n) {
                     onclick="toggleNotification('${n.id}', ${n.is_active})">
                     ${n.is_active ? 'Desativar' : 'Ativar'}
                 </button>
+                ${deleteBtn}
             </div>
         </div>
         <div class="notification-message">${escHtml(n.message)}</div>
@@ -1704,6 +1722,23 @@ function notifTargetDesc(n) {
     if (n.target_type === 'tier' || n.target_type === 'plan') return `Planos: ${(n.target_tiers || []).join(', ') || '—'}`;
     if (n.target_type === 'specific') return `${(n.target_user_ids || []).length} usuário(s) específico(s)`;
     return '—';
+}
+
+async function deleteNotification(id) {
+    if (!confirm('Excluir esta notificação permanentemente?')) return;
+    try {
+        const { error } = await supabase
+            .from('admin_notifications')
+            .delete()
+            .eq('id', id);
+        if (error) throw error;
+        allNotifications = allNotifications.filter(x => x.id !== id);
+        filteredNotifications = filteredNotifications.filter(x => x.id !== id);
+        renderNotifications();
+        showToast('Notificação excluída.', 'success');
+    } catch (err) {
+        showToast('Erro: ' + err.message, 'error');
+    }
 }
 
 async function toggleNotification(id, currentActive) {
@@ -1730,7 +1765,6 @@ async function toggleNotification(id, currentActive) {
 function openCreateNotificationModal() {
     // Populate user list
     populateNotifUserList();
-    populateNotifPlanCheckboxes();
     updateNotifTargetFields();
     openModal('createNotificationModal');
 }
@@ -1746,8 +1780,9 @@ function populateNotifPlanCheckboxes() {
 
 function updateNotifTargetFields() {
     const type = document.getElementById('notifTargetType').value;
+    // Clear all sub-selections when switching type (Item 7)
+    document.querySelectorAll('.notif-role-check, .notif-user-check').forEach(el => el.checked = false);
     document.getElementById('notifRoleFields').style.display     = type === 'role'     ? '' : 'none';
-    document.getElementById('notifPlanFields').style.display     = type === 'plan'     ? '' : 'none';
     document.getElementById('notifSpecificFields').style.display = type === 'specific' ? '' : 'none';
 }
 
@@ -1781,7 +1816,6 @@ function renderNotifUserList(users) {
                 <span class="notif-user-name">${escHtml(u.full_name || u.email)}</span>
                 <span class="notif-user-email">${escHtml(u.email)}</span>
             </div>
-            <span class="badge badge-${u.subscription_tier}" style="font-size:10px;">${tierLabel(u.subscription_tier)}</span>
         </label>`).join('');
 }
 
@@ -1802,10 +1836,6 @@ async function submitCreateNotification() {
     if (type === 'role') {
         target_roles = [...document.querySelectorAll('.notif-role-check:checked')].map(el => el.value);
         if (target_roles.length === 0) { showToast('Selecione ao menos uma função.', 'error'); return; }
-    }
-    if (type === 'plan') {
-        target_tiers = [...document.querySelectorAll('.notif-plan-check:checked')].map(el => el.value);
-        if (target_tiers.length === 0) { showToast('Selecione ao menos um plano.', 'error'); return; }
     }
     if (type === 'specific') {
         target_user_ids = [...document.querySelectorAll('.notif-user-check:checked')].map(el => el.value);

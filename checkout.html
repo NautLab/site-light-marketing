@@ -29,8 +29,8 @@
 
         body {
             font-family: 'Poppins', sans-serif;
-            background: linear-gradient(135deg, #000000 0%, #1a1a1a 100%);
-            color: var(--text);
+            background: #f1f3f5;
+            color: #111;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
@@ -60,19 +60,18 @@
 
         /* ── Summary Card ───────────────────────────────────── */
         .summary-card {
-            background: var(--surface);
-            border: 1px solid rgba(12, 126, 146, 0.3);
+            background: #fff;
+            border: 1px solid #dde1e7;
             border-radius: var(--radius);
             padding: 28px;
             position: sticky;
             top: 24px;
-            backdrop-filter: blur(20px);
         }
 
         .summary-card h2 {
             font-size: 18px;
             font-weight: 700;
-            color: var(--text);
+            color: #111;
             margin-bottom: 20px;
         }
 
@@ -86,11 +85,11 @@
 
         .summary-row + .summary-row { border-top: 1px solid var(--border); }
 
-        .summary-label { color: var(--text-secondary); }
+        .summary-label { color: #555; }
 
         .summary-value {
             font-weight: 600;
-            color: var(--text);
+            color: #111;
         }
 
         .summary-total {
@@ -233,7 +232,7 @@
             </nav>
             <div class="header-right">
                 <div id="auth-section" style="display:none;"></div>
-                <script>try{var _ui=sessionStorage.getItem('lm_user_initials'),_un=sessionStorage.getItem('lm_user_name'),_ue=sessionStorage.getItem('lm_user_email');if(_ui&&(_un||_ue)){var _as=document.getElementById('auth-section');_as.innerHTML='<div class="user-account"><button class="user-account-btn" style="cursor:default;"><div class="user-avatar">'+_ui+'</div><span>'+(_un||_ue.split('@')[0])+'</span></button></div>';_as.style.display='block';}}catch(e){}</script>
+                <script>try{var _ui=sessionStorage.getItem('lm_user_initials'),_un=sessionStorage.getItem('lm_user_name'),_ue=sessionStorage.getItem('lm_user_email');if(_ui&&(_un||_ue)){var _as=document.getElementById('auth-section');_as.innerHTML='<div class="user-account"><button class="user-account-btn" style="cursor:default;"><div class="user-avatar">'+_ui+'</div><span>'+(_un||_ue.split('@')[0])+'</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6 9L12 15L18 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>';_as.style.display='block';}}catch(e){}</script>
                 <button class="menu-toggle" aria-label="Menu">
                     <span></span><span></span><span></span>
                 </button>

@@ -618,6 +618,14 @@ function buildFeatures(plan) {
 // ─────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
     await Promise.all([initAuthHeader(), loadPlans()]);
+    // Fire admin notification popup for logged-in users (Item 9)
+    try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+            const profile = await getUserProfile();
+            if (profile) checkAdminNotifications(session.user.id, profile);
+        }
+    } catch(_) { /* silent */ }
     // Render everything at once so all cards appear simultaneously
     const freePlan = allPlans.find(p => p.is_free);
     if (freePlan) updateFreePlanCard(freePlan);
@@ -686,6 +694,13 @@ async function initAuthHeader() {
                         <div class="user-email">${email}</div>
                     </div>
                     ${adminLink}
+                    <a href="notificacoes.html" class="user-dropdown-item" style="text-decoration:none;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M13.73 21a2 2 0 0 1-3.46 0" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        Notificações
+                    </a>
                     <button class="user-dropdown-item logout" id="logout-btn">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M9 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H9M16 17L21 12M21 12L16 7M21 12H9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                         Sair
@@ -1129,6 +1144,91 @@ function showToast(message, type = 'info') {
         toast.style.transition = 'opacity .3s, transform .3s';
         setTimeout(() => toast.remove(), 320);
     }, 4000);
+}
+
+// ─────────────────────────────────────────────────────────────
+// Admin notification popup (Item 9)
+// ─────────────────────────────────────────────────────────────
+async function checkAdminNotifications(userId, profile) {
+    try {
+        const { data: notifications, error: nErr } = await supabase
+            .from('admin_notifications')
+            .select('*')
+            .eq('is_active', true)
+            .order('created_at', { ascending: true });
+
+        if (nErr || !notifications || notifications.length === 0) return;
+
+        const { data: reads } = await supabase
+            .from('notification_reads')
+            .select('notification_id')
+            .eq('user_id', userId);
+
+        const readIds = new Set((reads || []).map(r => r.notification_id));
+
+        const unread = notifications.filter(n => {
+            if (readIds.has(n.id)) return false;
+            if (n.target_type === 'all') return true;
+            if (n.target_type === 'role') {
+                const r = profile?.role || 'user';
+                return (n.target_roles || []).some(t => t === r || (t === 'admin' && r === 'super_admin'));
+            }
+            if (n.target_type === 'tier' || n.target_type === 'plan')
+                return (n.target_tiers || []).includes(profile?.subscription_tier || 'free');
+            if (n.target_type === 'specific') return (n.target_user_ids || []).includes(userId);
+            return false;
+        });
+
+        if (unread.length === 0) return;
+        showNotificationPopup(unread, userId);
+    } catch (_) { /* silent */ }
+}
+
+function showNotificationPopup(notifications, userId) {
+    let current = 0;
+
+    const overlay = document.createElement('div');
+    overlay.id = 'notifPopupOverlay';
+    overlay.style.cssText = `
+        position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:99999;
+        display:flex;align-items:center;justify-content:center;padding:16px;`;
+
+    function render() {
+        const n = notifications[current];
+        const isLast = current === notifications.length - 1;
+        overlay.innerHTML = `
+            <div style="background:#1a1a1a;border:1px solid rgba(12,126,146,.4);border-radius:18px;
+                        padding:32px;max-width:480px;width:100%;box-shadow:0 24px 80px rgba(0,0,0,.7);">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:16px;">
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <div style="width:36px;height:36px;border-radius:50%;background:rgba(12,126,146,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0C7E92" stroke-width="2" stroke-linecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                        </div>
+                        <h3 style="font-family:Poppins,sans-serif;font-size:16px;font-weight:600;color:#fff;margin:0;">${n.title.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</h3>
+                    </div>
+                    ${notifications.length > 1 ? `<span style="font-size:12px;color:#666;flex-shrink:0;">${current+1} / ${notifications.length}</span>` : ''}
+                </div>
+                <p style="font-family:Poppins,sans-serif;font-size:14px;color:#aaa;line-height:1.65;white-space:pre-wrap;margin:0 0 24px;">${n.message.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</p>
+                <div style="display:flex;justify-content:flex-end;">
+                    <button id="notifDismissBtn" style="background:#0C7E92;color:#fff;border:none;border-radius:10px;padding:10px 24px;font-family:Poppins,sans-serif;font-size:14px;font-weight:500;cursor:pointer;">
+                        ${isLast ? 'Entendido' : 'Próxima →'}
+                    </button>
+                </div>
+            </div>`;
+
+        document.getElementById('notifDismissBtn').onclick = async () => {
+            await supabase.from('notification_reads').insert({ user_id: userId, notification_id: n.id }).then(() => {});
+            current++;
+            if (current < notifications.length) {
+                render();
+            } else {
+                overlay.remove();
+            }
+        };
+    }
+
+    render();
+    document.body.appendChild(overlay);
 }
 </script>
 
