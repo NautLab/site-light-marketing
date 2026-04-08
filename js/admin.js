@@ -167,18 +167,24 @@ async function loadUsers() {
     const tbody = document.getElementById('usersTableBody');
     tbody.innerHTML = buildLoadingRows(6, 6);
 
-    const { data, error } = await supabase
-        .from('profiles')
-        .select('*, subscriptions:subscriptions(id, plan_name_snapshot, status, stripe_subscription_id, cancel_at_period_end)')
-        .order('created_at', { ascending: false });
+    const [profilesResult, subsResult] = await Promise.all([
+        supabase.from('profiles').select('*').order('created_at', { ascending: false }),
+        supabase.from('subscriptions').select('id, plan_name_snapshot, status, stripe_subscription_id, cancel_at_period_end, user_id')
+    ]);
 
-    if (error) {
-        showToast('Erro ao carregar usuários: ' + error.message, 'error');
+    if (profilesResult.error) {
+        showToast('Erro ao carregar usuários: ' + profilesResult.error.message, 'error');
         tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><p class="empty-state-text">Erro ao carregar usuários</p></div></td></tr>`;
         return;
     }
 
-    allUsers = data || [];
+    const subsMap = {};
+    (subsResult.data || []).forEach(s => {
+        if (!subsMap[s.user_id]) subsMap[s.user_id] = [];
+        subsMap[s.user_id].push(s);
+    });
+
+    allUsers = (profilesResult.data || []).map(p => ({ ...p, subscriptions: subsMap[p.id] || [] }));
     filteredUsers = [...allUsers];
     usersCurrentPage = 1;
 
@@ -1042,17 +1048,20 @@ async function loadSubscriptions() {
     const tbody = document.getElementById('subsTableBody');
     tbody.innerHTML = buildLoadingRows(4, 6);
 
-    const { data, error } = await supabase
-        .from('subscriptions')
-        .select('*, plans(name)')
-        .order('created_at', { ascending: false });
+    const [subsResult, profilesResult] = await Promise.all([
+        supabase.from('subscriptions').select('*, plans(name)').order('created_at', { ascending: false }),
+        supabase.from('profiles').select('id, email')
+    ]);
 
-    if (error) {
-        showToast('Erro ao carregar assinaturas: ' + error.message, 'error');
+    if (subsResult.error) {
+        showToast('Erro ao carregar assinaturas: ' + subsResult.error.message, 'error');
         return;
     }
 
-    allSubs = data || [];
+    const emailMap = {};
+    (profilesResult.data || []).forEach(p => { emailMap[p.id] = p.email; });
+
+    allSubs = (subsResult.data || []).map(s => ({ ...s, userEmail: emailMap[s.user_id] || s.user_id }));
     renderSubscriptionsTable();
 }
 
@@ -1078,7 +1087,7 @@ function renderSubscriptionsTable(list) {
 
         return `
         <tr>
-            <td style="color:var(--text-muted);font-size:12px;">${escHtml(s.user_id.slice(0, 8))}…</td>
+            <td style="font-size:12px;">${escHtml(s.userEmail)}</td>
             <td>
                 <div>${escHtml(planName)}</div>
             </td>
@@ -1088,7 +1097,7 @@ function renderSubscriptionsTable(list) {
             <td>
                 <div class="actions-cell">
                     ${s.status === 'active' && !s.cancel_at_period_end
-                        ? `<button class="btn btn-sm btn-danger" onclick="openCancelSubModal('${s.id}', '${s.user_id.slice(0, 8)}…')">Cancelar</button>`
+                        ? `<button class="btn btn-sm btn-danger" onclick="openCancelSubModal('${s.id}', '${escHtml(s.userEmail)}')">Cancelar</button>`
                         : ''}
                 </div>
             </td>
