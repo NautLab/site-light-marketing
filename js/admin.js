@@ -94,8 +94,14 @@ async function initAdmin() {
             document.getElementById('adminApp').style.display    = 'flex';
         }
 
-        // Load initial section data
-        await loadUsers();
+        // Load initial section data (plans too, so free_access plan names resolve in users table)
+        await Promise.all([loadUsers(), loadPlans()]);
+
+        // Restore last-visited section from URL hash
+        const savedSection = location.hash.slice(1);
+        if (savedSection && Object.keys(sectionTitles).includes(savedSection) && savedSection !== 'users') {
+            showSection(savedSection);
+        }
 
     } catch (err) {
         console.error('Admin init error:', err);
@@ -117,6 +123,7 @@ const sectionTitles = {
 };
 
 function showSection(name) {
+    location.hash = name;
     document.querySelectorAll('.admin-section').forEach(s => s.classList.remove('active'));
     document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
 
@@ -260,7 +267,12 @@ function openUserDetail(userId) {
     const activeSub = getUserActiveSub(u);
 
     const planDisplay = u.free_access
-        ? `<span class="badge badge-gift">${escHtml(planNameById(u.free_access_plan_id))}</span><span style="font-size:10px;color:var(--text-dim);display:block;margin-top:2px;">Concedido</span>`
+        ? (() => {
+            const expiryText = u.free_access_expires_at
+                ? `Concedido até ${new Date(u.free_access_expires_at).toLocaleDateString('pt-BR')}`
+                : 'Concedido';
+            return `<span class="badge badge-gift">${escHtml(planNameById(u.free_access_plan_id))}</span><span style="font-size:10px;color:var(--text-dim);display:block;margin-top:2px;">${expiryText}</span>`;
+          })()
         : activeSub?.plan_name_snapshot
             ? `<span class="badge badge-paid">${escHtml(activeSub.plan_name_snapshot)}</span>`
             : `<span class="badge badge-${u.subscription_tier}">${tierLabel(u.subscription_tier)}</span>`;
@@ -311,11 +323,11 @@ function openUserDetail(userId) {
                 Alterar função
             </button>` : ''}
             ${u.free_access ? `
-            <button class="btn btn-danger" style="width:100%;justify-content:center;" onclick="closeModal('userDetailModal'); revokeFreeAccess('${u.id}', '${escHtml(u.full_name || u.email)}')">Revogar acesso gratuito</button>` : `
+            <button class="btn btn-danger" style="width:100%;justify-content:center;" onclick="closeModal('userDetailModal'); revokeFreeAccess('${u.id}')">Revogar acesso gratuito</button>` : `
             <button class="btn btn-success" style="width:100%;justify-content:center;" onclick="closeModal('userDetailModal'); openFreeAccessModal('${u.id}', '${escHtml(u.full_name || u.email)}')">Conceder acesso gratuito</button>`}
             ${(!isSelf && canEditRole) ? (u.is_blocked ? `
-            <button class="btn btn-success" style="width:100%;justify-content:center;" onclick="closeModal('userDetailModal'); unblockAccount('${u.id}', '${escHtml(u.full_name || u.email)}')">Desbloquear conta</button>` : `
-            <button class="btn btn-danger" style="width:100%;justify-content:center;" onclick="closeModal('userDetailModal'); blockAccount('${u.id}', '${escHtml(u.full_name || u.email)}')">Bloquear conta</button>`) : ''}
+            <button class="btn btn-success" style="width:100%;justify-content:center;" onclick="closeModal('userDetailModal'); unblockAccount('${u.id}')">Desbloquear conta</button>` : `
+            <button class="btn btn-danger" style="width:100%;justify-content:center;" onclick="closeModal('userDetailModal'); blockAccount('${u.id}')">Bloquear conta</button>`) : ''}
         </div>
     `;
 
@@ -335,7 +347,12 @@ function buildUserRow(u) {
     const activeSub = getUserActiveSub(u);
 
     const planDisplay = u.free_access
-        ? `<span class="badge badge-gift">${escHtml(planNameById(u.free_access_plan_id))}</span><span style="font-size:10px;color:var(--text-dim);display:block;margin-top:2px;">Concedido</span>`
+        ? (() => {
+            const expiryText = u.free_access_expires_at
+                ? `Concedido até ${new Date(u.free_access_expires_at).toLocaleDateString('pt-BR')}`
+                : 'Concedido';
+            return `<span class="badge badge-gift">${escHtml(planNameById(u.free_access_plan_id))}</span><span style="font-size:10px;color:var(--text-dim);display:block;margin-top:2px;">${expiryText}</span>`;
+          })()
         : activeSub?.plan_name_snapshot
             ? `<span class="badge badge-paid">${escHtml(activeSub.plan_name_snapshot)}</span>`
             : `<span class="badge badge-${u.subscription_tier}">${tierLabel(u.subscription_tier)}</span>`;
@@ -351,14 +368,14 @@ function buildUserRow(u) {
         </button>` : '';
 
     const freeAccessBtn = u.free_access
-        ? `<button class="btn btn-sm btn-danger" onclick="revokeFreeAccess('${u.id}', '${escHtml(u.full_name || u.email)}')">
+        ? `<button class="btn btn-sm btn-danger" onclick="revokeFreeAccess('${u.id}')">
 Revogar</button>`
         : `<button class="btn btn-sm btn-success" onclick="openFreeAccessModal('${u.id}', '${escHtml(u.full_name || u.email)}')">
 Acesso</button>`;
 
     const blockBtn = (!isSelf && canEditRole) ? (u.is_blocked
-        ? `<button class="btn btn-sm btn-success" onclick="unblockAccount('${u.id}', '${escHtml(u.full_name || u.email)}')">Desbloquear</button>`
-        : `<button class="btn btn-sm btn-danger" onclick="blockAccount('${u.id}', '${escHtml(u.full_name || u.email)}')">Bloquear</button>`) : '';
+        ? `<button class="btn btn-sm btn-success" onclick="unblockAccount('${u.id}')">Desbloquear</button>`
+        : `<button class="btn btn-sm btn-danger" onclick="blockAccount('${u.id}')">Bloquear</button>`) : '';
 
     return `
     <tr class="user-row-clickable" onclick="openUserDetail('${u.id}')">
@@ -386,8 +403,10 @@ Acesso</button>`;
 
 // ─── Block / Unblock ─────────────────────────────────────────
 
-async function blockAccount(userId, userName) {
-    if (!confirm(`Bloquear a conta de \${userName}? O usuário não conseguirá fazer login.`)) return;
+async function blockAccount(userId) {
+    const u = allUsers.find(x => x.id === userId);
+    const userName = u?.full_name || u?.email || userId;
+    if (!confirm(`Bloquear a conta de ${userName}? O usuário não conseguirá fazer login.`)) return;
     try {
         const session = await supabase.auth.getSession();
         const res = await callFunction('admin-update-user', {
@@ -402,8 +421,10 @@ async function blockAccount(userId, userName) {
     } catch (err) { showToast('Erro: ' + err.message, 'error'); }
 }
 
-async function unblockAccount(userId, userName) {
-    if (!confirm(`Desbloquear a conta de \${userName}?`)) return;
+async function unblockAccount(userId) {
+    const u = allUsers.find(x => x.id === userId);
+    const userName = u?.full_name || u?.email || userId;
+    if (!confirm(`Desbloquear a conta de ${userName}?`)) return;
     try {
         const session = await supabase.auth.getSession();
         const res = await callFunction('admin-update-user', {
@@ -420,8 +441,10 @@ async function unblockAccount(userId, userName) {
 
 // ─── Revoke Paid Subscription ────────────────────────────────
 
-async function revokePaidSubscription(userId, userName) {
-    if (!confirm(`Revogar o plano pago de \${userName}? A assinatura será cancelada imediatamente no Stripe.`)) return;
+async function revokePaidSubscription(userId) {
+    const u = allUsers.find(x => x.id === userId);
+    const userName = u?.full_name || u?.email || userId;
+    if (!confirm(`Revogar o plano pago de ${userName}? A assinatura será cancelada imediatamente no Stripe.`)) return;
     try {
         const session = await supabase.auth.getSession();
         const res = await callFunction('admin-update-user', {
@@ -495,6 +518,7 @@ async function submitRefund() {
         showToast('Erro: ' + err.message, 'error');
     } finally {
         btn.disabled = false;
+    document.getElementById('freeAccessExpiresAt').value = '';
         btn.textContent = 'Reembolsar';
     }
 }
@@ -516,7 +540,8 @@ async function openFreeAccessModal(userId, userName) {
         .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     if (paidPlans.length > 0) {
         select.innerHTML = paidPlans.map(p =>
-            `<option value="${p.id}">${escHtml(p.name)}</option>`
+            `<opt   = document.getElementById('freeAccessPlanSelect').value;
+    const expiresAt = document.getElementById('freeAccessExpiresAt').value || null
         ).join('');
     } else {
         select.innerHTML = '<option value="">Nenhum plano pago disponível</option>';
@@ -529,7 +554,8 @@ async function confirmFreeAccess() {
     const planId = document.getElementById('freeAccessPlanSelect').value;
     if (!planId) { showToast('Selecione um plano.', 'error'); return; }
     const btn  = document.getElementById('freeAccessConfirmBtn');
-
+    free_access_expires_at: expiresAt,
+        
     btn.disabled = true;
     btn.textContent = 'A processar…';
 
@@ -541,7 +567,8 @@ async function confirmFreeAccess() {
             free_access_plan_id: planId,
         }, session.data.session.access_token);
 
-        if (!res.ok) {
+        if (!res.free_access_expires_at = expiresAt || null;
+            user.ok) {
             const body = await res.json();
             throw new Error(body.error || 'Erro desconhecido');
         }
@@ -567,7 +594,9 @@ async function confirmFreeAccess() {
     }
 }
 
-async function revokeFreeAccess(userId, userName) {
+async function revokeFreeAccess(userId) {
+    const u = allUsers.find(x => x.id === userId);
+    const userName = u?.full_name || u?.email || userId;
     if (!confirm(`Revogar acesso gratuito de ${userName}?`)) return;
 
     try {
@@ -690,7 +719,7 @@ function renderPlans() {
         if (sortVal === 'updated-asc')  return new Date(a.updated_at || 0) - new Date(b.updated_at || 0);
         if (sortVal === 'created-desc') return new Date(b.created_at || 0) - new Date(a.created_at || 0);
         if (sortVal === 'created-asc')  return new Date(a.created_at || 0) - new Date(b.created_at || 0);
-        return 0;
+        return new Date(b.created_at || 0) - new Date(a.created_at || 0);
     });
 
     container.innerHTML = `<div class="plans-grid">${sorted.map(buildPlanCard).join('')}</div>`;
@@ -1111,7 +1140,7 @@ function renderSubscriptionsTable(list) {
             <td>
                 <div class="actions-cell">
                     ${(isActive && !s.cancel_at_period_end) ? `<button class="btn btn-sm btn-danger" onclick="openCancelSubModal('${s.id}', '${escHtml(s.userEmail)}')">Cancelar</button>` : ''}
-                    ${isActive ? `<button class="btn btn-sm btn-danger" onclick="revokeSubImmediate('${s.id}', '${escHtml(s.userEmail)}')">Revogar</button>` : ''}
+                    ${isActive ? `<button class="btn btn-sm btn-danger" onclick="revokeSubImmediate('${s.id}')">Revogar</button>` : ''}
                     ${s.stripe_subscription_id ? `<button class="btn btn-sm btn-secondary" onclick="openRefundModal('${s.user_id}', '${escHtml(s.userEmail)}', ${s.last_invoice_amount_cents ?? 'null'})">Reembolsar</button>` : ''}
                 </div>
             </td>
@@ -1155,7 +1184,9 @@ async function confirmCancelSub() {
     }
 }
 
-async function revokeSubImmediate(subId, userEmail) {
+async function revokeSubImmediate(subId) {
+    const sub = allSubs.find(s => s.id === subId);
+    const userEmail = sub?.userEmail || subId;
     if (!confirm(`Revogar imediatamente o plano de ${userEmail}? A assinatura será cancelada agora no Stripe.`)) return;
     try {
         const session = await supabase.auth.getSession();
@@ -1164,6 +1195,19 @@ async function revokeSubImmediate(subId, userEmail) {
             cancel_at_period_end: false,
         }, session.data.session.access_token);
         if (!res.ok) { const b = await res.json(); throw new Error(b.error || 'Erro ao revogar'); }
+        // Update local state immediately
+        if (sub) {
+            sub.status = 'canceled';
+            const user = allUsers.find(u => u.id === sub.user_id);
+            if (user) {
+                user.subscription_tier = 'free';
+                if (user.subscriptions) {
+                    user.subscriptions.forEach(s => { if (s.id === subId) s.status = 'canceled'; });
+                }
+            }
+            renderUsersTable();
+            updateUserStats();
+        }
         allSubs = [];
         await loadSubscriptions();
         showToast('Plano revogado com sucesso.', 'success');
@@ -1264,7 +1308,8 @@ function buildCouponCard(c) {
         footerActions = `
             <button class="btn btn-sm btn-secondary" onclick="openEditCouponModal('${c.id}')">Editar</button>
             <button class="btn btn-sm ${toggleClass}" onclick="toggleCoupon('${c.id}', ${c.is_active})">${toggleLabel}</button>
-            ${archiveBtn}`;
+            ${artimes_redeemed != null ? `<span>Usos realizados: ${c.times_redeemed}</span>` : ''}
+            ${c.chiveBtn}`;
     }
 
     return `
@@ -1295,7 +1340,8 @@ async function submitCreateCoupon() {
     const durationMonths  = parseInt(document.getElementById('couponDurationMonths').value) || null;
     const maxRedemptions  = parseInt(document.getElementById('couponMaxRedemptions').value) || null;
     const maxPerUser      = parseInt(document.getElementById('couponMaxPerUser').value) || null;
-    const redeemBy        = document.getElementById('couponRedeemBy').value || null;
+    const redeemByRaw    = document.getElementById('couponRedeemBy').value || null;
+    const redeemBy        = redeemByRaw ? redeemByRaw + 'T23:59:59-03:00' : null;
 
     const errors = [];
     if (!code) errors.push('Código é obrigatório');
@@ -1371,7 +1417,8 @@ async function submitEditCoupon() {
     const durationMonths   = parseInt(document.getElementById('editCouponDurationMonths').value) || null;
     const maxRedemptions   = parseInt(document.getElementById('editCouponMaxRedemptions').value) || null;
     const maxPerUser       = parseInt(document.getElementById('editCouponMaxPerUser').value) || null;
-    const redeemBy         = document.getElementById('editCouponRedeemBy').value || null;
+    const redeemByRaw     = document.getElementById('editCouponRedeemBy').value || null;
+    const redeemBy         = redeemByRaw ? redeemByRaw + 'T23:59:59-03:00' : null;
     const timesRedeemed    = parseInt(document.getElementById('editCouponTimesRedeemed').value) || 0;
 
     const errors = [];
@@ -1522,16 +1569,22 @@ function toggleDurationMonths() {
     const input = document.getElementById('couponDurationMonths');
     if (dur === 'repeating') {
         group.style.display = '';
+        input.type = 'number';
         input.readOnly = false;
         input.style.opacity = '';
-        if (!input.value || input.value === '1') input.value = '';
+        if (!input.value || input.value === '1') input.value = '3';
     } else if (dur === 'once') {
         group.style.display = '';
+        input.type = 'number';
         input.value = '1';
         input.readOnly = true;
         input.style.opacity = '0.6';
-    } else {
-        group.style.display = 'none';
+    } else { // forever
+        group.style.display = '';
+        input.type = 'text';
+        input.value = 'Ilimitado';
+        input.readOnly = true;
+        input.style.opacity = '0.6';
     }
 }
 
@@ -1541,22 +1594,29 @@ function toggleEditDurationMonths() {
     const input = document.getElementById('editCouponDurationMonths');
     if (dur === 'repeating') {
         group.style.display = '';
+        input.type = 'number';
         input.readOnly = false;
         input.style.opacity = '';
     } else if (dur === 'once') {
         group.style.display = '';
+        input.type = 'number';
         input.value = '1';
         input.readOnly = true;
         input.style.opacity = '0.6';
-    } else {
-        group.style.display = 'none';
+    } else { // forever
+        group.style.display = '';
+        input.type = 'text';
+        input.value = 'Ilimitado';
+        input.readOnly = true;
+        input.style.opacity = '0.6';
     }
 }
 
 function clearCouponForm() {
-    ['couponCode', 'couponName', 'couponValue', 'couponMaxRedemptions', 'couponMaxPerUser', 'couponRedeemBy'].forEach(id => {
+    ['couponCode', 'couponName', 'couponValue', 'couponMaxRedemptions', 'couponRedeemBy'].forEach(id => {
         document.getElementById(id).value = '';
     });
+    document.getElementById('couponMaxPerUser').value = '1';
     document.getElementById('couponType').value     = 'percent';
     document.getElementById('couponDuration').value = 'once';
     toggleDurationMonths();

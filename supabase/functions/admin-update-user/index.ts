@@ -101,6 +101,12 @@ Deno.serve(async (req) => {
         return json({ error: 'Missing free_access_plan_id' }, 400);
       }
 
+      // Validate optional expiry date
+      const expiresAt = body.free_access_expires_at || null;
+      if (expiresAt && isNaN(Date.parse(expiresAt))) {
+        return json({ error: 'Invalid free_access_expires_at' }, 400);
+      }
+
       // Verify the plan exists and is active
       const { data: plan } = await adminClient
         .from('plans')
@@ -118,12 +124,13 @@ Deno.serve(async (req) => {
           free_access: true,
           free_access_plan_id: planId,
           free_access_granted_by: caller.id,
+          free_access_expires_at: expiresAt,
           subscription_tier: 'paid',
         })
         .eq('id', target_user_id);
 
       if (error) throw error;
-      return json({ success: true, free_access: true, plan_id: planId, plan_name: plan.name });
+      return json({ success: true, free_access: true, plan_id: planId, plan_name: plan.name, free_access_expires_at: expiresAt });
     }
 
     // ── ACTION: revoke_free_access ───────────────────────
@@ -150,6 +157,10 @@ Deno.serve(async (req) => {
         .eq('id', target_user_id);
 
       if (error) throw error;
+      // Force the user's session to be invalidated immediately
+      try {
+        await adminClient.auth.admin.signOut(target_user_id, { scope: 'others' } as any);
+      } catch (_) { /* non-critical */ }
       return json({ success: true, is_blocked: true });
     }
 
