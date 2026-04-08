@@ -321,9 +321,6 @@ function openUserDetail(userId) {
             ${(!isSelf && canEditRole) ? (u.is_blocked ? `
             <button class="btn btn-success" style="width:100%;justify-content:center;" onclick="closeModal('userDetailModal'); unblockAccount('${u.id}', '${escHtml(u.full_name || u.email)}')">Desbloquear conta</button>` : `
             <button class="btn btn-danger" style="width:100%;justify-content:center;" onclick="closeModal('userDetailModal'); blockAccount('${u.id}', '${escHtml(u.full_name || u.email)}')">Bloquear conta</button>`) : ''}
-            ${(activeSub && !u.free_access) ? `
-            <button class="btn btn-danger" style="width:100%;justify-content:center;" onclick="closeModal('userDetailModal'); revokePaidSubscription('${u.id}', '${escHtml(u.full_name || u.email)}')">Revogar plano pago</button>
-            <button class="btn btn-secondary" style="width:100%;justify-content:center;" onclick="closeModal('userDetailModal'); openRefundModal('${u.id}', '${escHtml(u.full_name || u.email)}')">Reembolsar</button>` : ''}
         </div>
     `;
 
@@ -367,10 +364,6 @@ Acesso</button>`;
         ? `<button class="btn btn-sm btn-success" onclick="unblockAccount('${u.id}', '${escHtml(u.full_name || u.email)}')">Desbloquear</button>`
         : `<button class="btn btn-sm btn-danger" onclick="blockAccount('${u.id}', '${escHtml(u.full_name || u.email)}')">Bloquear</button>`) : '';
 
-    const revokeSubBtn = (activeSub && !u.free_access) ? `<button class="btn btn-sm btn-danger" onclick="revokePaidSubscription('${u.id}', '${escHtml(u.full_name || u.email)}')">Revogar plano</button>` : '';
-
-    const refundBtn = (activeSub && !u.free_access) ? `<button class="btn btn-sm btn-secondary" onclick="openRefundModal('${u.id}', '${escHtml(u.full_name || u.email)}')">Reembolsar</button>` : '';
-
     return `
     <tr class="user-row-clickable" onclick="openUserDetail('${u.id}')">
         <td>
@@ -391,8 +384,6 @@ Acesso</button>`;
                 ${roleBtn}
                 ${freeAccessBtn}
                 ${blockBtn}
-                ${revokeSubBtn}
-                ${refundBtn}
             </div>
         </td>
     </tr>`;
@@ -1066,8 +1057,25 @@ async function loadSubscriptions() {
 }
 
 function filterSubs() {
+    const q      = (document.getElementById('subsSearch')?.value || '').toLowerCase();
     const status = document.getElementById('subsStatusFilter').value;
-    const display = status ? allSubs.filter(s => s.status === status) : allSubs;
+    const sort   = document.getElementById('subsSortSelect')?.value || 'default';
+
+    let display = allSubs.filter(s => {
+        const matchStatus = !status || s.status === status;
+        const matchText   = !q || (s.userEmail || '').toLowerCase().includes(q) || (s.plans?.name || '').toLowerCase().includes(q);
+        return matchStatus && matchText;
+    });
+
+    display = [...display].sort((a, b) => {
+        if (sort === 'email-asc')   return (a.userEmail || '').localeCompare(b.userEmail || '');
+        if (sort === 'email-desc')  return (b.userEmail || '').localeCompare(a.userEmail || '');
+        if (sort === 'period-asc')  return new Date(a.current_period_end || 0) - new Date(b.current_period_end || 0);
+        if (sort === 'period-desc') return new Date(b.current_period_end || 0) - new Date(a.current_period_end || 0);
+        if (sort === 'created-asc') return new Date(a.created_at || 0) - new Date(b.created_at || 0);
+        return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+    });
+
     renderSubscriptionsTable(display);
 }
 
@@ -1084,6 +1092,7 @@ function renderSubscriptionsTable(list) {
         const planName    = s.plans?.name || '—';
         const periodEnd   = s.current_period_end ? new Date(s.current_period_end).toLocaleDateString('pt-BR') : '—';
         const cancelAtEnd = s.cancel_at_period_end ? '<span class="badge badge-warning">Sim</span>' : '<span style="color:var(--text-dim);font-size:12px;">Não</span>';
+        const isActive    = s.status === 'active' || s.status === 'trialing';
 
         return `
         <tr>
@@ -1096,9 +1105,9 @@ function renderSubscriptionsTable(list) {
             <td>${cancelAtEnd}</td>
             <td>
                 <div class="actions-cell">
-                    ${s.status === 'active' && !s.cancel_at_period_end
-                        ? `<button class="btn btn-sm btn-danger" onclick="openCancelSubModal('${s.id}', '${escHtml(s.userEmail)}')">Cancelar</button>`
-                        : ''}
+                    ${(isActive && !s.cancel_at_period_end) ? `<button class="btn btn-sm btn-danger" onclick="openCancelSubModal('${s.id}', '${escHtml(s.userEmail)}')">Cancelar</button>` : ''}
+                    ${isActive ? `<button class="btn btn-sm btn-danger" onclick="revokeSubImmediate('${s.id}', '${escHtml(s.userEmail)}')">Revogar</button>` : ''}
+                    ${isActive ? `<button class="btn btn-sm btn-secondary" onclick="openRefundModal('${s.user_id}', '${escHtml(s.userEmail)}')">Reembolsar</button>` : ''}
                 </div>
             </td>
         </tr>`;
@@ -1139,6 +1148,21 @@ async function confirmCancelSub() {
         btn.disabled = false;
         btn.textContent = 'Cancelar Assinatura';
     }
+}
+
+async function revokeSubImmediate(subId, userEmail) {
+    if (!confirm(`Revogar imediatamente o plano de ${userEmail}? A assinatura será cancelada agora no Stripe.`)) return;
+    try {
+        const session = await supabase.auth.getSession();
+        const res = await callFunction('cancel-subscription', {
+            subscription_id: subId,
+            cancel_at_period_end: false,
+        }, session.data.session.access_token);
+        if (!res.ok) { const b = await res.json(); throw new Error(b.error || 'Erro ao revogar'); }
+        allSubs = [];
+        await loadSubscriptions();
+        showToast('Plano revogado com sucesso.', 'success');
+    } catch (err) { showToast('Erro: ' + err.message, 'error'); }
 }
 
 // ─────────────────────────────────────────────────────────────

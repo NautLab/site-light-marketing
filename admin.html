@@ -207,12 +207,23 @@
                     </div>
                 </div>
 
-                <div class="table-toolbar">
+                <div class="table-toolbar" style="margin-bottom:16px;">
+                    <input class="search-input" id="subsSearch" type="search" placeholder="Buscar por email ou plano…" oninput="filterSubs()" />
                     <select class="filter-select" id="subsStatusFilter" onchange="filterSubs()">
                         <option value="">Todos os status</option>
                         <option value="active">Ativa</option>
+                        <option value="trialing">Em teste</option>
                         <option value="canceled">Cancelada</option>
                         <option value="past_due">Vencida</option>
+                        <option value="incomplete">Incompleta</option>
+                    </select>
+                    <select class="filter-select" id="subsSortSelect" onchange="filterSubs()">
+                        <option value="default">Mais recentes</option>
+                        <option value="created-asc">Mais antigos</option>
+                        <option value="email-asc">Email (A–Z)</option>
+                        <option value="email-desc">Email (Z–A)</option>
+                        <option value="period-asc">Fim período (mais cedo)</option>
+                        <option value="period-desc">Fim período (mais tarde)</option>
                     </select>
                 </div>
 
