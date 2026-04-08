@@ -395,7 +395,7 @@ Acesso</button>`;
 // ─── Block / Unblock ─────────────────────────────────────────
 
 async function blockAccount(userId, userName) {
-    if (!confirm(\`Bloquear a conta de \${userName}? O usuário não conseguirá fazer login.\`)) return;
+    if (!confirm(`Bloquear a conta de \${userName}? O usuário não conseguirá fazer login.`)) return;
     try {
         const session = await supabase.auth.getSession();
         const res = await callFunction('admin-update-user', {
@@ -411,7 +411,7 @@ async function blockAccount(userId, userName) {
 }
 
 async function unblockAccount(userId, userName) {
-    if (!confirm(\`Desbloquear a conta de \${userName}?\`)) return;
+    if (!confirm(`Desbloquear a conta de \${userName}?`)) return;
     try {
         const session = await supabase.auth.getSession();
         const res = await callFunction('admin-update-user', {
@@ -429,7 +429,7 @@ async function unblockAccount(userId, userName) {
 // ─── Revoke Paid Subscription ────────────────────────────────
 
 async function revokePaidSubscription(userId, userName) {
-    if (!confirm(\`Revogar o plano pago de \${userName}? A assinatura será cancelada imediatamente no Stripe.\`)) return;
+    if (!confirm(`Revogar o plano pago de \${userName}? A assinatura será cancelada imediatamente no Stripe.`)) return;
     try {
         const session = await supabase.auth.getSession();
         const res = await callFunction('admin-update-user', {
@@ -488,7 +488,7 @@ async function submitRefund() {
 
         closeModal('refundModal');
         const refundedAmount = (body.amount / 100).toFixed(2).replace('.', ',');
-        showToast(\`Reembolso de R$ \${refundedAmount} processado com sucesso.\`, 'success');
+        showToast(`Reembolso de R$ \${refundedAmount} processado com sucesso.`, 'success');
     } catch (err) {
         showToast('Erro: ' + err.message, 'error');
     } finally {
