@@ -86,6 +86,7 @@ Deno.serve(async (req) => {
           cancel_at_period_end: stripeSub.cancel_at_period_end,
           billing_interval: billingInterval,
           plan_name_snapshot: planNameSnapshot,
+          last_invoice_amount_cents: session.amount_total ?? null,
         }, { onConflict: 'stripe_subscription_id' });
 
         // Update profile – mark as paid subscriber
@@ -184,6 +185,18 @@ Deno.serve(async (req) => {
           }
         }
 
+        break;
+      }
+
+      // ── Payment succeeded (recurring renewals) ─────────────
+      case 'invoice.payment_succeeded': {
+        const invoice = event.data.object as Stripe.Invoice;
+        const subId = invoice.subscription as string;
+        if (subId && invoice.amount_paid > 0) {
+          await adminClient.from('subscriptions').update({
+            last_invoice_amount_cents: invoice.amount_paid,
+          }).eq('stripe_subscription_id', subId);
+        }
         break;
       }
 

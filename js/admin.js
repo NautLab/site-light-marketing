@@ -446,11 +446,21 @@ async function revokePaidSubscription(userId, userName) {
 
 // ─── Refund ──────────────────────────────────────────────────
 
-function openRefundModal(userId, userName) {
+function openRefundModal(userId, userName, lastAmountCents) {
     selectedUserId   = userId;
     selectedUserName = userName;
     document.getElementById('refundUserName').textContent = userName;
     document.getElementById('refundAmount').value = '';
+    const hint = document.getElementById('refundLastAmountHint');
+    if (hint) {
+        if (lastAmountCents) {
+            const formatted = (lastAmountCents / 100).toFixed(2).replace('.', ',');
+            hint.textContent = `Último pagamento: R$ ${formatted}`;
+            hint.style.display = '';
+        } else {
+            hint.style.display = 'none';
+        }
+    }
     openModal('refundModal');
 }
 
@@ -1102,7 +1112,7 @@ function renderSubscriptionsTable(list) {
                 <div class="actions-cell">
                     ${(isActive && !s.cancel_at_period_end) ? `<button class="btn btn-sm btn-danger" onclick="openCancelSubModal('${s.id}', '${escHtml(s.userEmail)}')">Cancelar</button>` : ''}
                     ${isActive ? `<button class="btn btn-sm btn-danger" onclick="revokeSubImmediate('${s.id}', '${escHtml(s.userEmail)}')">Revogar</button>` : ''}
-                    ${isActive ? `<button class="btn btn-sm btn-secondary" onclick="openRefundModal('${s.user_id}', '${escHtml(s.userEmail)}')">Reembolsar</button>` : ''}
+                    ${s.stripe_subscription_id ? `<button class="btn btn-sm btn-secondary" onclick="openRefundModal('${s.user_id}', '${escHtml(s.userEmail)}', ${s.last_invoice_amount_cents ?? 'null'})">Reembolsar</button>` : ''}
                 </div>
             </td>
         </tr>`;
