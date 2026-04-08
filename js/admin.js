@@ -1779,8 +1779,9 @@ function populateNotifPlanCheckboxes() {
 function updateNotifTargetFields() {
     const type = document.getElementById('notifTargetType').value;
     // Clear all sub-selections when switching type (Item 7)
-    document.querySelectorAll('.notif-role-check, .notif-user-check').forEach(el => el.checked = false);
+    document.querySelectorAll('.notif-role-check, .notif-tier-check, .notif-user-check').forEach(el => el.checked = false);
     document.getElementById('notifRoleFields').style.display     = type === 'role'     ? '' : 'none';
+    document.getElementById('notifTierFields').style.display     = type === 'tier'     ? '' : 'none';
     document.getElementById('notifSpecificFields').style.display = type === 'specific' ? '' : 'none';
 }
 
@@ -1834,6 +1835,10 @@ async function submitCreateNotification() {
     if (type === 'role') {
         target_roles = [...document.querySelectorAll('.notif-role-check:checked')].map(el => el.value);
         if (target_roles.length === 0) { showToast('Selecione ao menos uma função.', 'error'); return; }
+    }
+    if (type === 'tier') {
+        target_tiers = [...document.querySelectorAll('.notif-tier-check:checked')].map(el => el.value);
+        if (target_tiers.length === 0) { showToast('Selecione ao menos um plano.', 'error'); return; }
     }
     if (type === 'specific') {
         target_user_ids = [...document.querySelectorAll('.notif-user-check:checked')].map(el => el.value);

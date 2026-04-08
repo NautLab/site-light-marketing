@@ -810,6 +810,7 @@
                 <select class="form-control form-select" id="notifTargetType" onchange="updateNotifTargetFields()">
                     <option value="all">Todos os usuários</option>
                     <option value="role">Por função</option>
+                    <option value="tier">Por plano</option>
                     <option value="specific">Usuários específicos</option>
                 </select>
             </div>
@@ -825,7 +826,16 @@
                 </div>
             </div>
 
-            <!-- Plan targets REMOVED (Items 5+6) -->
+            <!-- Plan targets -->
+            <div id="notifTierFields" style="display:none;">
+                <div class="form-group">
+                    <label class="form-label">Planos</label>
+                    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:4px;">
+                        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" class="notif-tier-check" value="free" /> Free</label>
+                        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" class="notif-tier-check" value="paid" /> Pagante</label>
+                    </div>
+                </div>
+            </div>
 
             <!-- Specific user targets -->
             <div id="notifSpecificFields" style="display:none;">
