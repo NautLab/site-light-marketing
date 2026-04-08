@@ -463,6 +463,10 @@
                 // ─── Screen lock & monthly usage check ───────────────
                 (async function applyScreenLock() {
                     const FREE_MONTHLY_LIMIT = 30;
+                    let _waPhone = null;
+                    try { const {data:_waD}=await supabase.from('site_settings').select('value').eq('key','phone').maybeSingle(); if(_waD?.value) _waPhone=_waD.value.replace(/\D/g,''); } catch(_){}
+                    const _waMsg='Ol\u00e1! Minha conta na Light Marketing foi bloqueada. Gostaria de entender o motivo e saber como resolver. Obrigado!';
+                    const _waUrl=_waPhone?`https://wa.me/${_waPhone}?text=${encodeURIComponent(_waMsg)}`:'https://wa.link/m1vm4f';
 
                     // ── Blocked account check (Item 19) ──────────────────
                     if (profileResult?.is_blocked) {
@@ -475,7 +479,7 @@
                                 <div class="tool-lock-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="5" y="11" width="14" height="10" rx="2" stroke="#0C7E92" stroke-width="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4" stroke="#0C7E92" stroke-width="2" stroke-linecap="round"/></svg></div>
                                 <h3>Conta temporariamente bloqueada</h3>
                                 <p>Entre em contato com o suporte para mais informações.</p>
-                                <a href="https://wa.link/m1vm4f" target="_blank" rel="noopener noreferrer" class="tool-lock-btn">Falar com suporte</a>
+                                <a href="${_waUrl}" target="_blank" rel="noopener noreferrer" class="tool-lock-btn">Falar com suporte</a>
                                </div>`;
                             toolCard.style.position = 'relative';
                             toolCard.appendChild(overlay);
@@ -505,7 +509,7 @@
                                         <div class="tool-lock-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="5" y="11" width="14" height="10" rx="2" stroke="#0C7E92" stroke-width="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4" stroke="#0C7E92" stroke-width="2" stroke-linecap="round"/></svg></div>
                                         <h3>Conta temporariamente bloqueada</h3>
                                         <p>Entre em contato com o suporte para mais informações.</p>
-                                        <a href="https://wa.link/m1vm4f" target="_blank" rel="noopener noreferrer" class="tool-lock-btn">Falar com suporte</a>
+                                        <a href="${_waUrl}" target="_blank" rel="noopener noreferrer" class="tool-lock-btn">Falar com suporte</a>
                                        </div>`;
                                     toolCard.style.position = 'relative';
                                     toolCard.appendChild(overlay);

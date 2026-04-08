@@ -555,6 +555,13 @@ async function confirmFreeAccess() {
     const planId    = document.getElementById('freeAccessPlanSelect').value;
     // Convert YYYY-MM-DD to end-of-day in BRT so the day itself is still valid (Item 2)
     const expiresAtRaw = document.getElementById('freeAccessExpiresAt').value || null;
+    if (expiresAtRaw) {
+        const today = new Date().toISOString().split('T')[0];
+        if (expiresAtRaw < today) {
+            showToast('A data de expiração não pode ser anterior ao dia atual.', 'error');
+            return;
+        }
+    }
     const expiresAt    = expiresAtRaw ? expiresAtRaw + 'T23:59:59.999-03:00' : null;
     if (!planId) { showToast('Selecione um plano.', 'error'); return; }
     const btn  = document.getElementById('freeAccessConfirmBtn');
@@ -1325,9 +1332,9 @@ function buildCouponCard(c) {
         <div class="coupon-meta">
             <span>Validade: ${validade}</span>
             <span>Duração: ${durationLabel(c.duration)}</span>
+            ${c.times_redeemed != null ? `<span>Usos realizados: ${c.times_redeemed}</span>` : ''}
             ${c.max_redemptions ? `<span>Limite total: ${c.max_redemptions} usos</span>` : ''}
             ${limiteIndividual ? `<span>${limiteIndividual}</span>` : ''}
-            ${c.times_redeemed != null ? `<span>Usos realizados: ${c.times_redeemed}</span>` : ''}
         </div>
         <div class="coupon-card-footer">
             <div style="display:flex;gap:6px;flex-wrap:wrap;">${footerActions}</div>
@@ -1581,11 +1588,7 @@ function toggleDurationMonths() {
         input.style.opacity = '';
         if (!input.value || input.value === '1') input.value = '3';
     } else if (dur === 'once') {
-        group.style.display = '';
-        input.type = 'number';
-        input.value = '1';
-        input.readOnly = true;
-        input.style.opacity = '0.6';
+        group.style.display = 'none';
     } else { // forever
         group.style.display = '';
         input.type = 'text';
@@ -1606,11 +1609,7 @@ function toggleEditDurationMonths() {
         input.style.opacity = '';
         if (!input.value || input.value === '1') input.value = '3'; // Item 13
     } else if (dur === 'once') {
-        group.style.display = '';
-        input.type = 'number';
-        input.value = '1';
-        input.readOnly = true;
-        input.style.opacity = '0.6';
+        group.style.display = 'none';
     } else { // forever
         group.style.display = '';
         input.type = 'text';
@@ -1812,7 +1811,7 @@ function renderNotifUserList(users) {
         <label class="notif-user-item">
             <input type="checkbox" class="notif-user-check" value="${u.id}" />
             <div class="notif-user-info">
-                <span class="notif-user-name">${escHtml(u.full_name || u.email)}</span>
+                <span class="notif-user-name">${escHtml(u.full_name || u.email)} <span style="font-size:11px;opacity:.45;font-weight:400;">${tierLabel(u.subscription_tier)}</span></span>
                 <span class="notif-user-email">${escHtml(u.email)}</span>
             </div>
         </label>`).join('');

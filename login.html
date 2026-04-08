@@ -114,23 +114,6 @@
                 const result = await signIn(email, password, rememberMe);
 
                 if (result.success) {
-                    // Check if account is blocked
-                    const { data: { user: loggedUser } } = await supabase.auth.getUser();
-                    if (loggedUser) {
-                        const { data: profile } = await supabase
-                            .from('profiles')
-                            .select('is_blocked')
-                            .eq('id', loggedUser.id)
-                            .single();
-
-                        if (profile?.is_blocked) {
-                            await supabase.auth.signOut();
-                            showAlert(alert, 'Sua conta foi bloqueada. Entre em contato com o suporte para mais informações.', 'error');
-                            setLoading(submitBtn, false);
-                            return;
-                        }
-                    }
-
                     showAlert(alert, 'Login realizado com sucesso! Redirecionando...', 'success');
                     setTimeout(() => {
                         window.location.href = 'index.html';

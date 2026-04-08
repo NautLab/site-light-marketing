@@ -748,6 +748,10 @@ body.admin-body {
     opacity: 0.6;
 }
 
+.notification-card--inactive .btn {
+    opacity: 1;
+}
+
 .notification-card-header {
     display: flex;
     align-items: flex-start;
@@ -758,9 +762,8 @@ body.admin-body {
     font-size: 14px;
     font-weight: 600;
     color: var(--text);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    word-break: break-word;
+    overflow-wrap: break-word;
 }
 
 .notification-meta {
@@ -775,6 +778,8 @@ body.admin-body {
     line-height: 1.5;
     white-space: pre-wrap;
     padding: 10px 12px;
+    word-break: break-word;
+    overflow-wrap: break-word;
     background: var(--bg-input);
     border-radius: 8px;
     border: 1px solid var(--border);
@@ -805,6 +810,15 @@ body.admin-body {
     background: var(--border);
     border-radius: 10px;
 }
+
+/* ── Textarea scrollbar ──────────────────────────── */
+textarea.form-control {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) var(--bg-input);
+}
+textarea.form-control::-webkit-scrollbar { width: 6px; }
+textarea.form-control::-webkit-scrollbar-track { background: var(--bg-input); border-radius: 10px; }
+textarea.form-control::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
 
 /* ── Screens checkboxes (create / edit plan) ──────── */
 .screens-checkboxes {
