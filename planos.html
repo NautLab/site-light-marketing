@@ -700,7 +700,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         applies = (n.target_user_ids || []).includes(_uid);
                     }
 
-                    if (applies) showNotificationPopup([n], _uid);
+                    if (applies && n.show_popup !== false) showNotificationPopup([n], _uid);
                 })
                 .subscribe();
         }
@@ -1263,7 +1263,8 @@ async function checkAdminNotifications(userId, profile) {
 
         if (unread.length === 0) return;
         updateNotifBadge(unread.length);
-        showNotificationPopup(unread, userId);
+        const popupNotifs = unread.filter(n => n.show_popup !== false);
+        if (popupNotifs.length > 0) showNotificationPopup(popupNotifs, userId);
     } catch (_) { /* silent */ }
 }
 

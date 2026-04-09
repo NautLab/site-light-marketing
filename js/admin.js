@@ -1938,6 +1938,7 @@ async function submitCreateNotification() {
                 target_type: type,
                 target_roles, target_tiers, target_user_ids,
                 created_by: currentProfile.id,
+                show_popup: document.getElementById('notifShowPopup').checked,
             })
             .select()
             .single();
@@ -1965,6 +1966,7 @@ function clearNotifForm() {
     document.getElementById('notifUserSearch').value = '';
     document.querySelectorAll('.notif-role-check, .notif-tier-check, .notif-user-check')
         .forEach(el => el.checked = false);
+    document.getElementById('notifShowPopup').checked = true;
     updateNotifTargetFields();
 }
 
