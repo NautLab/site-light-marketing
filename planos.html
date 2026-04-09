@@ -671,6 +671,38 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (session) {
             const profile = await getUserProfile();
             if (profile) checkAdminNotifications(session.user.id, profile);
+
+            // Realtime: show popup instantly for new notifications
+            const _uid = session.user.id;
+            const _prof = profile || currentProfile;
+            supabase.channel('notif-realtime-plans-' + _uid)
+                .on('postgres_changes', {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'admin_notifications'
+                }, async (payload) => {
+                    const n = payload.new;
+                    if (!n || !n.is_active) return;
+                    if (document.getElementById('notifPopupOverlay')) return;
+
+                    let applies = false;
+                    if (n.target_type === 'all') applies = true;
+                    else if (n.target_type === 'role') {
+                        const r = _prof?.role || 'user';
+                        applies = (n.target_roles || []).some(t => t === r || (t === 'admin' && r === 'super_admin'));
+                    }
+                    else if (n.target_type === 'tier' || n.target_type === 'plan') {
+                        const tier = _prof?.subscription_tier || 'free';
+                        const planId = currentSubscription?.plan_id || null;
+                        applies = (n.target_tiers || []).some(t => t === tier || (planId && t === planId));
+                    }
+                    else if (n.target_type === 'specific') {
+                        applies = (n.target_user_ids || []).includes(_uid);
+                    }
+
+                    if (applies) showNotificationPopup([n], _uid);
+                })
+                .subscribe();
         }
     } catch(_) { /* silent */ }
     // Render everything at once so all cards appear simultaneously

@@ -273,6 +273,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         await loadNotifications();
 
+        // Realtime: auto-refresh list when a new notification arrives
+        supabase.channel('notif-realtime-page-' + currentUserId)
+            .on('postgres_changes', {
+                event: 'INSERT',
+                schema: 'public',
+                table: 'admin_notifications'
+            }, () => { loadNotifications(); })
+            .subscribe();
+
     } catch (err) {
         console.error('Auth error:', err);
         window.location.href = 'login.html';
