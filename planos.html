@@ -997,8 +997,8 @@ function updateFreePlanBtn() {
             ? new Date(currentSubscription.current_period_end).toLocaleDateString('pt-BR')
             : null;
         btn.innerHTML = endDate
-            ? `⏳ Retorno agendado para ${endDate}`
-            : '⏳ Retorno ao plano free agendado';
+            ? `Retorno agendado para ${endDate}`
+            : 'Retorno ao plano free agendado';
         btn.className = 'plan-btn plan-btn-current';
         btn.style.opacity = '0.8';
         btn.disabled = true;
