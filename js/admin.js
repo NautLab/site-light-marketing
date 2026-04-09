@@ -277,7 +277,12 @@ function openUserDetail(userId) {
             ? `<span class="badge badge-paid">${escHtml(activeSub.plan_name_snapshot)}</span>`
             : `<span class="badge badge-${u.subscription_tier}">${tierLabel(u.subscription_tier)}</span>`;
     const roleBadge = `<span class="badge ${roleBadgeClass(u.role)}">${roleLabel(u.role)}</span>`;
-    const blockedBadge = u.is_blocked ? `<span class="badge badge-danger">Bloqueado</span>` : `<span style="color:var(--text-dim);font-size:12px;">Não</span>`;
+    const blockedDateStr = u.is_blocked && u.blocked_at
+        ? new Date(u.blocked_at).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+        : null;
+    const blockedBadge = u.is_blocked
+        ? `<span class="badge badge-danger">Bloqueado${blockedDateStr ? ` · ${blockedDateStr}` : ''}</span>`
+        : `<span style="color:var(--text-dim);font-size:12px;">Não</span>`;
 
     const usageMonth = u.usage_month || '';
     const currentMonth = new Date().toISOString().slice(0, 7);
@@ -383,7 +388,7 @@ Acesso</button>`;
             <div class="user-cell">
                 <div class="user-avatar-sm">${initials}</div>
                 <div>
-                    <div class="user-name">${escHtml(u.full_name || '—')}${u.is_blocked ? ' <span class="badge badge-danger" style="font-size:10px;">Bloqueado</span>' : ''}</div>
+                    <div class="user-name">${escHtml(u.full_name || '—')}${u.is_blocked ? ` <span class="badge badge-danger" style="font-size:10px;">Bloqueado${u.blocked_at ? ' · ' + new Date(u.blocked_at).toLocaleDateString('pt-BR', {timeZone:'America/Sao_Paulo'}) : ''}</span>` : ''}</div>
                     <div class="user-email">${escHtml(u.email)}</div>
                 </div>
             </div>
@@ -403,28 +408,47 @@ Acesso</button>`;
 
 // ─── Block / Unblock ─────────────────────────────────────────
 
+// State for the block-refund notification modal
+let _blockRefundUserId       = null;
+let _blockRefundUserEmail    = null;
+let _blockRefundAmountCents  = null;
+
 async function blockAccount(userId) {
     const u = allUsers.find(x => x.id === userId);
     const userName = u?.full_name || u?.email || userId;
     const activeSub = (u?.subscriptions || []).find(s => s.status === 'active' || s.status === 'trialing');
     const hasActiveSub = !!activeSub;
     const msg = hasActiveSub
-        ? `Bloquear a conta de ${userName}?\n\nA assinatura ativa será revogada imediatamente e o acesso gratuito será concedido pelos dias restantes do período.`
-        : `Bloquear a conta de ${userName}? O usuário perderá os acessos imediatamente mas continuará logado.`;
+        ? `Bloquear a conta de ${userName}?\n\nA assinatura ativa será cancelada imediatamente. O acesso será retomado ao desbloquear, caso nenhum reembolso seja processado.`
+        : `Bloquear a conta de ${userName}? O usuário perderá os acessos imediatamente.`;
     if (!confirm(msg)) return;
     try {
         const session = await supabase.auth.getSession();
         const token = session.data.session.access_token;
 
-        // 1. Bloquear conta
-        const resBlock = await callFunction('admin-update-user', {
+        // 1. Bloquear conta — armazenar período restante da assinatura (se houver)
+        const blockPayload = {
             target_user_id: userId,
             action: 'block_account',
-        }, token);
-        if (!resBlock.ok) { const b = await resBlock.json(); throw new Error(b.error || 'Erro ao bloquear'); }
+        };
+        if (hasActiveSub && activeSub.current_period_end) {
+            blockPayload.blocked_sub_period_end = activeSub.current_period_end;
+            if (activeSub.plan_id) blockPayload.blocked_sub_plan_id = activeSub.plan_id;
+        }
+
+        const resBlock = await callFunction('admin-update-user', blockPayload, token);
+        const blockData = await resBlock.json();
+        if (!resBlock.ok) throw new Error(blockData.error || 'Erro ao bloquear');
 
         const user = allUsers.find(u => u.id === userId);
-        if (user) user.is_blocked = true;
+        if (user) {
+            user.is_blocked = true;
+            user.blocked_at = blockData.blocked_at || new Date().toISOString();
+            if (hasActiveSub && activeSub.current_period_end) {
+                user.blocked_sub_period_end = activeSub.current_period_end;
+                user.blocked_sub_plan_id    = activeSub.plan_id || null;
+            }
+        }
 
         // 2. Revogar assinatura ativa, se houver
         if (hasActiveSub) {
@@ -441,30 +465,6 @@ async function blockAccount(userId) {
                         });
                     }
                 }
-
-                // 3. Conceder acesso gratuito pelos dias restantes
-                if (activeSub.current_period_end) {
-                    const periodEnd = new Date(activeSub.current_period_end);
-                    if (periodEnd > new Date()) {
-                        const expiresAt = periodEnd.toISOString();
-                        // Use the first active plan as fallback for free access
-                        const planId = activeSub.plan_id || null;
-                        if (planId) {
-                            const resGrant = await callFunction('admin-update-user', {
-                                target_user_id: userId,
-                                action: 'grant_free_access',
-                                free_access_plan_id: planId,
-                                free_access_expires_at: expiresAt,
-                            }, token);
-                            if (resGrant.ok && user) {
-                                user.free_access = true;
-                                user.free_access_plan_id = planId;
-                                user.free_access_expires_at = expiresAt;
-                                user.subscription_tier = 'paid';
-                            }
-                        }
-                    }
-                }
             } catch (_) { /* assinatura pode já estar inativa */ }
         }
 
@@ -472,33 +472,66 @@ async function blockAccount(userId) {
         updateUserStats();
         showToast('Conta bloqueada com sucesso.', 'success');
 
-        // 4. Oferecer reembolso
-        if (hasActiveSub && confirm('Deseja processar um reembolso para este usuário?')) {
-            showSection('subscriptions');
+        // 3. Oferecer reembolso via modal de notificação (não confirm())
+        if (hasActiveSub) {
             if (allSubs.length === 0) await loadSubscriptions();
-            const sub = allSubs.find(s => s.user_id === userId &&
-                (s.stripe_subscription_id === activeSub.stripe_subscription_id || s.user_id === userId));
-            const subEmail = sub?.userEmail || userName;
-            openRefundModal(userId, subEmail, sub?.last_invoice_amount_cents ?? null);
+            const sub = allSubs.find(s => s.user_id === userId);
+            _blockRefundUserId      = userId;
+            _blockRefundUserEmail   = sub?.userEmail || userName;
+            _blockRefundAmountCents = sub?.last_invoice_amount_cents ?? null;
+            document.getElementById('blockRefundUserName').textContent = userName;
+            openModal('blockRefundModal');
         }
     } catch (err) { showToast('Erro: ' + err.message, 'error'); }
+}
+
+function handleBlockRefundYes() {
+    closeModal('blockRefundModal');
+    showSection('subscriptions');
+    openRefundModal(_blockRefundUserId, _blockRefundUserEmail, _blockRefundAmountCents);
 }
 
 async function unblockAccount(userId) {
     const u = allUsers.find(x => x.id === userId);
     const userName = u?.full_name || u?.email || userId;
-    if (!confirm(`Desbloquear a conta de ${userName}?`)) return;
+
+    const hasPeriodLeft = u?.blocked_sub_period_end && u?.blocked_sub_plan_id
+        && new Date(u.blocked_sub_period_end) > new Date();
+    const periodEndStr = hasPeriodLeft
+        ? new Date(u.blocked_sub_period_end).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+        : null;
+    const msg = hasPeriodLeft
+        ? `Desbloquear a conta de ${userName}?\n\nO acesso ao plano anterior será retomado automaticamente até ${periodEndStr}.`
+        : `Desbloquear a conta de ${userName}?`;
+    if (!confirm(msg)) return;
     try {
         const session = await supabase.auth.getSession();
         const res = await callFunction('admin-update-user', {
             target_user_id: userId,
             action: 'unblock_account',
         }, session.data.session.access_token);
-        if (!res.ok) { const b = await res.json(); throw new Error(b.error || 'Erro'); }
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Erro');
+
         const user = allUsers.find(u => u.id === userId);
-        if (user) user.is_blocked = false;
+        if (user) {
+            user.is_blocked = false;
+            user.blocked_at = null;
+            user.blocked_sub_period_end = null;
+            user.blocked_sub_plan_id    = null;
+            if (data.free_access_restored) {
+                user.free_access            = true;
+                user.free_access_plan_id    = data.free_access_plan_id;
+                user.free_access_expires_at = data.free_access_expires_at;
+                user.subscription_tier      = 'paid';
+            }
+        }
         renderUsersTable();
-        showToast('Conta desbloqueada com sucesso.', 'success');
+        updateUserStats();
+        const msg2 = data.free_access_restored
+            ? `Conta desbloqueada. Acesso ao plano retomado até ${new Date(data.free_access_expires_at).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}.`
+            : 'Conta desbloqueada com sucesso.';
+        showToast(msg2, 'success');
     } catch (err) { showToast('Erro: ' + err.message, 'error'); }
 }
 

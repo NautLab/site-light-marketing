@@ -151,25 +151,73 @@ Deno.serve(async (req) => {
 
     // ── ACTION: block_account ─────────────────────────
     if (action === 'block_account') {
+      const blockedAt = new Date().toISOString();
+      const updateData: Record<string, unknown> = {
+        is_blocked: true,
+        blocked_at: blockedAt,
+      };
+      // Store the subscription period so it can be restored on unblock
+      if (body.blocked_sub_period_end) updateData.blocked_sub_period_end = body.blocked_sub_period_end;
+      if (body.blocked_sub_plan_id)    updateData.blocked_sub_plan_id    = body.blocked_sub_plan_id;
+
       const { error } = await adminClient
         .from('profiles')
-        .update({ is_blocked: true })
+        .update(updateData)
         .eq('id', target_user_id);
 
       if (error) throw error;
-      // Do NOT sign out the user — Realtime will push the block in real time (Item 19)
-      return json({ success: true, is_blocked: true });
+      // Do NOT sign out the user — Realtime will push the block in real time
+      return json({ success: true, is_blocked: true, blocked_at: blockedAt });
     }
 
     // ── ACTION: unblock_account ───────────────────────
     if (action === 'unblock_account') {
+      // Fetch stored subscription data saved at block time
+      const { data: blockedProfile } = await adminClient
+        .from('profiles')
+        .select('blocked_sub_period_end, blocked_sub_plan_id')
+        .eq('id', target_user_id)
+        .single();
+
+      const updateData: Record<string, unknown> = {
+        is_blocked: false,
+        blocked_at: null,
+        blocked_sub_period_end: null,
+        blocked_sub_plan_id: null,
+      };
+
+      let freeAccessRestored = false;
+      let freeAccessPlanId: string | null = null;
+      let freeAccessExpiresAt: string | null = null;
+
+      // If the original subscription period is still in the future, restore access
+      if (blockedProfile?.blocked_sub_period_end && blockedProfile?.blocked_sub_plan_id) {
+        const periodEnd = new Date(blockedProfile.blocked_sub_period_end);
+        if (periodEnd > new Date()) {
+          updateData.free_access            = true;
+          updateData.free_access_plan_id    = blockedProfile.blocked_sub_plan_id;
+          updateData.free_access_expires_at = blockedProfile.blocked_sub_period_end;
+          updateData.free_access_granted_by = null;
+          updateData.subscription_tier      = 'paid';
+          freeAccessRestored  = true;
+          freeAccessPlanId    = blockedProfile.blocked_sub_plan_id;
+          freeAccessExpiresAt = blockedProfile.blocked_sub_period_end;
+        }
+      }
+
       const { error } = await adminClient
         .from('profiles')
-        .update({ is_blocked: false })
+        .update(updateData)
         .eq('id', target_user_id);
 
       if (error) throw error;
-      return json({ success: true, is_blocked: false });
+      return json({
+        success: true,
+        is_blocked: false,
+        free_access_restored: freeAccessRestored,
+        free_access_plan_id: freeAccessPlanId,
+        free_access_expires_at: freeAccessExpiresAt,
+      });
     }
 
     // ── ACTION: revoke_paid_subscription ─────────────
@@ -256,14 +304,15 @@ Deno.serve(async (req) => {
       const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!, { apiVersion: '2024-06-20' });
       const amountCents = body.amount ? Math.round(parseFloat(body.amount) * 100) : undefined;
 
-      // Find active subscription
+      // Find the most recent subscription with a Stripe ID (active or recently canceled)
       const { data: activeSub } = await adminClient
         .from('subscriptions')
         .select('stripe_subscription_id')
         .eq('user_id', target_user_id)
-        .in('status', ['active', 'trialing', 'past_due'])
+        .not('stripe_subscription_id', 'is', null)
+        .order('created_at', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
       if (!activeSub?.stripe_subscription_id) return json({ error: 'No active subscription found' }, 404);
 

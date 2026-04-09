@@ -414,10 +414,34 @@
 </div>
 
 <!-- ══════════════════════════════════════════════════
+     MODAL: Notificação de Reembolso após Bloqueio
+══════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="blockRefundModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="blockRefundModalTitle">
+        <div class="modal-header">
+            <h3 class="modal-title" id="blockRefundModalTitle">Conta Bloqueada</h3>
+            <button class="modal-close-btn" onclick="closeModal('blockRefundModal')">×</button>
+        </div>
+        <div class="modal-body">
+            <p style="font-size:13px;color:var(--text-muted);">
+                A assinatura de <strong id="blockRefundUserName" style="color:var(--text);">—</strong> foi cancelada.
+            </p>
+            <p style="font-size:13px;color:var(--text-muted);margin-top:8px;">
+                Deseja processar um reembolso para este usuário?
+            </p>
+            <div class="info-row" style="margin-top:12px;">Se não for realizado, o acesso ao plano será retomado automaticamente ao desbloquear a conta.</div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('blockRefundModal')">Não</button>
+            <button class="btn btn-danger" onclick="handleBlockRefundYes()">Sim, reembolsar</button>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
      MODAL: Reembolso
 ══════════════════════════════════════════════════ -->
-<div class="modal-overlay" id="refundModal">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="refundModalTitle">
+<div class="modal-overlay" id="refundModal">    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="refundModalTitle">
         <div class="modal-header">
             <h3 class="modal-title" id="refundModalTitle">Reembolsar Pagamento</h3>
             <button class="modal-close-btn" onclick="closeModal('refundModal')">×</button>
