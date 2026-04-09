@@ -421,10 +421,11 @@ function blockAccount(userId) {
     const userName = u?.full_name || u?.email || userId;
     const activeSub = (u?.subscriptions || []).find(s => s.status === 'active' || s.status === 'trialing');
     const hasActiveSub = !!activeSub;
+    const hasFreeAccess = !!u?.free_access;
 
     _pendingBlockUserId = userId;
     document.getElementById('blockConfirmUserName').textContent = userName;
-    document.getElementById('blockConfirmSubWarning').style.display = hasActiveSub ? '' : 'none';
+    document.getElementById('blockConfirmSubWarning').style.display = (hasActiveSub || hasFreeAccess) ? '' : 'none';
     openModal('blockConfirmModal');
 }
 
@@ -436,11 +437,12 @@ async function confirmBlockAccount() {
     const userName = u?.full_name || u?.email || userId;
     const activeSub = (u?.subscriptions || []).find(s => s.status === 'active' || s.status === 'trialing');
     const hasActiveSub = !!activeSub;
+    const hasFreeAccess = !!u?.free_access && !hasActiveSub; // free_access without a Stripe sub
     try {
         const session = await supabase.auth.getSession();
         const token = session.data.session.access_token;
 
-        // 1. Bloquear conta — armazenar período restante da assinatura (se houver)
+        // 1. Bloquear conta — armazenar período restante (sub Stripe ou free_access)
         const blockPayload = {
             target_user_id: userId,
             action: 'block_account',
@@ -448,6 +450,9 @@ async function confirmBlockAccount() {
         if (hasActiveSub && activeSub.current_period_end) {
             blockPayload.blocked_sub_period_end = activeSub.current_period_end;
             if (activeSub.plan_id) blockPayload.blocked_sub_plan_id = activeSub.plan_id;
+        } else if (hasFreeAccess && u.free_access_expires_at && u.free_access_plan_id) {
+            blockPayload.blocked_free_access_period_end = u.free_access_expires_at;
+            blockPayload.blocked_free_access_plan_id    = u.free_access_plan_id;
         }
 
         const resBlock = await callFunction('admin-update-user', blockPayload, token);
@@ -461,10 +466,13 @@ async function confirmBlockAccount() {
             if (hasActiveSub && activeSub.current_period_end) {
                 user.blocked_sub_period_end = activeSub.current_period_end;
                 user.blocked_sub_plan_id    = activeSub.plan_id || null;
+            } else if (hasFreeAccess) {
+                user.blocked_sub_period_end = u.free_access_expires_at || null;
+                user.blocked_sub_plan_id    = u.free_access_plan_id || null;
             }
         }
 
-        // 2. Revogar assinatura ativa, se houver
+        // 2a. Revogar assinatura ativa, se houver
         if (hasActiveSub) {
             try {
                 const resRevoke = await callFunction('admin-update-user', {
@@ -479,14 +487,30 @@ async function confirmBlockAccount() {
                         });
                     }
                 }
-            } catch (_) { /* assinatura pode já estar inativa */ }
+            } catch (_) { /* sub pode já estar inativa */ }
+        }
+
+        // 2b. Revogar free_access, se houver
+        if (hasFreeAccess || u?.free_access) {
+            try {
+                const resRevokeFree = await callFunction('admin-update-user', {
+                    target_user_id: userId,
+                    action: 'revoke_free_access',
+                }, token);
+                if (resRevokeFree.ok && user) {
+                    user.free_access            = false;
+                    user.free_access_plan_id    = null;
+                    user.free_access_expires_at = null;
+                    user.subscription_tier      = 'free';
+                }
+            } catch (_) {}
         }
 
         renderUsersTable();
         updateUserStats();
         showToast('Conta bloqueada com sucesso.', 'success');
 
-        // 3. Oferecer reembolso via modal de notificação (não confirm())
+        // 3. Oferecer reembolso via modal (apenas se tinha sub Stripe ativa)
         if (hasActiveSub) {
             if (allSubs.length === 0) await loadSubscriptions();
             const sub = allSubs.find(s => s.user_id === userId);

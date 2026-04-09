@@ -89,10 +89,14 @@ Deno.serve(async (req) => {
           last_invoice_amount_cents: session.amount_total ?? null,
         }, { onConflict: 'stripe_subscription_id' });
 
-        // Update profile – mark as paid subscriber
+        // Update profile – mark as paid subscriber and revoke any free_access
         await adminClient.from('profiles').update({
-          subscription_tier: 'paid',
-          stripe_customer_id: custId,
+          subscription_tier:      'paid',
+          stripe_customer_id:     custId,
+          free_access:            false,
+          free_access_plan_id:    null,
+          free_access_granted_by: null,
+          free_access_expires_at: null,
         }).eq('id', userId);
 
         // ── Increment coupon usage ───────────────────────

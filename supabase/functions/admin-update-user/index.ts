@@ -160,6 +160,11 @@ Deno.serve(async (req) => {
       if (body.blocked_sub_period_end) updateData.blocked_sub_period_end = body.blocked_sub_period_end;
       if (body.blocked_sub_plan_id)    updateData.blocked_sub_plan_id    = body.blocked_sub_plan_id;
 
+      // If user has free_access, store that period too so it can be restored on unblock
+      // The caller passes this when the user has free_access but no active Stripe sub
+      if (body.blocked_free_access_period_end) updateData.blocked_sub_period_end = body.blocked_free_access_period_end;
+      if (body.blocked_free_access_plan_id)    updateData.blocked_sub_plan_id    = body.blocked_free_access_plan_id;
+
       const { error } = await adminClient
         .from('profiles')
         .update(updateData)
@@ -175,7 +180,7 @@ Deno.serve(async (req) => {
       // Fetch stored subscription data saved at block time
       const { data: blockedProfile } = await adminClient
         .from('profiles')
-        .select('blocked_sub_period_end, blocked_sub_plan_id, blocked_refund_issued')
+        .select('blocked_sub_period_end, blocked_sub_plan_id')
         .eq('id', target_user_id)
         .single();
 
@@ -191,10 +196,8 @@ Deno.serve(async (req) => {
       let freeAccessPlanId: string | null = null;
       let freeAccessExpiresAt: string | null = null;
 
-      // Only restore access if no refund was issued during the block period
-      const refundIssued = !!blockedProfile?.blocked_refund_issued;
-
-      if (!refundIssued && blockedProfile?.blocked_sub_period_end && blockedProfile?.blocked_sub_plan_id) {
+      // Always restore access if the original period is still in the future
+      if (blockedProfile?.blocked_sub_period_end && blockedProfile?.blocked_sub_plan_id) {
         const periodEnd = new Date(blockedProfile.blocked_sub_period_end);
         if (periodEnd > new Date()) {
           updateData.free_access            = true;
