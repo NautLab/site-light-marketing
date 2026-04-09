@@ -1269,17 +1269,25 @@ async function checkAdminNotifications(userId, profile) {
 
 function updateNotifBadge(count) {
     const avatar = document.querySelector('.user-avatar');
-    if (!avatar) return;
-    let badge = avatar.querySelector('.notif-badge');
-    if (count > 0) {
-        if (!badge) {
-            badge = document.createElement('span');
-            badge.className = 'notif-badge';
-            avatar.appendChild(badge);
-        }
-        badge.textContent = count > 99 ? '99+' : count;
-    } else if (badge) {
-        badge.remove();
+    if (avatar) {
+        let badge = avatar.querySelector('.notif-badge');
+        if (count > 0) {
+            if (!badge) { badge = document.createElement('span'); badge.className = 'notif-badge'; avatar.appendChild(badge); }
+            badge.textContent = count > 99 ? '99+' : count;
+        } else if (badge) { badge.remove(); }
+    }
+    const notifLink = document.querySelector('a.user-dropdown-item[href="notificacoes.html"]');
+    if (notifLink) {
+        let dbadge = notifLink.querySelector('.notif-dropdown-count');
+        if (count > 0) {
+            if (!dbadge) {
+                dbadge = document.createElement('span');
+                dbadge.className = 'notif-dropdown-count';
+                dbadge.style.cssText = 'margin-left:auto;background:#ef4444;color:#fff;font-size:10px;font-weight:700;min-width:18px;height:18px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;padding:0 5px;';
+                notifLink.appendChild(dbadge);
+            }
+            dbadge.textContent = count > 99 ? '99+' : count;
+        } else if (dbadge) { dbadge.remove(); }
     }
 }
 
@@ -1315,7 +1323,7 @@ function showNotificationPopup(notifications, userId) {
                 </div>
             </div>`;
 
-        document.getElementById('notifDismissBtn').onclick = async () => {
+        overlay.querySelector('#notifDismissBtn').onclick = async () => {
             await supabase.from('notification_reads').insert({ user_id: userId, notification_id: n.id }).then(() => {});
             const remaining = notifications.length - current - 1;
             updateNotifBadge(remaining);
@@ -1328,8 +1336,8 @@ function showNotificationPopup(notifications, userId) {
         };
     }
 
-    render();
     document.body.appendChild(overlay);
+    render();
 }
 </script>
 

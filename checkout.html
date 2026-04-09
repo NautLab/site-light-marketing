@@ -518,6 +518,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     badge.textContent = count > 99 ? '99+' : count;
                     avatar.appendChild(badge);
                 }
+                const notifLink = document.querySelector('a.user-dropdown-item[href="notificacoes.html"]');
+                if (notifLink) {
+                    const dbadge = document.createElement('span');
+                    dbadge.className = 'notif-dropdown-count';
+                    dbadge.style.cssText = 'margin-left:auto;background:#ef4444;color:#fff;font-size:10px;font-weight:700;min-width:18px;height:18px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;padding:0 5px;';
+                    dbadge.textContent = count > 99 ? '99+' : count;
+                    notifLink.appendChild(dbadge);
+                }
             }
         } catch(_) { /* silent */ }
     })();
