@@ -487,6 +487,25 @@
     height: 18px;
 }
 
+/* ── Popup de notificação — scrollbar ─────────────── */
+.notif-popup-card {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.15) transparent;
+}
+.notif-popup-card::-webkit-scrollbar {
+    width: 5px;
+}
+.notif-popup-card::-webkit-scrollbar-track {
+    background: transparent;
+}
+.notif-popup-card::-webkit-scrollbar-thumb {
+    background: rgba(12,126,146,0.5);
+    border-radius: 10px;
+}
+.notif-popup-card::-webkit-scrollbar-thumb:hover {
+    background: rgba(12,126,146,0.8);
+}
+
 .user-dropdown {
     position: absolute;
     top: calc(100% + 10px);

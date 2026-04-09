@@ -1305,7 +1305,7 @@ function showNotificationPopup(notifications, userId) {
         const n = notifications[current];
         const isLast = current === notifications.length - 1;
         overlay.innerHTML = `
-            <div style="background:#1a1a1a;border:1px solid rgba(12,126,146,.4);border-radius:18px;
+            <div class="notif-popup-card" style="background:#1a1a1a;border:1px solid rgba(12,126,146,.4);border-radius:18px;
                         padding:32px;max-width:480px;width:100%;box-shadow:0 24px 80px rgba(0,0,0,.7);
                         max-height:85svh;overflow-y:auto;">
                 <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:16px;">
