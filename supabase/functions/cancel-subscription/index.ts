@@ -97,6 +97,28 @@ Deno.serve(async (req) => {
         .from('subscriptions')
         .update({ status: 'canceled', canceled_at: new Date().toISOString() })
         .eq('id', subscription_id);
+
+      // Downgrade profile if no other active/trialing subscriptions and not free_access
+      const { count: otherActive } = await adminClient
+        .from('subscriptions')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', sub.user_id)
+        .in('status', ['active', 'trialing'])
+        .neq('id', subscription_id);
+
+      if ((otherActive || 0) === 0) {
+        const { data: profile } = await adminClient
+          .from('profiles')
+          .select('free_access')
+          .eq('id', sub.user_id)
+          .single();
+        if (!profile?.free_access) {
+          await adminClient
+            .from('profiles')
+            .update({ subscription_tier: 'free' })
+            .eq('id', sub.user_id);
+        }
+      }
     }
 
     return json({ success: true, cancel_at_period_end });

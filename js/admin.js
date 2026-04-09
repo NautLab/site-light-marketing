@@ -1191,6 +1191,19 @@ function renderSubscriptionsTable(list) {
     const display = list || allSubs;
     const tbody = document.getElementById('subsTableBody');
 
+    // ── Count bar ──────────────────────────────────────────
+    const countBar = document.getElementById('subsCountBar');
+    if (countBar) {
+        const activeCount   = display.filter(s => s.status === 'active' || s.status === 'trialing').length;
+        const canceledCount = display.filter(s => s.status === 'canceled').length;
+        const otherCount    = display.length - activeCount - canceledCount;
+        const parts = [];
+        if (activeCount)   parts.push(`<span style="color:#34d399;font-weight:600;">${activeCount} ativa${activeCount !== 1 ? 's' : ''}</span>`);
+        if (canceledCount) parts.push(`<span style="color:#f87171;font-weight:600;">${canceledCount} cancelada${canceledCount !== 1 ? 's' : ''}</span>`);
+        if (otherCount)    parts.push(`<span>${otherCount} outro${otherCount !== 1 ? 's' : ''}</span>`);
+        countBar.innerHTML = parts.length ? parts.join('<span style="color:var(--border)"> · </span>') + `<span style="margin-left:4px;">— total: ${display.length}</span>` : '';
+    }
+
     if (display.length === 0) {
         tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><p class="empty-state-text">Nenhuma assinatura encontrada</p></div></td></tr>`;
         return;
@@ -1216,7 +1229,6 @@ function renderSubscriptionsTable(list) {
                     ${(isActive && !s.cancel_at_period_end) ? `<button class="btn btn-sm btn-danger" onclick="openCancelSubModal('${s.id}', '${escHtml(s.userEmail)}')">Cancelar</button>` : ''}
                     ${isActive ? `<button class="btn btn-sm btn-danger" onclick="revokeSubImmediate('${s.id}')">Revogar</button>` : ''}
                     ${s.stripe_subscription_id ? `<button class="btn btn-sm btn-secondary" onclick="openRefundModal('${s.user_id}', '${escHtml(s.userEmail)}', ${s.last_invoice_amount_cents ?? 'null'})">Reembolsar</button>` : ''}
-                    ${!isActive ? `<button class="btn btn-sm btn-danger" onclick="deleteSubscriptionRow('${s.id}', '${escHtml(s.userEmail)}')">Excluir</button>` : ''}
                 </div>
             </td>
         </tr>`;
