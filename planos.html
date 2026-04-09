@@ -829,32 +829,7 @@ async function loadActiveSubscription() {
 
 async function handleCancelSubscription() {
     if (!currentSubscription) return;
-    if (!confirm('Tem certeza que deseja cancelar a assinatura?\n\nO acesso continua ativo até o fim do período já pago.')) return;
-
-    const btnEl = document.querySelector('.plan-btn-danger');
-    if (btnEl) { btnEl.disabled = true; btnEl.textContent = 'Cancelando…'; }
-
-    try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const res = await fetch(`${SUPABASE_FUNCTIONS_URL}/cancel-subscription`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${session.access_token}`,
-                'apikey': SUPABASE_ANON_KEY,
-            },
-            body: JSON.stringify({ subscription_id: currentSubscription.id, cancel_at_period_end: true }),
-        });
-        const body = await res.json();
-        if (!res.ok) throw new Error(body.error || 'Erro ao cancelar');
-
-        currentSubscription.cancel_at_period_end = true;
-        renderPaidPlans();
-        showToast('Assinatura cancelada. Acesso ativo até o fim do período.', 'success');
-    } catch (err) {
-        showToast('Erro: ' + err.message, 'error');
-        if (btnEl) { btnEl.disabled = false; btnEl.textContent = 'Cancelar assinatura'; }
-    }
+    showDowngradeModal();
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -952,7 +927,9 @@ function buildPlanCard(p) {
             const endDate = currentSubscription.current_period_end
                 ? new Date(currentSubscription.current_period_end).toLocaleDateString('pt-BR')
                 : '—';
-            cancelBtnHtml = `<div class="plan-cancel-notice">Cancelado · acesso até ${endDate}</div>`;
+            cancelBtnHtml = `
+                <div class="plan-cancel-notice">Cancelado · acesso até ${endDate}</div>
+                <button class="plan-btn plan-btn-outline" style="margin-top:8px;" onclick="handleResumeSubscription()">Assinar novamente</button>`;
         }
     }
 
@@ -1124,6 +1101,31 @@ async function confirmDowngrade() {
     }
 }
 
+async function handleResumeSubscription() {
+    if (!currentSubscription) return;
+    if (!confirm('Deseja manter a assinatura ativa? O cancelamento agendado será removido.')) return;
+    try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const res = await fetch(`${SUPABASE_FUNCTIONS_URL}/cancel-subscription`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.access_token}`,
+                'apikey': SUPABASE_ANON_KEY,
+            },
+            body: JSON.stringify({ subscription_id: currentSubscription.id, resume: true }),
+        });
+        const body = await res.json();
+        if (!res.ok) throw new Error(body.error || 'Erro ao reativar');
+        currentSubscription.cancel_at_period_end = false;
+        renderPaidPlans();
+        updateFreePlanBtn();
+        showToast('Assinatura reativada com sucesso!', 'success');
+    } catch (err) {
+        showToast('Erro: ' + err.message, 'error');
+    }
+}
+
 // Bfcache: reset plan buttons when user navigates back
 window.addEventListener('pageshow', function(e) {
     if (e.persisted) {
@@ -1210,6 +1212,9 @@ async function applyCoupon() {
 // ─────────────────────────────────────────────────────────────
 const params = new URLSearchParams(window.location.search);
 if (params.get('checkout') === 'success') {
+    // Clean URL to prevent re-running on refresh
+    window.history.replaceState({}, '', window.location.pathname);
+
     const sessionId = params.get('session_id');
 
     (async function handleCheckoutSuccess() {

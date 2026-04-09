@@ -176,33 +176,79 @@ Deno.serve(async (req) => {
     if (action === 'revoke_paid_subscription') {
       const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!, { apiVersion: '2024-06-20' });
 
-      // Find active subscription
+      // Find active subscription row in DB
       const { data: activeSub } = await adminClient
         .from('subscriptions')
         .select('id, stripe_subscription_id')
         .eq('user_id', target_user_id)
         .in('status', ['active', 'trialing'])
         .limit(1)
-        .single();
+        .maybeSingle();
 
-      if (!activeSub) return json({ error: 'No active subscription found' }, 404);
+      if (activeSub) {
+        // Cancel in Stripe immediately
+        if (activeSub.stripe_subscription_id) {
+          try { await stripe.subscriptions.cancel(activeSub.stripe_subscription_id); } catch (_) {}
+        }
+        // Update subscription row
+        await adminClient.from('subscriptions').update({
+          status: 'canceled',
+          canceled_at: new Date().toISOString(),
+        }).eq('id', activeSub.id);
+      } else {
+        // No DB row — try to cancel via Stripe customer_id from profile
+        const { data: prof } = await adminClient
+          .from('profiles')
+          .select('stripe_customer_id')
+          .eq('id', target_user_id)
+          .single();
 
-      // Cancel in Stripe immediately
-      if (activeSub.stripe_subscription_id) {
-        await stripe.subscriptions.cancel(activeSub.stripe_subscription_id);
+        if (prof?.stripe_customer_id) {
+          try {
+            const stripeSubs = await stripe.subscriptions.list({
+              customer: prof.stripe_customer_id,
+              status: 'active',
+              limit: 5,
+            });
+            for (const s of stripeSubs.data) {
+              await stripe.subscriptions.cancel(s.id);
+            }
+          } catch (_) {}
+        }
       }
 
-      // Update DB
-      await adminClient.from('subscriptions').update({
-        status: 'canceled',
-        canceled_at: new Date().toISOString(),
-      }).eq('id', activeSub.id);
-
+      // Always update profile tier — this is the core of the revocation
       await adminClient.from('profiles').update({
         subscription_tier: 'free',
       }).eq('id', target_user_id);
 
       return json({ success: true, subscription_canceled: true });
+    }
+
+    // ── ACTION: delete_subscription ──────────────────
+    if (action === 'delete_subscription') {
+      const subscriptionId = body.subscription_id;
+      if (!subscriptionId) return json({ error: 'Missing subscription_id' }, 400);
+
+      // Only allow deletion of non-active subscriptions
+      const { data: sub } = await adminClient
+        .from('subscriptions')
+        .select('id, status, user_id')
+        .eq('id', subscriptionId)
+        .single();
+
+      if (!sub) return json({ error: 'Subscription not found' }, 404);
+      if (sub.status === 'active' || sub.status === 'trialing') {
+        return json({ error: 'Cannot delete an active subscription. Cancel it first.' }, 400);
+      }
+
+      const { error } = await adminClient
+        .from('subscriptions')
+        .delete()
+        .eq('id', subscriptionId);
+
+      if (error) throw error;
+      return json({ success: true });
     }
 
     // ── ACTION: refund ───────────────────────────────

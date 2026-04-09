@@ -41,7 +41,7 @@ Deno.serve(async (req) => {
 
     const isAdmin = ['admin', 'super_admin'].includes(callerProfile?.role ?? '');
 
-    const { subscription_id, cancel_at_period_end = true } = await req.json();
+    const { subscription_id, cancel_at_period_end = true, resume = false } = await req.json();
     if (!subscription_id) return json({ error: 'Missing subscription_id' }, 400);
 
     // Get Stripe subscription ID from DB
@@ -63,6 +63,20 @@ Deno.serve(async (req) => {
     const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!, {
       apiVersion: '2024-06-20',
     });
+
+    if (resume) {
+      // Reactivate: remove scheduled cancellation
+      await stripe.subscriptions.update(sub.stripe_subscription_id, {
+        cancel_at_period_end: false,
+      });
+
+      await adminClient
+        .from('subscriptions')
+        .update({ cancel_at_period_end: false })
+        .eq('id', subscription_id);
+
+      return json({ success: true, resumed: true });
+    }
 
     if (cancel_at_period_end) {
       // Cancel at period end

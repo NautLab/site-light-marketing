@@ -1216,6 +1216,7 @@ function renderSubscriptionsTable(list) {
                     ${(isActive && !s.cancel_at_period_end) ? `<button class="btn btn-sm btn-danger" onclick="openCancelSubModal('${s.id}', '${escHtml(s.userEmail)}')">Cancelar</button>` : ''}
                     ${isActive ? `<button class="btn btn-sm btn-danger" onclick="revokeSubImmediate('${s.id}')">Revogar</button>` : ''}
                     ${s.stripe_subscription_id ? `<button class="btn btn-sm btn-secondary" onclick="openRefundModal('${s.user_id}', '${escHtml(s.userEmail)}', ${s.last_invoice_amount_cents ?? 'null'})">Reembolsar</button>` : ''}
+                    ${!isActive ? `<button class="btn btn-sm btn-danger" onclick="deleteSubscriptionRow('${s.id}', '${escHtml(s.userEmail)}')">Excluir</button>` : ''}
                 </div>
             </td>
         </tr>`;
@@ -1285,6 +1286,22 @@ async function revokeSubImmediate(subId) {
         allSubs = [];
         await loadSubscriptions();
         showToast('Plano revogado com sucesso.', 'success');
+    } catch (err) { showToast('Erro: ' + err.message, 'error'); }
+}
+
+async function deleteSubscriptionRow(subId, userEmail) {
+    if (!confirm(`Excluir o registro de assinatura de ${userEmail}?\n\nEsta ação remove apenas o registro no banco. A assinatura já deve estar cancelada no Stripe.`)) return;
+    try {
+        const session = await supabase.auth.getSession();
+        const res = await callFunction('admin-update-user', {
+            target_user_id: allSubs.find(s => s.id === subId)?.user_id || subId,
+            action: 'delete_subscription',
+            subscription_id: subId,
+        }, session.data.session.access_token);
+        if (!res.ok) { const b = await res.json(); throw new Error(b.error || 'Erro ao excluir'); }
+        allSubs = allSubs.filter(s => s.id !== subId);
+        renderSubscriptionsTable();
+        showToast('Registro de assinatura excluído.', 'success');
     } catch (err) { showToast('Erro: ' + err.message, 'error'); }
 }
 
