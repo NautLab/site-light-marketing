@@ -1198,8 +1198,54 @@ async function applyCoupon() {
 // ─────────────────────────────────────────────────────────────
 const params = new URLSearchParams(window.location.search);
 if (params.get('checkout') === 'success') {
-    setTimeout(() => showToast('Assinatura realizada com sucesso! Seu plano foi ativado.', 'success'), 500);
-    setTimeout(async () => { await loadActiveSubscription(); renderPaidPlans(); }, 3000);
+    const sessionId = params.get('session_id');
+
+    (async function handleCheckoutSuccess() {
+        showToast('Pagamento confirmado! Ativando plano…', 'info');
+
+        // Try to sync immediately via sync-checkout-session (doesn't depend on webhook)
+        if (sessionId) {
+            try {
+                const { data: { session: authSess } } = await supabase.auth.getSession();
+                if (authSess) {
+                    const syncRes = await fetch(`${SUPABASE_FUNCTIONS_URL}/sync-checkout-session`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${authSess.access_token}`,
+                            'apikey': SUPABASE_ANON_KEY,
+                        },
+                        body: JSON.stringify({ session_id: sessionId }),
+                    });
+                    if (syncRes.ok) {
+                        await loadActiveSubscription();
+                        if (currentSubscription) {
+                            renderPaidPlans();
+                            showToast('Plano ativado com sucesso!', 'success');
+                            return;
+                        }
+                    }
+                }
+            } catch (_) { /* fallback to polling */ }
+        }
+
+        // Polling fallback: retry up to 12×, every 2.5 s (30 s total)
+        let attempts = 0;
+        async function poll() {
+            attempts++;
+            await loadActiveSubscription();
+            if (currentSubscription) {
+                renderPaidPlans();
+                showToast('Plano ativado com sucesso!', 'success');
+            } else if (attempts < 12) {
+                setTimeout(poll, 2500);
+            } else {
+                showToast('Plano ativado! Se não aparecer, recarregue a página.', 'info');
+                renderPaidPlans();
+            }
+        }
+        setTimeout(poll, 2000);
+    })();
 } else if (params.get('checkout') === 'canceled') {
     setTimeout(() => showToast('Checkout cancelado. Você não foi cobrado.', 'info'), 500);
 }

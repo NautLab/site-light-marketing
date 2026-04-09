@@ -150,9 +150,9 @@ Deno.serve(async (req) => {
 
     if (ui_mode === 'embedded') {
       sessionParams.ui_mode = 'embedded';
-      sessionParams.return_url = `${SITE_URL}/planos.html?checkout=success`;
+      sessionParams.return_url = `${SITE_URL}/planos.html?checkout=success&session_id={CHECKOUT_SESSION_ID}`;
     } else {
-      sessionParams.success_url = `${SITE_URL}/planos.html?checkout=success`;
+      sessionParams.success_url = `${SITE_URL}/planos.html?checkout=success&session_id={CHECKOUT_SESSION_ID}`;
       sessionParams.cancel_url  = `${SITE_URL}/planos.html?checkout=canceled`;
     }
 
