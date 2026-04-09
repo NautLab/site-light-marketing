@@ -735,8 +735,27 @@
 
                 if (unread.length === 0) return;
 
+                // Show badge on user avatar
+                updateNotifBadge(unread.length);
+
                 showNotificationPopup(unread, userId);
             } catch (_) { /* silent */ }
+        }
+
+        function updateNotifBadge(count) {
+            const avatar = document.querySelector('.user-avatar');
+            if (!avatar) return;
+            let badge = avatar.querySelector('.notif-badge');
+            if (count > 0) {
+                if (!badge) {
+                    badge = document.createElement('span');
+                    badge.className = 'notif-badge';
+                    avatar.appendChild(badge);
+                }
+                badge.textContent = count > 99 ? '99+' : count;
+            } else if (badge) {
+                badge.remove();
+            }
         }
 
         function showNotificationPopup(notifications, userId) {
@@ -774,6 +793,9 @@
                 document.getElementById('notifDismissBtn').onclick = async () => {
                     // Mark as read
                     await supabase.from('notification_reads').insert({ user_id: userId, notification_id: n.id }).then(() => {});
+                    // Update badge count
+                    const remaining = notifications.length - current - 1;
+                    updateNotifBadge(remaining);
                     current++;
                     if (current < notifications.length) {
                         render();

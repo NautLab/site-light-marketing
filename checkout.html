@@ -472,6 +472,55 @@ document.addEventListener('DOMContentLoaded', function() {
             window.location.href = 'login.html';
         });
     }
+
+    // Notification badge on user avatar
+    (async function() {
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) return;
+            const userId = session.user.id;
+
+            let profile = null;
+            try { const { data } = await supabase.from('profiles').select('role, subscription_tier').eq('id', userId).maybeSingle(); profile = data; } catch(_){}
+
+            const { data: notifs } = await supabase.from('admin_notifications').select('id, target_type, target_roles, target_tiers, target_user_ids').eq('is_active', true);
+            if (!notifs || notifs.length === 0) return;
+
+            const { data: reads } = await supabase.from('notification_reads').select('notification_id').eq('user_id', userId);
+            const readIds = new Set((reads || []).map(r => r.notification_id));
+
+            let planId = null;
+            try {
+                const { data: sub } = await supabase.from('subscriptions').select('plan_id').eq('user_id', userId).in('status', ['active','trialing']).order('created_at',{ascending:false}).limit(1).maybeSingle();
+                planId = sub?.plan_id || null;
+            } catch(_){}
+
+            const count = notifs.filter(n => {
+                if (readIds.has(n.id)) return false;
+                if (n.target_type === 'all') return true;
+                if (n.target_type === 'role') {
+                    const r = profile?.role || 'user';
+                    return (n.target_roles || []).some(t => t === r || (t === 'admin' && r === 'super_admin'));
+                }
+                if (n.target_type === 'tier' || n.target_type === 'plan') {
+                    const tier = profile?.subscription_tier || 'free';
+                    return (n.target_tiers || []).some(t => t === tier || (planId && t === planId));
+                }
+                if (n.target_type === 'specific') return (n.target_user_ids || []).includes(userId);
+                return false;
+            }).length;
+
+            if (count > 0) {
+                const avatar = document.querySelector('.user-avatar');
+                if (avatar) {
+                    const badge = document.createElement('span');
+                    badge.className = 'notif-badge';
+                    badge.textContent = count > 99 ? '99+' : count;
+                    avatar.appendChild(badge);
+                }
+            }
+        } catch(_) { /* silent */ }
+    })();
 });
 </script>
 <script src="script.js"></script>

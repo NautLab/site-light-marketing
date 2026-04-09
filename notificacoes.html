@@ -288,6 +288,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
+function updateNotifBadge() {
+    const avatar = document.querySelector('.user-avatar');
+    if (!avatar) return;
+    let badge = avatar.querySelector('.notif-badge');
+    const count = allNotifications.filter(n => !readIds.has(n.id)).length;
+    if (count > 0) {
+        if (!badge) {
+            badge = document.createElement('span');
+            badge.className = 'notif-badge';
+            avatar.appendChild(badge);
+        }
+        badge.textContent = count > 99 ? '99+' : count;
+    } else if (badge) {
+        badge.remove();
+    }
+}
+
 // ── Load ──────────────────────────────────────────────────────
 async function loadNotifications() {
     try {
@@ -336,6 +353,7 @@ async function loadNotifications() {
         });
 
         renderNotifications();
+        updateNotifBadge();
     } catch (err) {
         document.getElementById('notifList').innerHTML =
             `<div class="empty-notif"><p>Erro ao carregar notificações.</p></div>`;
@@ -396,6 +414,7 @@ async function markRead(notificationId) {
         });
         readIds.add(notificationId);
         renderNotifications();
+        updateNotifBadge();
     } catch(err) {
         showToast('Erro ao marcar como lida.', 'error');
     }
