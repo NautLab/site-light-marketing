@@ -991,9 +991,21 @@ function updateFreePlanBtn() {
         btn.textContent = '✓ Plano atual';
         btn.className = 'plan-btn plan-btn-current';
         btn.disabled = true;
+    } else if (currentSubscription?.cancel_at_period_end) {
+        // Downgrade already scheduled — show date and disable button
+        const endDate = currentSubscription.current_period_end
+            ? new Date(currentSubscription.current_period_end).toLocaleDateString('pt-BR')
+            : null;
+        btn.innerHTML = endDate
+            ? `⏳ Retorno agendado para ${endDate}`
+            : '⏳ Retorno ao plano free agendado';
+        btn.className = 'plan-btn plan-btn-current';
+        btn.style.opacity = '0.8';
+        btn.disabled = true;
     } else {
         btn.textContent = 'Voltar para plano free';
         btn.className = 'plan-btn plan-btn-outline';
+        btn.style.opacity = '';
         btn.disabled = false;
     }
     btn.style.display = '';
