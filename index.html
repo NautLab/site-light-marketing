@@ -645,6 +645,8 @@
         // ─── Admin notification popup ──────────────────────────────
         async function checkAdminNotifications(userId, profile) {
             try {
+                let userPlanId = null;
+
                 // Fetch active notifications
                 const { data: notifications, error: nErr } = await supabase
                     .from('admin_notifications')
@@ -653,6 +655,18 @@
                     .order('created_at', { ascending: true });
 
                 if (nErr || !notifications || notifications.length === 0) return;
+
+                try {
+                    const { data: activeSub } = await supabase
+                        .from('subscriptions')
+                        .select('plan_id')
+                        .eq('user_id', userId)
+                        .in('status', ['active', 'trialing'])
+                        .order('created_at', { ascending: false })
+                        .limit(1)
+                        .maybeSingle();
+                    userPlanId = activeSub?.plan_id || null;
+                } catch (_) { /* silent */ }
 
                 // Fetch already-read notifications for this user
                 const { data: reads } = await supabase
@@ -671,7 +685,10 @@
                         // super_admin receives notifications targeting 'admin' too
                         return (n.target_roles || []).some(t => t === r || (t === 'admin' && r === 'super_admin'));
                     }
-                    if (n.target_type === 'tier' || n.target_type === 'plan') return (n.target_tiers || []).includes(profile?.subscription_tier || 'free');
+                    if (n.target_type === 'tier' || n.target_type === 'plan') {
+                        const currentTier = profile?.subscription_tier || 'free';
+                        return (n.target_tiers || []).some(t => t === currentTier || (userPlanId && t === userPlanId));
+                    }
                     if (n.target_type === 'specific') return (n.target_user_ids || []).includes(userId);
                     return false;
                 });

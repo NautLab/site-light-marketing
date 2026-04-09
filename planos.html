@@ -576,6 +576,45 @@ let allPlans             = [];
 
 const SUPABASE_FUNCTIONS_URL = `${SUPABASE_URL}/functions/v1`;
 
+async function getSupportWhatsappUrl() {
+    let waPhone = null;
+    try {
+        const { data } = await supabase.from('site_settings').select('value').eq('key', 'phone').maybeSingle();
+        if (data?.value) waPhone = String(data.value).replace(/\D/g, '');
+    } catch (_) { /* silent */ }
+    const waMsg = 'Olá! Minha conta na Light Marketing foi bloqueada. Gostaria de entender o motivo e saber como resolver. Obrigado!';
+    return waPhone ? `https://wa.me/${waPhone}?text=${encodeURIComponent(waMsg)}` : 'https://wa.link/m1vm4f';
+}
+
+function renderBlockedOverlay(waUrl) {
+    if (document.getElementById('blockedOverlay')) return;
+    const overlay = document.createElement('div');
+    overlay.className = 'tool-lock-overlay';
+    overlay.id = 'blockedOverlay';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;border-radius:0;background:rgba(13,16,20,0.92);backdrop-filter:blur(4px);';
+    overlay.innerHTML = `<div class="tool-lock-inner">
+        <div class="tool-lock-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="5" y="11" width="14" height="10" rx="2" stroke="#0C7E92" stroke-width="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4" stroke="#0C7E92" stroke-width="2" stroke-linecap="round"/></svg></div>
+        <h3>Conta temporariamente bloqueada</h3>
+        <p>Entre em contato com o suporte para mais informações.</p>
+        <a href="${waUrl}" target="_blank" rel="noopener noreferrer" class="tool-lock-btn">Falar com suporte</a>
+    </div>`;
+    document.body.appendChild(overlay);
+    document.body.style.overflow = 'hidden';
+}
+
+function setupBlockedProfileListener(userId, waUrl) {
+    supabase.channel('plans-profile-block-' + userId)
+        .on('postgres_changes', {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'profiles',
+            filter: `id=eq.${userId}`
+        }, payload => {
+            if (payload.new?.is_blocked) renderBlockedOverlay(waUrl);
+        })
+        .subscribe();
+}
+
 // All available marketplaces — loaded from js/screens-config.js (AVAILABLE_SCREENS)
 const ALL_SCREENS = AVAILABLE_SCREENS;
 
@@ -618,6 +657,14 @@ function buildFeatures(plan) {
 // ─────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
     await Promise.all([initAuthHeader(), loadPlans()]);
+    try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session && currentProfile) {
+            const supportWhatsappUrl = await getSupportWhatsappUrl();
+            if (currentProfile.is_blocked) renderBlockedOverlay(supportWhatsappUrl);
+            setupBlockedProfileListener(session.user.id, supportWhatsappUrl);
+        }
+    } catch (_) { /* silent */ }
     // Fire admin notification popup for logged-in users (Item 9)
     try {
         const { data: { session } } = await supabase.auth.getSession();
@@ -1173,8 +1220,11 @@ async function checkAdminNotifications(userId, profile) {
                 const r = profile?.role || 'user';
                 return (n.target_roles || []).some(t => t === r || (t === 'admin' && r === 'super_admin'));
             }
-            if (n.target_type === 'tier' || n.target_type === 'plan')
-                return (n.target_tiers || []).includes(profile?.subscription_tier || 'free');
+            if (n.target_type === 'tier' || n.target_type === 'plan') {
+                const currentTier = profile?.subscription_tier || 'free';
+                const currentPlanId = currentSubscription?.plan_id || null;
+                return (n.target_tiers || []).some(t => t === currentTier || (currentPlanId && t === currentPlanId));
+            }
             if (n.target_type === 'specific') return (n.target_user_ids || []).includes(userId);
             return false;
         });

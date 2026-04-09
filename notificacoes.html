@@ -282,6 +282,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 // ── Load ──────────────────────────────────────────────────────
 async function loadNotifications() {
     try {
+        let currentPlanId = null;
         const { data: notifications, error: nErr } = await supabase
             .from('admin_notifications')
             .select('*')
@@ -289,6 +290,18 @@ async function loadNotifications() {
             .order('created_at', { ascending: false });
 
         if (nErr) throw nErr;
+
+        try {
+            const { data: activeSub } = await supabase
+                .from('subscriptions')
+                .select('plan_id')
+                .eq('user_id', currentUserId)
+                .in('status', ['active', 'trialing'])
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+            currentPlanId = activeSub?.plan_id || null;
+        } catch (_) { /* silent */ }
 
         const { data: reads } = await supabase
             .from('notification_reads')
@@ -304,8 +317,10 @@ async function loadNotifications() {
                 const r = currentProfile?.role || 'user';
                 return (n.target_roles || []).some(t => t === r || (t === 'admin' && r === 'super_admin'));
             }
-            if (n.target_type === 'tier' || n.target_type === 'plan')
-                return (n.target_tiers || []).includes(currentProfile?.subscription_tier || 'free');
+            if (n.target_type === 'tier' || n.target_type === 'plan') {
+                const currentTier = currentProfile?.subscription_tier || 'free';
+                return (n.target_tiers || []).some(t => t === currentTier || (currentPlanId && t === currentPlanId));
+            }
             if (n.target_type === 'specific')
                 return (n.target_user_ids || []).includes(currentUserId);
             return false;

@@ -744,12 +744,10 @@ body.admin-body {
     border-color: var(--border-accent);
 }
 
-.notification-card--inactive {
-    opacity: 0.6;
-}
-
-.notification-card--inactive .btn {
-    opacity: 1;
+.notification-card--inactive .notification-title,
+.notification-card--inactive .notification-meta,
+.notification-card--inactive .notification-message {
+    opacity: 0.5;
 }
 
 .notification-card-header {

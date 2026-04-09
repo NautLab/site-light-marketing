@@ -176,7 +176,7 @@ async function loadUsers() {
 
     const [profilesResult, subsResult] = await Promise.all([
         supabase.from('profiles').select('*').order('created_at', { ascending: false }),
-        supabase.from('subscriptions').select('id, plan_name_snapshot, status, stripe_subscription_id, cancel_at_period_end, user_id')
+        supabase.from('subscriptions').select('id, plan_id, plan_name_snapshot, status, stripe_subscription_id, cancel_at_period_end, current_period_end, user_id')
     ]);
 
     if (profilesResult.error) {
@@ -406,18 +406,81 @@ Acesso</button>`;
 async function blockAccount(userId) {
     const u = allUsers.find(x => x.id === userId);
     const userName = u?.full_name || u?.email || userId;
-    if (!confirm(`Bloquear a conta de ${userName}? O usuário perderá os acessos imediatamente mas continuará logado.`)) return;
+    const activeSub = (u?.subscriptions || []).find(s => s.status === 'active' || s.status === 'trialing');
+    const hasActiveSub = !!activeSub;
+    const msg = hasActiveSub
+        ? `Bloquear a conta de ${userName}?\n\nA assinatura ativa será revogada imediatamente e o acesso gratuito será concedido pelos dias restantes do período.`
+        : `Bloquear a conta de ${userName}? O usuário perderá os acessos imediatamente mas continuará logado.`;
+    if (!confirm(msg)) return;
     try {
         const session = await supabase.auth.getSession();
-        const res = await callFunction('admin-update-user', {
+        const token = session.data.session.access_token;
+
+        // 1. Bloquear conta
+        const resBlock = await callFunction('admin-update-user', {
             target_user_id: userId,
             action: 'block_account',
-        }, session.data.session.access_token);
-        if (!res.ok) { const b = await res.json(); throw new Error(b.error || 'Erro'); }
+        }, token);
+        if (!resBlock.ok) { const b = await resBlock.json(); throw new Error(b.error || 'Erro ao bloquear'); }
+
         const user = allUsers.find(u => u.id === userId);
         if (user) user.is_blocked = true;
+
+        // 2. Revogar assinatura ativa, se houver
+        if (hasActiveSub) {
+            try {
+                const resRevoke = await callFunction('admin-update-user', {
+                    target_user_id: userId,
+                    action: 'revoke_paid_subscription',
+                }, token);
+                if (resRevoke.ok && user) {
+                    user.subscription_tier = 'free';
+                    if (user.subscriptions) {
+                        user.subscriptions.forEach(s => {
+                            if (s.status === 'active' || s.status === 'trialing') s.status = 'canceled';
+                        });
+                    }
+                }
+
+                // 3. Conceder acesso gratuito pelos dias restantes
+                if (activeSub.current_period_end) {
+                    const periodEnd = new Date(activeSub.current_period_end);
+                    if (periodEnd > new Date()) {
+                        const expiresAt = periodEnd.toISOString();
+                        // Use the first active plan as fallback for free access
+                        const planId = activeSub.plan_id || null;
+                        if (planId) {
+                            const resGrant = await callFunction('admin-update-user', {
+                                target_user_id: userId,
+                                action: 'grant_free_access',
+                                free_access_plan_id: planId,
+                                free_access_expires_at: expiresAt,
+                            }, token);
+                            if (resGrant.ok && user) {
+                                user.free_access = true;
+                                user.free_access_plan_id = planId;
+                                user.free_access_expires_at = expiresAt;
+                                user.subscription_tier = 'paid';
+                            }
+                        }
+                    }
+                }
+            } catch (_) { /* assinatura pode já estar inativa */ }
+        }
+
         renderUsersTable();
+        updateUserStats();
         showToast('Conta bloqueada com sucesso.', 'success');
+
+        // 4. Oferecer reembolso
+        if (hasActiveSub && confirm('Deseja processar um reembolso para este usuário?')) {
+            showSection('subscriptions');
+            if (allSubs.length === 0) await loadSubscriptions();
+            const sub = allSubs.find(s => s.user_id === userId &&
+                (s.stripe_subscription_id === activeSub.stripe_subscription_id || s.user_id === userId));
+            const subEmail = sub?.userEmail || userName;
+            openRefundModal(userId, subEmail, sub?.last_invoice_amount_cents ?? null);
+        }
     } catch (err) { showToast('Erro: ' + err.message, 'error'); }
 }
 
@@ -1588,7 +1651,11 @@ function toggleDurationMonths() {
         input.style.opacity = '';
         if (!input.value || input.value === '1') input.value = '3';
     } else if (dur === 'once') {
-        group.style.display = 'none';
+        group.style.display = '';
+        input.type = 'text';
+        input.value = '1';
+        input.readOnly = true;
+        input.style.opacity = '0.6';
     } else { // forever
         group.style.display = '';
         input.type = 'text';
@@ -1607,9 +1674,13 @@ function toggleEditDurationMonths() {
         input.type = 'number';
         input.readOnly = false;
         input.style.opacity = '';
-        if (!input.value || input.value === '1') input.value = '3'; // Item 13
+        if (!input.value || input.value === '1') input.value = '3';
     } else if (dur === 'once') {
-        group.style.display = 'none';
+        group.style.display = '';
+        input.type = 'text';
+        input.value = '1';
+        input.readOnly = true;
+        input.style.opacity = '0.6';
     } else { // forever
         group.style.display = '';
         input.type = 'text';
@@ -1717,7 +1788,14 @@ function buildNotificationCard(n) {
 function notifTargetDesc(n) {
     if (n.target_type === 'all')      return 'Todos os usuários';
     if (n.target_type === 'role')     return `Funções: ${(n.target_roles || []).map(roleLabel).join(', ') || '—'}`;
-    if (n.target_type === 'tier' || n.target_type === 'plan') return `Planos: ${(n.target_tiers || []).join(', ') || '—'}`;
+    if (n.target_type === 'tier' || n.target_type === 'plan') {
+        const names = (n.target_tiers || []).map(t => {
+            if (t === 'free') return 'Gratuito';
+            const p = allPlans.find(x => x.id === t);
+            return p ? p.name : t;
+        });
+        return `Planos: ${names.join(', ') || '—'}`;
+    }
     if (n.target_type === 'specific') return `${(n.target_user_ids || []).length} usuário(s) específico(s)`;
     return '—';
 }
@@ -1768,12 +1846,14 @@ function openCreateNotificationModal() {
 }
 
 function populateNotifPlanCheckboxes() {
-    const container = document.getElementById('notifPlanCheckboxes');
+    const container = document.getElementById('notifPlanChecks');
     if (!container) return;
-    const plans = allPlans.filter(p => !p.is_archived);
-    container.innerHTML = plans.map(p =>
-        `<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" class="notif-plan-check" value="${escHtml(p.name)}" /> ${escHtml(p.name)}</label>`
-    ).join('');
+    const plans = allPlans.filter(p => p.is_active && !p.is_archived);
+    container.innerHTML =
+        `<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" class="notif-tier-check" value="free" /> Gratuito (sem plano)</label>` +
+        plans.map(p =>
+            `<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" class="notif-tier-check" value="${escHtml(p.id)}" /> ${escHtml(p.name)}</label>`
+        ).join('');
 }
 
 function updateNotifTargetFields() {
@@ -1782,6 +1862,7 @@ function updateNotifTargetFields() {
     document.querySelectorAll('.notif-role-check, .notif-tier-check, .notif-user-check').forEach(el => el.checked = false);
     document.getElementById('notifRoleFields').style.display     = type === 'role'     ? '' : 'none';
     document.getElementById('notifTierFields').style.display     = type === 'tier'     ? '' : 'none';
+    if (type === 'tier') populateNotifPlanCheckboxes();
     document.getElementById('notifSpecificFields').style.display = type === 'specific' ? '' : 'none';
 }
 
@@ -1882,7 +1963,7 @@ function clearNotifForm() {
     document.getElementById('notifMessage').value = '';
     document.getElementById('notifTargetType').value = 'all';
     document.getElementById('notifUserSearch').value = '';
-    document.querySelectorAll('.notif-role-check, .notif-plan-check, .notif-user-check')
+    document.querySelectorAll('.notif-role-check, .notif-tier-check, .notif-user-check')
         .forEach(el => el.checked = false);
     updateNotifTargetFields();
 }
