@@ -175,7 +175,7 @@ Deno.serve(async (req) => {
       // Fetch stored subscription data saved at block time
       const { data: blockedProfile } = await adminClient
         .from('profiles')
-        .select('blocked_sub_period_end, blocked_sub_plan_id')
+        .select('blocked_sub_period_end, blocked_sub_plan_id, blocked_refund_issued')
         .eq('id', target_user_id)
         .single();
 
@@ -184,14 +184,17 @@ Deno.serve(async (req) => {
         blocked_at: null,
         blocked_sub_period_end: null,
         blocked_sub_plan_id: null,
+        blocked_refund_issued: false,
       };
 
       let freeAccessRestored = false;
       let freeAccessPlanId: string | null = null;
       let freeAccessExpiresAt: string | null = null;
 
-      // If the original subscription period is still in the future, restore access
-      if (blockedProfile?.blocked_sub_period_end && blockedProfile?.blocked_sub_plan_id) {
+      // Only restore access if no refund was issued during the block period
+      const refundIssued = !!blockedProfile?.blocked_refund_issued;
+
+      if (!refundIssued && blockedProfile?.blocked_sub_period_end && blockedProfile?.blocked_sub_plan_id) {
         const periodEnd = new Date(blockedProfile.blocked_sub_period_end);
         if (periodEnd > new Date()) {
           updateData.free_access            = true;
@@ -330,6 +333,16 @@ Deno.serve(async (req) => {
       if (amountCents) refundParams.amount = amountCents;
 
       const refund = await stripe.refunds.create(refundParams as Stripe.RefundCreateParams);
+
+      // If the user is currently blocked, mark that a refund was issued (prevents access restoration on unblock)
+      const { data: refundedProfile } = await adminClient
+        .from('profiles')
+        .select('is_blocked')
+        .eq('id', target_user_id)
+        .single();
+      if (refundedProfile?.is_blocked) {
+        await adminClient.from('profiles').update({ blocked_refund_issued: true }).eq('id', target_user_id);
+      }
 
       return json({ success: true, refund_id: refund.id, amount: refund.amount, status: refund.status });
     }

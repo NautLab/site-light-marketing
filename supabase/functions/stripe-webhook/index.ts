@@ -213,6 +213,45 @@ Deno.serve(async (req) => {
         break;
       }
 
+      // ── Charge refunded (catches manual refunds from Stripe Dashboard) ──
+      case 'charge.refunded': {
+        const charge = event.data.object as Stripe.Charge;
+        const paymentIntentId = charge.payment_intent as string;
+        if (!paymentIntentId) break;
+
+        // Retrieve payment intent to get the invoice
+        const pi = await stripe.paymentIntents.retrieve(paymentIntentId);
+        const invoiceId = pi.invoice as string;
+        if (!invoiceId) break;
+
+        const invoice = await stripe.invoices.retrieve(invoiceId);
+        const subId = invoice.subscription as string;
+        if (!subId) break;
+
+        // Find user in DB via subscription
+        const { data: dbSub } = await adminClient
+          .from('subscriptions')
+          .select('user_id')
+          .eq('stripe_subscription_id', subId)
+          .maybeSingle();
+        if (!dbSub) break;
+
+        // If user is currently blocked, set the flag so access won't be restored on unblock
+        const { data: profile } = await adminClient
+          .from('profiles')
+          .select('is_blocked')
+          .eq('id', dbSub.user_id)
+          .single();
+
+        if (profile?.is_blocked) {
+          await adminClient
+            .from('profiles')
+            .update({ blocked_refund_issued: true })
+            .eq('id', dbSub.user_id);
+        }
+        break;
+      }
+
       default:
         // Unhandled event – ignore silently
         break;
