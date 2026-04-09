@@ -413,15 +413,29 @@ let _blockRefundUserId       = null;
 let _blockRefundUserEmail    = null;
 let _blockRefundAmountCents  = null;
 
-async function blockAccount(userId) {
+// State for the block-confirm modal
+let _pendingBlockUserId = null;
+
+function blockAccount(userId) {
     const u = allUsers.find(x => x.id === userId);
     const userName = u?.full_name || u?.email || userId;
     const activeSub = (u?.subscriptions || []).find(s => s.status === 'active' || s.status === 'trialing');
     const hasActiveSub = !!activeSub;
-    const msg = hasActiveSub
-        ? `Bloquear a conta de ${userName}?\n\nA assinatura ativa será cancelada imediatamente. O acesso será retomado ao desbloquear, caso nenhum reembolso seja processado.`
-        : `Bloquear a conta de ${userName}? O usuário perderá os acessos imediatamente.`;
-    if (!confirm(msg)) return;
+
+    _pendingBlockUserId = userId;
+    document.getElementById('blockConfirmUserName').textContent = userName;
+    document.getElementById('blockConfirmSubWarning').style.display = hasActiveSub ? '' : 'none';
+    openModal('blockConfirmModal');
+}
+
+async function confirmBlockAccount() {
+    closeModal('blockConfirmModal');
+    const userId = _pendingBlockUserId;
+    if (!userId) return;
+    const u = allUsers.find(x => x.id === userId);
+    const userName = u?.full_name || u?.email || userId;
+    const activeSub = (u?.subscriptions || []).find(s => s.status === 'active' || s.status === 'trialing');
+    const hasActiveSub = !!activeSub;
     try {
         const session = await supabase.auth.getSession();
         const token = session.data.session.access_token;

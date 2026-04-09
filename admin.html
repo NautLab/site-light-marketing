@@ -414,6 +414,30 @@
 </div>
 
 <!-- ══════════════════════════════════════════════════
+     MODAL: Confirmar Bloqueio de Conta
+══════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="blockConfirmModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="blockConfirmModalTitle">
+        <div class="modal-header">
+            <h3 class="modal-title" id="blockConfirmModalTitle">Bloquear Conta</h3>
+            <button class="modal-close-btn" onclick="closeModal('blockConfirmModal')">×</button>
+        </div>
+        <div class="modal-body">
+            <p style="font-size:13px;color:var(--text-muted);">
+                Tem certeza que deseja bloquear a conta de <strong id="blockConfirmUserName" style="color:var(--text);">—</strong>?
+            </p>
+            <div id="blockConfirmSubWarning" class="info-row warning" style="margin-top:12px;">
+                A assinatura ativa será cancelada imediatamente. O acesso poderá ser retomado ao desbloquear, caso nenhum reembolso seja processado.
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('blockConfirmModal')">Cancelar</button>
+            <button class="btn btn-danger" onclick="confirmBlockAccount()">Bloquear</button>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
      MODAL: Notificação de Reembolso após Bloqueio
 ══════════════════════════════════════════════════ -->
 <div class="modal-overlay" id="blockRefundModal">
