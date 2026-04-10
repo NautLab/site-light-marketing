@@ -153,9 +153,18 @@ Deno.serve(async (req) => {
     // ── ACTION: block_account ─────────────────────────
     if (action === 'block_account') {
       const blockedAt = new Date().toISOString();
+      // Block and revoke all access atomically in a single DB write.
+      // This prevents race conditions where separate revoke calls could fail
+      // silently and leave free_access=true + subscription_tier='free' (inconsistent state).
       const updateData: Record<string, unknown> = {
         is_blocked: true,
         blocked_at: blockedAt,
+        // Revoke access immediately — atomic with the block
+        subscription_tier: 'free',
+        free_access: false,
+        free_access_plan_id: null,
+        free_access_granted_by: null,
+        free_access_expires_at: null,
       };
       // Store the subscription period so it can be restored on unblock
       if (body.blocked_sub_period_end) updateData.blocked_sub_period_end = body.blocked_sub_period_end;
@@ -290,10 +299,19 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Always update profile tier — this is the core of the revocation
-      await adminClient.from('profiles').update({
-        subscription_tier: 'free',
-      }).eq('id', target_user_id);
+      // Only downgrade profile tier if the user does not have free_access
+      // (consistent with cancel-subscription and stripe-webhook behaviour)
+      const { data: userForRevoke } = await adminClient
+        .from('profiles')
+        .select('free_access')
+        .eq('id', target_user_id)
+        .single();
+
+      if (!userForRevoke?.free_access) {
+        await adminClient.from('profiles').update({
+          subscription_tier: 'free',
+        }).eq('id', target_user_id);
+      }
 
       return json({ success: true, subscription_canceled: true });
     }

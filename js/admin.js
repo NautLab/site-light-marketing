@@ -206,7 +206,7 @@ function updateUserStats() {
     const total      = base.length;
     const free       = base.filter(u => u.subscription_tier === 'free').length;
     const paid       = base.filter(u => u.subscription_tier === 'paid').length;
-    const freeAccess = allUsers.filter(u => u.free_access).length;
+    const freeAccess = allUsers.filter(u => isFreeAccessValid(u)).length;
 
     document.getElementById('statTotal').textContent      = total;
     document.getElementById('statFree').textContent       = free;
@@ -266,16 +266,20 @@ function openUserDetail(userId) {
     const canEditRole = currentProfile.role === 'super_admin' || u.role !== 'super_admin';
     const activeSub = getUserActiveSub(u);
 
-    const planDisplay = u.free_access
-        ? (() => {
+    const planDisplay = (() => {
+        if (isFreeAccessBroken(u)) {
+            return `<span class="badge badge-warning" style="background:rgba(234,179,8,0.15);color:#b45309;border:1px solid rgba(234,179,8,0.4)">⚠ Inconsistente</span><span style="font-size:10px;color:#b45309;display:block;margin-top:2px;">Acesso concedido mas sem permissão ativa</span>`;
+        }
+        if (u.free_access) {
             const expiryText = u.free_access_expires_at
                 ? `Concedido até ${new Date(u.free_access_expires_at).toLocaleDateString('pt-BR', {timeZone:'America/Sao_Paulo'})}`
                 : 'Concedido';
             return `<span class="badge badge-gift">${escHtml(planNameById(u.free_access_plan_id))}</span><span style="font-size:10px;color:var(--text-dim);display:block;margin-top:2px;">${expiryText}</span>`;
-          })()
-        : activeSub?.plan_name_snapshot
-            ? `<span class="badge badge-paid">${escHtml(activeSub.plan_name_snapshot)}</span>`
-            : `<span class="badge badge-${u.subscription_tier}">${tierLabel(u.subscription_tier)}</span>`;
+        }
+        if (activeSub?.plan_name_snapshot)
+            return `<span class="badge badge-paid">${escHtml(activeSub.plan_name_snapshot)}</span>`;
+        return `<span class="badge badge-${u.subscription_tier}">${tierLabel(u.subscription_tier)}</span>`;
+    })();
     const roleBadge = `<span class="badge ${roleBadgeClass(u.role)}">${roleLabel(u.role)}</span>`;
     const blockedDateStr = u.is_blocked && u.blocked_at
         ? new Date(u.blocked_at).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
@@ -287,6 +291,13 @@ function openUserDetail(userId) {
     const usageMonth = u.usage_month || '';
     const currentMonth = new Date().toISOString().slice(0, 7);
     const usageCount = (u.usage_month === currentMonth) ? (u.monthly_usage_count || 0) : 0;
+
+    // Botao de free_access: trata os 3 estados (válido / inconsistente / inexistente)
+    const freeAccessDetailBtn = isFreeAccessBroken(u)
+        ? `<button class="btn btn-warning" style="width:100%;justify-content:center;background:rgba(234,179,8,0.15);color:#b45309;border-color:rgba(234,179,8,0.4);" onclick="closeModal('userDetailModal'); repairFreeAccess('${u.id}')">Corrigir acesso inconsistente</button>`
+        : u.free_access
+            ? `<button class="btn btn-danger" style="width:100%;justify-content:center;" onclick="closeModal('userDetailModal'); revokeFreeAccess('${u.id}')">Revogar acesso gratuito</button>`
+            : `<button class="btn btn-success" style="width:100%;justify-content:center;" onclick="closeModal('userDetailModal'); openFreeAccessModal('${u.id}', '${escHtml(u.full_name || u.email)}')">Conceder acesso gratuito</button>`;
 
     document.getElementById('userDetailBody').innerHTML = `
         <div class="user-detail-header">
@@ -327,9 +338,7 @@ function openUserDetail(userId) {
             <button class="btn btn-secondary" style="width:100%;justify-content:center;" onclick="closeModal('userDetailModal'); openRoleModal('${u.id}', '${escHtml(u.full_name || u.email)}', '${u.role}')">
                 Alterar função
             </button>` : ''}
-            ${u.free_access ? `
-            <button class="btn btn-danger" style="width:100%;justify-content:center;" onclick="closeModal('userDetailModal'); revokeFreeAccess('${u.id}')">Revogar acesso gratuito</button>` : `
-            <button class="btn btn-success" style="width:100%;justify-content:center;" onclick="closeModal('userDetailModal'); openFreeAccessModal('${u.id}', '${escHtml(u.full_name || u.email)}')">Conceder acesso gratuito</button>`}
+            ${freeAccessDetailBtn}
             ${(!isSelf && canEditRole) ? (u.is_blocked ? `
             <button class="btn btn-success" style="width:100%;justify-content:center;" onclick="closeModal('userDetailModal'); unblockAccount('${u.id}')">Desbloquear conta</button>` : `
             <button class="btn btn-danger" style="width:100%;justify-content:center;" onclick="closeModal('userDetailModal'); blockAccount('${u.id}')">Bloquear conta</button>`) : ''}
@@ -347,20 +356,34 @@ function getUserActiveSub(u) {
     return u.subscriptions.find(s => s.status === 'active' || s.status === 'trialing') || null;
 }
 
+// free_access válido: free_access=true E subscription_tier='paid' (estado consistente)
+function isFreeAccessValid(u) {
+    return !!u.free_access && u.subscription_tier === 'paid';
+}
+// Estado inconsistente: free_access=true mas subscription_tier!='paid'
+// Ocorre quando revoke_paid_subscription ou outro processo zerou subscription_tier sem limpar free_access
+function isFreeAccessBroken(u) {
+    return !!u.free_access && u.subscription_tier !== 'paid';
+}
+
 function buildUserRow(u) {
     const initials = getInitials(u.full_name, u.email);
     const activeSub = getUserActiveSub(u);
 
-    const planDisplay = u.free_access
-        ? (() => {
+    const planDisplay = (() => {
+        if (isFreeAccessBroken(u)) {
+            return `<span class="badge badge-warning" style="background:rgba(234,179,8,0.15);color:#b45309;border:1px solid rgba(234,179,8,0.4)">⚠ Inconsistente</span><span style="font-size:10px;color:#b45309;display:block;margin-top:2px;">Acesso inválido</span>`;
+        }
+        if (u.free_access) {
             const expiryText = u.free_access_expires_at
                 ? `Concedido até ${new Date(u.free_access_expires_at).toLocaleDateString('pt-BR', {timeZone:'America/Sao_Paulo'})}`
                 : 'Concedido';
             return `<span class="badge badge-gift">${escHtml(planNameById(u.free_access_plan_id))}</span><span style="font-size:10px;color:var(--text-dim);display:block;margin-top:2px;">${expiryText}</span>`;
-          })()
-        : activeSub?.plan_name_snapshot
-            ? `<span class="badge badge-paid">${escHtml(activeSub.plan_name_snapshot)}</span>`
-            : `<span class="badge badge-${u.subscription_tier}">${tierLabel(u.subscription_tier)}</span>`;
+        }
+        if (activeSub?.plan_name_snapshot)
+            return `<span class="badge badge-paid">${escHtml(activeSub.plan_name_snapshot)}</span>`;
+        return `<span class="badge badge-${u.subscription_tier}">${tierLabel(u.subscription_tier)}</span>`;
+    })();
     const roleBadge = `<span class="badge ${roleBadgeClass(u.role)}">${roleLabel(u.role)}</span>`;
     const date      = u.created_at ? new Date(u.created_at).toLocaleDateString('pt-BR') : '—';
 
@@ -372,11 +395,12 @@ function buildUserRow(u) {
             Função
         </button>` : '';
 
-    const freeAccessBtn = u.free_access
-        ? `<button class="btn btn-sm btn-danger" onclick="revokeFreeAccess('${u.id}')">
-Revogar</button>`
-        : `<button class="btn btn-sm btn-success" onclick="openFreeAccessModal('${u.id}', '${escHtml(u.full_name || u.email)}')">
-Acesso</button>`;
+    // 3 estados: inconsistente (corrigir), válido (revogar), sem acesso (conceder)
+    const freeAccessBtn = isFreeAccessBroken(u)
+        ? `<button class="btn btn-sm btn-warning" style="background:rgba(234,179,8,0.15);color:#b45309;border-color:rgba(234,179,8,0.4);" onclick="repairFreeAccess('${u.id}')">Corrigir</button>`
+        : u.free_access
+            ? `<button class="btn btn-sm btn-danger" onclick="revokeFreeAccess('${u.id}')">Revogar</button>`
+            : `<button class="btn btn-sm btn-success" onclick="openFreeAccessModal('${u.id}', '${escHtml(u.full_name || u.email)}')">Acesso</button>`;
 
     const blockBtn = (!isSelf && canEditRole) ? (u.is_blocked
         ? `<button class="btn btn-sm btn-success" onclick="unblockAccount('${u.id}')">Desbloquear</button>`
@@ -437,12 +461,14 @@ async function confirmBlockAccount() {
     const userName = u?.full_name || u?.email || userId;
     const activeSub = (u?.subscriptions || []).find(s => s.status === 'active' || s.status === 'trialing');
     const hasActiveSub = !!activeSub;
-    const hasFreeAccess = !!u?.free_access && !hasActiveSub; // free_access without a Stripe sub
+    // Considera free_access mesmo quando conflitante com subscription_tier (estado inconsistente)
+    const hasFreeAccess = !!u?.free_access && !hasActiveSub;
     try {
         const session = await supabase.auth.getSession();
         const token = session.data.session.access_token;
 
-        // 1. Bloquear conta — armazenar período restante (sub Stripe ou free_access)
+        // 1. Bloquear conta — block_account já revoga free_access + subscription_tier atomicamente
+        //    Além disso armazena o período restante (sub Stripe ou free_access) para restaurar ao desbloquear
         const blockPayload = {
             target_user_id: userId,
             action: 'block_account',
@@ -462,8 +488,13 @@ async function confirmBlockAccount() {
 
         const user = allUsers.find(u => u.id === userId);
         if (user) {
-            user.is_blocked = true;
-            user.blocked_at = blockData.blocked_at || new Date().toISOString();
+            user.is_blocked             = true;
+            user.blocked_at             = blockData.blocked_at || new Date().toISOString();
+            // block_account já zerou esses campos no DB; refletir no estado local
+            user.free_access            = false;
+            user.free_access_plan_id    = null;
+            user.free_access_expires_at = null;
+            user.subscription_tier      = 'free';
             if (hasActiveSub && activeSub.current_period_end) {
                 user.blocked_sub_period_end = activeSub.current_period_end;
                 user.blocked_sub_plan_id    = activeSub.plan_id || null;
@@ -473,39 +504,20 @@ async function confirmBlockAccount() {
             }
         }
 
-        // 2a. Revogar assinatura ativa, se houver
+        // 2. Cancelar assinatura Stripe ativa (requer chamada separada pois vai para o Stripe)
         if (hasActiveSub) {
             try {
                 const resRevoke = await callFunction('admin-update-user', {
                     target_user_id: userId,
                     action: 'revoke_paid_subscription',
                 }, token);
-                if (resRevoke.ok && user) {
-                    user.subscription_tier = 'free';
-                    if (user.subscriptions) {
-                        user.subscriptions.forEach(s => {
-                            if (s.status === 'active' || s.status === 'trialing') s.status = 'canceled';
-                        });
-                    }
+                if (resRevoke.ok && user?.subscriptions) {
+                    user.subscriptions.forEach(s => {
+                        if (s.status === 'active' || s.status === 'trialing') s.status = 'canceled';
+                    });
                 }
             } catch (_) { /* sub pode já estar inativa */ }
             allSubs = []; // força recarregamento na próxima visita à seção de assinaturas
-        }
-
-        // 2b. Revogar free_access, se houver
-        if (hasFreeAccess || u?.free_access) {
-            try {
-                const resRevokeFree = await callFunction('admin-update-user', {
-                    target_user_id: userId,
-                    action: 'revoke_free_access',
-                }, token);
-                if (resRevokeFree.ok && user) {
-                    user.free_access            = false;
-                    user.free_access_plan_id    = null;
-                    user.free_access_expires_at = null;
-                    user.subscription_tier      = 'free';
-                }
-            } catch (_) {}
         }
 
         renderUsersTable();
@@ -783,6 +795,38 @@ async function revokeFreeAccess(userId) {
         showToast('Acesso gratuito revogado.', 'success');
     } catch (err) {
         showToast('Erro: ' + err.message, 'error');
+    }
+}
+
+// Corrige estado inconsistente: free_access=true mas subscription_tier='free'
+// Chama grant_free_access com o plano já existente para restaurar subscription_tier='paid'
+async function repairFreeAccess(userId) {
+    const u = allUsers.find(x => x.id === userId);
+    if (!u?.free_access_plan_id) {
+        // Sem plano salvo — apenas revogar para limpar o estado
+        await revokeFreeAccess(userId);
+        return;
+    }
+    try {
+        const session = await supabase.auth.getSession();
+        const res = await callFunction('admin-update-user', {
+            target_user_id: userId,
+            action: 'grant_free_access',
+            free_access_plan_id: u.free_access_plan_id,
+            free_access_expires_at: u.free_access_expires_at || null,
+        }, session.data.session.access_token);
+        if (!res.ok) {
+            const body = await res.json();
+            throw new Error(body.error || 'Erro desconhecido');
+        }
+        const user = allUsers.find(x => x.id === userId);
+        if (user) user.subscription_tier = 'paid';
+        renderUsersTable();
+        updateUserStats();
+        const planName = planNameById(u.free_access_plan_id);
+        showToast(`Acesso inconsistente corrigido para o plano ${planName}.`, 'success');
+    } catch (err) {
+        showToast('Erro ao corrigir: ' + err.message, 'error');
     }
 }
 
