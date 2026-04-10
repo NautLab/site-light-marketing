@@ -133,7 +133,7 @@ function showSection(name) {
 
     // Lazy-load section data
     if (name === 'plans' && allPlans.length === 0)               loadPlans();
-    if (name === 'subscriptions' && allSubs.length === 0)         loadSubscriptions();
+    if (name === 'subscriptions')                                  loadSubscriptions();
     if (name === 'coupons' && allCoupons.length === 0)            loadCoupons();
     if (name === 'notifications' && allNotifications.length === 0) loadNotifications();
     if (name === 'site-data') loadSiteSettings();
@@ -450,9 +450,10 @@ async function confirmBlockAccount() {
         if (hasActiveSub && activeSub.current_period_end) {
             blockPayload.blocked_sub_period_end = activeSub.current_period_end;
             if (activeSub.plan_id) blockPayload.blocked_sub_plan_id = activeSub.plan_id;
-        } else if (hasFreeAccess && u.free_access_expires_at && u.free_access_plan_id) {
-            blockPayload.blocked_free_access_period_end = u.free_access_expires_at;
-            blockPayload.blocked_free_access_plan_id    = u.free_access_plan_id;
+        } else if (hasFreeAccess && u.free_access_plan_id) {
+            // Salva o plan_id sempre; só envia period_end se houver data de expiração
+            if (u.free_access_expires_at) blockPayload.blocked_free_access_period_end = u.free_access_expires_at;
+            blockPayload.blocked_free_access_plan_id = u.free_access_plan_id;
         }
 
         const resBlock = await callFunction('admin-update-user', blockPayload, token);
@@ -488,6 +489,7 @@ async function confirmBlockAccount() {
                     }
                 }
             } catch (_) { /* sub pode já estar inativa */ }
+            allSubs = []; // força recarregamento na próxima visita à seção de assinaturas
         }
 
         // 2b. Revogar free_access, se houver
@@ -534,18 +536,23 @@ async function unblockAccount(userId) {
     const userName = u?.full_name || u?.email || userId;
 
     // Calculate remaining ms at block time to show in confirmation
-    const hasStoredPeriod = u?.blocked_sub_period_end && u?.blocked_sub_plan_id && u?.blocked_at;
+    const hasStoredPeriod  = u?.blocked_sub_period_end && u?.blocked_sub_plan_id && u?.blocked_at;
+    const isUnlimitedAccess = !!u?.blocked_sub_plan_id && !u?.blocked_sub_period_end;
     let remainingDaysStr = null;
-    if (hasStoredPeriod) {
+    if (isUnlimitedAccess) {
+        remainingDaysStr = 'ilimitado';
+    } else if (hasStoredPeriod) {
         const remainingMs = new Date(u.blocked_sub_period_end).getTime() - new Date(u.blocked_at).getTime();
         if (remainingMs > 0) {
             const days = Math.ceil(remainingMs / (1000 * 60 * 60 * 24));
             remainingDaysStr = `${days} dia${days !== 1 ? 's' : ''}`;
         }
     }
-    const msg = remainingDaysStr
-        ? `Desbloquear a conta de ${userName}?\n\nO acesso ao plano anterior será concedido por ${remainingDaysStr} a partir de hoje.`
-        : `Desbloquear a conta de ${userName}?`;
+    const msg = remainingDaysStr === 'ilimitado'
+        ? `Desbloquear a conta de ${userName}?\n\nO acesso ilimitado ao plano anterior será concedido.`
+        : remainingDaysStr
+            ? `Desbloquear a conta de ${userName}?\n\nO acesso ao plano anterior será concedido por ${remainingDaysStr} a partir de hoje.`
+            : `Desbloquear a conta de ${userName}?`;
     if (!confirm(msg)) return;
     try {
         const session = await supabase.auth.getSession();
@@ -572,7 +579,9 @@ async function unblockAccount(userId) {
         renderUsersTable();
         updateUserStats();
         const msg2 = data.free_access_restored
-            ? `Conta desbloqueada. Acesso ao plano retomado até ${new Date(data.free_access_expires_at).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}.`
+            ? data.free_access_expires_at
+                ? `Conta desbloqueada. Acesso ao plano retomado até ${new Date(data.free_access_expires_at).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}.`
+                : 'Conta desbloqueada. Acesso ilimitado ao plano retomado.'
             : 'Conta desbloqueada com sucesso.';
         showToast(msg2, 'success');
     } catch (err) { showToast('Erro: ' + err.message, 'error'); }
@@ -763,9 +772,10 @@ async function revokeFreeAccess(userId) {
 
         const user = allUsers.find(u => u.id === userId);
         if (user) {
-            user.free_access          = false;
-            user.free_access_plan_id  = null;
-            user.subscription_tier    = 'free';
+            user.free_access            = false;
+            user.free_access_plan_id    = null;
+            user.free_access_expires_at = null;
+            user.subscription_tier      = 'free';
         }
 
         renderUsersTable();

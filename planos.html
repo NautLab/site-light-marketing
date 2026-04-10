@@ -1012,26 +1012,9 @@ async function handleSubscribe(planId, planName) {
         return;
     }
 
-    // Warn if user has free_access granted by admin
+    // Bloquear se usuário tem acesso concedido pelo administrador — mesma mensagem do "Voltar para free"
     if (currentProfile?.free_access) {
-        const expiresAt = currentProfile.free_access_expires_at
-            ? new Date(currentProfile.free_access_expires_at).toLocaleDateString('pt-BR')
-            : null;
-        const modal = document.createElement('div');
-        modal.className = 'modal-overlay';
-        modal.id = 'freeAccessLossModal';
-        modal.innerHTML = `
-            <div class="modal-box">
-                <h3>Perderá o acesso gratuito</h3>
-                <p>Você possui acesso gratuito concedido pelo administrador${expiresAt ? ` até ${expiresAt}` : ''}. Ao assinar um novo plano, esse acesso será revogado imediatamente.</p>
-                <p style="margin-bottom:0;font-size:13px;">Deseja continuar e assinar o plano <strong>${escHtml(planName)}</strong>?</p>
-                <div class="modal-actions">
-                    <button class="modal-btn-cancel" onclick="document.getElementById('freeAccessLossModal')?.remove()">Cancelar</button>
-                    <button class="modal-btn-confirm" onclick="document.getElementById('freeAccessLossModal')?.remove(); _proceedToCheckout('${planId}')">Continuar</button>
-                </div>
-            </div>`;
-        document.body.appendChild(modal);
-        modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+        showDowngradeModal();
         return;
     }
 

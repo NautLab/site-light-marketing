@@ -141,6 +141,7 @@ Deno.serve(async (req) => {
           free_access: false,
           free_access_plan_id: null,
           free_access_granted_by: null,
+          free_access_expires_at: null,
           subscription_tier: 'free',
         })
         .eq('id', target_user_id);
@@ -198,21 +199,34 @@ Deno.serve(async (req) => {
 
       // Restore access using the number of days that were remaining at block time,
       // added to now — so even if blocked for years the user still gets those days.
-      if (blockedProfile?.blocked_sub_period_end && blockedProfile?.blocked_sub_plan_id && blockedProfile?.blocked_at) {
-        const blockedAt  = new Date(blockedProfile.blocked_at).getTime();
-        const periodEnd  = new Date(blockedProfile.blocked_sub_period_end).getTime();
-        const remainingMs = periodEnd - blockedAt;   // milliseconds remaining at block time
-
-        if (remainingMs > 0) {
-          const restoredEnd = new Date(Date.now() + remainingMs).toISOString();
+      // If blocked_sub_period_end is null, user had unlimited access — restore without expiry.
+      if (blockedProfile?.blocked_sub_plan_id) {
+        if (!blockedProfile.blocked_sub_period_end) {
+          // Unlimited access — restore without expiry date
           updateData.free_access            = true;
           updateData.free_access_plan_id    = blockedProfile.blocked_sub_plan_id;
-          updateData.free_access_expires_at = restoredEnd;
+          updateData.free_access_expires_at = null;
           updateData.free_access_granted_by = null;
           updateData.subscription_tier      = 'paid';
           freeAccessRestored  = true;
           freeAccessPlanId    = blockedProfile.blocked_sub_plan_id;
-          freeAccessExpiresAt = restoredEnd;
+          freeAccessExpiresAt = null;
+        } else if (blockedProfile.blocked_at) {
+          const blockedAt   = new Date(blockedProfile.blocked_at).getTime();
+          const periodEnd   = new Date(blockedProfile.blocked_sub_period_end).getTime();
+          const remainingMs = periodEnd - blockedAt;   // milliseconds remaining at block time
+
+          if (remainingMs > 0) {
+            const restoredEnd = new Date(Date.now() + remainingMs).toISOString();
+            updateData.free_access            = true;
+            updateData.free_access_plan_id    = blockedProfile.blocked_sub_plan_id;
+            updateData.free_access_expires_at = restoredEnd;
+            updateData.free_access_granted_by = null;
+            updateData.subscription_tier      = 'paid';
+            freeAccessRestored  = true;
+            freeAccessPlanId    = blockedProfile.blocked_sub_plan_id;
+            freeAccessExpiresAt = restoredEnd;
+          }
         }
       }
 
