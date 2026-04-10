@@ -180,7 +180,7 @@ Deno.serve(async (req) => {
       // Fetch stored subscription data saved at block time
       const { data: blockedProfile } = await adminClient
         .from('profiles')
-        .select('blocked_sub_period_end, blocked_sub_plan_id')
+        .select('blocked_at, blocked_sub_period_end, blocked_sub_plan_id')
         .eq('id', target_user_id)
         .single();
 
@@ -196,18 +196,23 @@ Deno.serve(async (req) => {
       let freeAccessPlanId: string | null = null;
       let freeAccessExpiresAt: string | null = null;
 
-      // Always restore access if the original period is still in the future
-      if (blockedProfile?.blocked_sub_period_end && blockedProfile?.blocked_sub_plan_id) {
-        const periodEnd = new Date(blockedProfile.blocked_sub_period_end);
-        if (periodEnd > new Date()) {
+      // Restore access using the number of days that were remaining at block time,
+      // added to now — so even if blocked for years the user still gets those days.
+      if (blockedProfile?.blocked_sub_period_end && blockedProfile?.blocked_sub_plan_id && blockedProfile?.blocked_at) {
+        const blockedAt  = new Date(blockedProfile.blocked_at).getTime();
+        const periodEnd  = new Date(blockedProfile.blocked_sub_period_end).getTime();
+        const remainingMs = periodEnd - blockedAt;   // milliseconds remaining at block time
+
+        if (remainingMs > 0) {
+          const restoredEnd = new Date(Date.now() + remainingMs).toISOString();
           updateData.free_access            = true;
           updateData.free_access_plan_id    = blockedProfile.blocked_sub_plan_id;
-          updateData.free_access_expires_at = blockedProfile.blocked_sub_period_end;
+          updateData.free_access_expires_at = restoredEnd;
           updateData.free_access_granted_by = null;
           updateData.subscription_tier      = 'paid';
           freeAccessRestored  = true;
           freeAccessPlanId    = blockedProfile.blocked_sub_plan_id;
-          freeAccessExpiresAt = blockedProfile.blocked_sub_period_end;
+          freeAccessExpiresAt = restoredEnd;
         }
       }
 

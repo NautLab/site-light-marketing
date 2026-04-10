@@ -533,13 +533,18 @@ async function unblockAccount(userId) {
     const u = allUsers.find(x => x.id === userId);
     const userName = u?.full_name || u?.email || userId;
 
-    const hasPeriodLeft = u?.blocked_sub_period_end && u?.blocked_sub_plan_id
-        && new Date(u.blocked_sub_period_end) > new Date();
-    const periodEndStr = hasPeriodLeft
-        ? new Date(u.blocked_sub_period_end).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
-        : null;
-    const msg = hasPeriodLeft
-        ? `Desbloquear a conta de ${userName}?\n\nO acesso ao plano anterior será retomado automaticamente até ${periodEndStr}.`
+    // Calculate remaining ms at block time to show in confirmation
+    const hasStoredPeriod = u?.blocked_sub_period_end && u?.blocked_sub_plan_id && u?.blocked_at;
+    let remainingDaysStr = null;
+    if (hasStoredPeriod) {
+        const remainingMs = new Date(u.blocked_sub_period_end).getTime() - new Date(u.blocked_at).getTime();
+        if (remainingMs > 0) {
+            const days = Math.ceil(remainingMs / (1000 * 60 * 60 * 24));
+            remainingDaysStr = `${days} dia${days !== 1 ? 's' : ''}`;
+        }
+    }
+    const msg = remainingDaysStr
+        ? `Desbloquear a conta de ${userName}?\n\nO acesso ao plano anterior será concedido por ${remainingDaysStr} a partir de hoje.`
         : `Desbloquear a conta de ${userName}?`;
     if (!confirm(msg)) return;
     try {
