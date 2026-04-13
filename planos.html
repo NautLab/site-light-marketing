@@ -930,7 +930,12 @@ function buildPlanCard(p) {
         cancelBtnHtml = `<div class="plan-cancel-notice" style="background:rgba(12,126,146,0.08);border-color:rgba(12,126,146,0.2);color:#0C7E92;">Acesso concedido pelo administrador</div>`;
     } else if (isCurrent && currentSubscription && currentProfile?.subscription_tier !== 'free') {
         if (!currentSubscription.cancel_at_period_end) {
-            cancelBtnHtml = `<button class="plan-btn plan-btn-danger" onclick="handleCancelSubscription()">Cancelar assinatura</button>`;
+            if (isOtherInterval) {
+                const targetLabel = currentInterval === 'year' ? 'anual' : 'mensal';
+                cancelBtnHtml = `<button class="plan-btn plan-btn-primary" onclick="showSwitchIntervalModal('${p.id}', '${escHtml(p.name)}')">Mudar para ${targetLabel}</button>`;
+            } else {
+                cancelBtnHtml = `<button class="plan-btn plan-btn-danger" onclick="handleCancelSubscription()">Cancelar assinatura</button>`;
+            }
         } else {
             const endDate = currentSubscription.current_period_end
                 ? new Date(currentSubscription.current_period_end).toLocaleDateString('pt-BR')
@@ -1055,6 +1060,57 @@ function handleFreePlan() {
     }
     if (currentProfile.subscription_tier !== 'free') {
         showDowngradeModal();
+    }
+}
+
+function showSwitchIntervalModal(planId, planName) {
+    const existing = document.getElementById('switchIntervalModal');
+    if (existing) existing.remove();
+    const targetLabel = currentInterval === 'year' ? 'anual' : 'mensal';
+    const currentLabel = currentInterval === 'year' ? 'mensal' : 'anual';
+    let endDateStr = '';
+    if (currentSubscription?.current_period_end) {
+        endDateStr = new Date(currentSubscription.current_period_end).toLocaleDateString('pt-BR');
+    }
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.id = 'switchIntervalModal';
+    modal.innerHTML = `
+        <div class="modal-box">
+            <h3>Mudar para ${targetLabel}?</h3>
+            <p>Sua assinatura <span class="highlight">${currentLabel}</span> do plano <span class="highlight">${escHtml(planName)}</span> será cancelada${
+                endDateStr ? ` — você mantém acesso até <span class="highlight">${endDateStr}</span>` : ''
+            }. Em seguida, será direcionado ao checkout para assinar a versão ${targetLabel}.</p>
+            <div class="modal-actions">
+                <button class="modal-btn-cancel" onclick="document.getElementById('switchIntervalModal')?.remove()">Cancelar</button>
+                <button class="modal-btn-confirm" id="confirmSwitchBtn" onclick="confirmSwitchInterval('${planId}')">Ir para o checkout</button>
+            </div>
+        </div>`;
+    document.body.appendChild(modal);
+    modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+}
+
+async function confirmSwitchInterval(planId) {
+    if (!currentSubscription) return;
+    const btn = document.getElementById('confirmSwitchBtn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Processando…'; }
+    try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const res = await fetch(`${SUPABASE_FUNCTIONS_URL}/cancel-subscription`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.access_token}`,
+                'apikey': SUPABASE_ANON_KEY,
+            },
+            body: JSON.stringify({ subscription_id: currentSubscription.id, cancel_at_period_end: true }),
+        });
+        const body = await res.json();
+        if (!res.ok) throw new Error(body.error || 'Erro ao cancelar');
+        _proceedToCheckout(planId);
+    } catch (err) {
+        if (btn) { btn.disabled = false; btn.textContent = 'Ir para o checkout'; }
+        alert('Erro: ' + err.message);
     }
 }
 

@@ -657,7 +657,31 @@ function openRefundModal(userId, userName, lastAmountCents) {
             hint.style.display = 'none';
         }
     }
+    const infoHint = document.getElementById('refundInfoHint');
+    if (infoHint) { infoHint.style.display = 'none'; infoHint.textContent = ''; }
     openModal('refundModal');
+    // Async: load remaining refund info from Stripe
+    if (infoHint) {
+        (async () => {
+            try {
+                const session = await supabase.auth.getSession();
+                const res = await callFunction('admin-update-user', {
+                    target_user_id: userId,
+                    action: 'get_charge_info',
+                }, session.data.session.access_token);
+                const body = await res.json();
+                if (res.ok && body.amount_cents != null) {
+                    const refunded = body.amount_refunded_cents || 0;
+                    const available = body.amount_cents - refunded;
+                    const parts = [];
+                    if (refunded > 0) parts.push(`Já reembolsado: R$ ${(refunded / 100).toFixed(2).replace('.', ',')}`);
+                    parts.push(`Disponível para reembolso: R$ ${(available / 100).toFixed(2).replace('.', ',')}`);
+                    infoHint.textContent = parts.join(' · ');
+                    infoHint.style.display = '';
+                }
+            } catch (_) { /* silent */ }
+        })();
+    }
 }
 
 async function submitRefund() {

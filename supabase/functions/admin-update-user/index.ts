@@ -1,6 +1,6 @@
 // Edge Function: admin-update-user
 // Handles: update_role, grant_free_access, revoke_free_access,
-//          block_account, unblock_account, revoke_paid_subscription, refund
+//          block_account, unblock_account, revoke_paid_subscription, refund, get_charge_info
 // Requires: caller must be admin or super_admin
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -458,13 +458,65 @@ Deno.serve(async (req) => {
       return json({ success: true, refund_id: refund.id, amount: refund.amount, status: refund.status });
     }
 
+    // ── ACTION: get_charge_info ──────────────────────────────
+    if (action === 'get_charge_info') {
+      const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!, { apiVersion: '2024-06-20' });
+
+      const { data: activeSub } = await adminClient
+        .from('subscriptions')
+        .select('stripe_subscription_id')
+        .eq('user_id', target_user_id)
+        .not('stripe_subscription_id', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (!activeSub?.stripe_subscription_id) return json({ error: 'No subscription found' }, 404);
+
+      const stripeSub = await stripe.subscriptions.retrieve(activeSub.stripe_subscription_id);
+      const invoiceId = stripeSub.latest_invoice as string;
+      if (!invoiceId) return json({ error: 'No invoice found' }, 404);
+
+      const invoice = await stripe.invoices.retrieve(invoiceId);
+      const piId = invoice.payment_intent as string;
+      if (!piId) return json({ error: 'No payment intent' }, 404);
+
+      const pi = await stripe.paymentIntents.retrieve(piId);
+      const chargeId = typeof pi.latest_charge === 'string' ? pi.latest_charge : pi.latest_charge?.id;
+      if (!chargeId) return json({ amount_cents: invoice.amount_paid, amount_refunded_cents: 0 });
+
+      const charge = await stripe.charges.retrieve(chargeId);
+      return json({
+        amount_cents: charge.amount,
+        amount_refunded_cents: charge.amount_refunded,
+      });
+    }
+
     return json({ error: 'Unknown action' }, 400);
 
   } catch (err) {
     console.error('admin-update-user error:', err);
-    return json({ error: err.message || 'Internal error' }, 500);
+    return json({ error: translateStripeError(err.message) || 'Erro interno' }, 500);
   }
 });
+
+function translateStripeError(msg: string): string {
+  if (!msg) return '';
+  if (/already been refunded/i.test(msg)) return 'Este pagamento já foi reembolsado integralmente.';
+  if (/greater than unrefunded amount/i.test(msg)) {
+    const m = msg.match(/\(R\$\s*([\d.,]+)\)/g);
+    if (m && m.length >= 2) return `Valor de reembolso (${m[0]}) maior que o disponível ${m[1]}.`;
+    return 'Valor de reembolso maior que o disponível na cobrança.';
+  }
+  if (/charge.*not found/i.test(msg)) return 'Cobrança não encontrada no Stripe.';
+  if (/no such payment_intent/i.test(msg)) return 'Intenção de pagamento não encontrada.';
+  if (/no such invoice/i.test(msg)) return 'Fatura não encontrada.';
+  if (/no such subscription/i.test(msg)) return 'Assinatura não encontrada no Stripe.';
+  if (/card.*declined/i.test(msg)) return 'Cartão recusado.';
+  if (/insufficient_funds/i.test(msg)) return 'Saldo insuficiente no cartão.';
+  if (/authentication_required/i.test(msg)) return 'Autenticação adicional exigida pelo banco.';
+  return msg;
+}
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {

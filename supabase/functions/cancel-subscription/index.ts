@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
       .single();
 
     if (!sub?.stripe_subscription_id) {
-      return json({ error: 'Subscription not found or has no Stripe ID' }, 404);
+      return json({ error: 'Assinatura não encontrada ou sem ID Stripe associado.' }, 404);
     }
 
     // Allow if caller is admin OR is the subscription owner
@@ -125,9 +125,20 @@ Deno.serve(async (req) => {
 
   } catch (err) {
     console.error('cancel-subscription error:', err);
-    return json({ error: err.message || 'Internal error' }, 500);
+    return json({ error: translateStripeError(err.message) || 'Erro interno' }, 500);
   }
 });
+
+function translateStripeError(msg: string): string {
+  if (!msg) return '';
+  if (/already been refunded/i.test(msg)) return 'Este pagamento já foi reembolsado integralmente.';
+  if (/greater than unrefunded amount/i.test(msg)) return 'Valor de reembolso maior que o disponível na cobrança.';
+  if (/no such subscription/i.test(msg)) return 'Assinatura não encontrada no Stripe.';
+  if (/no such payment_intent/i.test(msg)) return 'Intenção de pagamento não encontrada.';
+  if (/no such invoice/i.test(msg)) return 'Fatura não encontrada.';
+  if (/card.*declined/i.test(msg)) return 'Cartão recusado.';
+  return msg;
+}
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {

@@ -47,12 +47,12 @@ Deno.serve(async (req) => {
       .eq('is_active', true)
       .single();
 
-    if (planErr || !plan) return json({ error: 'Plan not found or inactive' }, 404);
+    if (planErr || !plan) return json({ error: 'Plano não encontrado ou inativo.' }, 404);
 
     // Determine which Stripe price to use based on billing interval
     const useAnnual = billing_interval === 'year' && plan.annual_stripe_price_id;
     const stripePriceId = useAnnual ? plan.annual_stripe_price_id : plan.stripe_price_id;
-    if (!stripePriceId) return json({ error: 'Plan has no Stripe price configured' }, 400);
+    if (!stripePriceId) return json({ error: 'Plano sem preço Stripe configurado.' }, 400);
 
     const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!, {
       apiVersion: '2024-06-20',
@@ -176,9 +176,21 @@ Deno.serve(async (req) => {
 
   } catch (err) {
     console.error('create-checkout-session error:', err);
-    return json({ error: err.message || 'Internal error' }, 500);
+    return json({ error: translateStripeError(err.message) || 'Erro interno' }, 500);
   }
 });
+
+function translateStripeError(msg: string): string {
+  if (!msg) return '';
+  if (/already been refunded/i.test(msg)) return 'Este pagamento já foi reembolsado integralmente.';
+  if (/greater than unrefunded amount/i.test(msg)) return 'Valor de reembolso maior que o disponível na cobrança.';
+  if (/no such subscription/i.test(msg)) return 'Assinatura não encontrada no Stripe.';
+  if (/no such price/i.test(msg)) return 'Preço não encontrado no Stripe.';
+  if (/no such customer/i.test(msg)) return 'Cliente não encontrado no Stripe.';
+  if (/card.*declined/i.test(msg)) return 'Cartão recusado.';
+  if (/authentication_required/i.test(msg)) return 'Autenticação adicional exigida pelo banco.';
+  return msg;
+}
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
