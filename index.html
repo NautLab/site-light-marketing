@@ -556,6 +556,10 @@
                                     const processBtn = document.getElementById('process-btn');
                                     if (processBtn) processBtn.disabled = true;
                                 }
+                            } else if (payload.new && payload.new.is_blocked === false) {
+                                document.getElementById('blockedOverlay')?.remove();
+                                const processBtn = document.getElementById('process-btn');
+                                if (processBtn) processBtn.disabled = false;
                             }
                         })
                         .subscribe();

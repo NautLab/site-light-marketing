@@ -610,7 +610,15 @@ function setupBlockedProfileListener(userId, waUrl) {
             table: 'profiles',
             filter: `id=eq.${userId}`
         }, payload => {
-            if (payload.new?.is_blocked) renderBlockedOverlay(waUrl);
+            if (payload.new?.is_blocked) {
+                renderBlockedOverlay(waUrl);
+            } else if (payload.new && payload.new.is_blocked === false) {
+                const overlay = document.getElementById('blockedOverlay');
+                if (overlay) {
+                    overlay.remove();
+                    document.body.style.overflow = '';
+                }
+            }
         })
         .subscribe();
 }
