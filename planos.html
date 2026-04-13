@@ -941,9 +941,12 @@ function buildPlanCard(p) {
         }
     }
 
+    const hasBlockingSubscription = currentSubscription && !currentSubscription.cancel_at_period_end;
     const btnHtml = isCurrent
         ? `<button class="plan-btn plan-btn-current" disabled>✓ Plano atual${intervalNote}</button>${cancelBtnHtml}`
-        : `<button class="plan-btn plan-btn-primary" onclick="handleSubscribe('${p.id}', '${escHtml(p.name)}')">Assinar agora</button>`;
+        : hasBlockingSubscription
+            ? `<div class="plan-cancel-notice">Você já possui uma assinatura ativa. Cancele o plano atual antes de assinar um novo.</div>`
+            : `<button class="plan-btn plan-btn-primary" onclick="handleSubscribe('${p.id}', '${escHtml(p.name)}')">Assinar agora</button>`;
 
     const featuresHtml = features.map(f =>
         `<li class="${f.ok ? '' : 'disabled'}"><span class="check">${f.ok ? '✓' : '✗'}</span> ${f.text}</li>`
