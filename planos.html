@@ -817,7 +817,7 @@ async function loadActiveSubscription() {
         if (!session) return;
         const { data } = await supabase
             .from('subscriptions')
-            .select('id, status, cancel_at_period_end, current_period_end, plan_id, billing_interval')
+            .select('id, status, cancel_at_period_end, current_period_end, plan_id, billing_interval, plan_name_snapshot')
             .eq('user_id', session.user.id)
             .in('status', ['active', 'trialing'])
             .order('created_at', { ascending: false })
@@ -1012,9 +1012,15 @@ async function handleSubscribe(planId, planName) {
         return;
     }
 
-    // Bloquear se usuário tem acesso concedido pelo administrador — mesma mensagem do "Voltar para free"
+    // Bloquear se usuário tem acesso concedido pelo administrador
     if (currentProfile?.free_access) {
         showDowngradeModal();
+        return;
+    }
+
+    // Bloquear se já há assinatura ativa e não agendada para cancelamento
+    if (currentSubscription && !currentSubscription.cancel_at_period_end) {
+        showAlreadySubscribedModal(currentSubscription.plan_name_snapshot || 'atual');
         return;
     }
 
@@ -1039,6 +1045,25 @@ function handleFreePlan() {
     if (currentProfile.subscription_tier !== 'free') {
         showDowngradeModal();
     }
+}
+
+function showAlreadySubscribedModal(currentPlanName) {
+    const existing = document.getElementById('alreadySubscribedModal');
+    if (existing) existing.remove();
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.id = 'alreadySubscribedModal';
+    modal.innerHTML = `
+        <div class="modal-box">
+            <h3>Você já tem uma assinatura ativa</h3>
+            <p>Você assina atualmente o plano <span class="highlight">${escHtml(currentPlanName)}</span>. Para assinar um novo plano, cancele a assinatura atual primeiro.</p>
+            <p style="margin-bottom:0;font-size:13px;">No seu plano atual, use o botão de cancelamento e depois assine o novo plano.</p>
+            <div class="modal-actions">
+                <button class="modal-btn-cancel" onclick="document.getElementById('alreadySubscribedModal')?.remove()">Entendi</button>
+            </div>
+        </div>`;
+    document.body.appendChild(modal);
+    modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
 }
 
 function showDowngradeModal() {

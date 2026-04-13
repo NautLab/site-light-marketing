@@ -58,22 +58,33 @@ Deno.serve(async (req) => {
       apiVersion: '2024-06-20',
     });
 
-    // ── Cancel existing active subscriptions at period end ──
+    // ── Guard: one active subscription at a time ──
+    // Check if user already has an active subscription that is NOT scheduled for cancellation.
+    // - cancel_at_period_end = false → user has not committed to canceling → block.
+    // - cancel_at_period_end = true  → sub is being canceled at period end →
+    //   cancel it immediately now and proceed to create the new one.
     const { data: existingSubs } = await adminClient
       .from('subscriptions')
-      .select('id, stripe_subscription_id')
+      .select('id, stripe_subscription_id, cancel_at_period_end')
       .eq('user_id', user.id)
       .in('status', ['active', 'trialing']);
 
     if (existingSubs && existingSubs.length > 0) {
+      const blocking = existingSubs.filter(s => !s.cancel_at_period_end);
+      if (blocking.length > 0) {
+        return json({
+          error: 'Você já possui uma assinatura ativa. Cancele o plano atual antes de assinar um novo.',
+        }, 409);
+      }
+
+      // Only subs already scheduled to cancel — cancel them immediately and proceed
       for (const sub of existingSubs) {
         if (sub.stripe_subscription_id) {
-          await stripe.subscriptions.update(sub.stripe_subscription_id, {
-            cancel_at_period_end: true,
-          });
+          try { await stripe.subscriptions.cancel(sub.stripe_subscription_id); } catch (_) {}
         }
         await adminClient.from('subscriptions').update({
-          cancel_at_period_end: true,
+          status: 'canceled',
+          canceled_at: new Date().toISOString(),
         }).eq('id', sub.id);
       }
     }

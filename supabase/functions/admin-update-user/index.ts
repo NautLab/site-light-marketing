@@ -118,6 +118,8 @@ Deno.serve(async (req) => {
         return json({ error: 'Plan not found' }, 404);
       }
 
+      // Set free_access BEFORE canceling Stripe subs so the webhook
+      // (customer.subscription.deleted) sees free_access=true and won't downgrade tier.
       const { error } = await adminClient
         .from('profiles')
         .update({
@@ -126,28 +128,99 @@ Deno.serve(async (req) => {
           free_access_granted_by: caller.id,
           free_access_expires_at: expiresAt,
           subscription_tier: 'paid',
+          // Clear any leftover prev fields from a prior grant cycle
+          free_access_prev_period_end: null,
+          free_access_prev_plan_id: null,
         })
         .eq('id', target_user_id);
 
       if (error) throw error;
+
+      // Cancel any active Stripe subscriptions immediately.
+      // A user cannot have both a paid sub and free_access simultaneously.
+      // Store the most recent period_end so we can give those days back on revoke.
+      const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!, { apiVersion: '2024-06-20' });
+
+      const { data: activeSubs } = await adminClient
+        .from('subscriptions')
+        .select('id, stripe_subscription_id, current_period_end, plan_id')
+        .eq('user_id', target_user_id)
+        .in('status', ['active', 'trialing'])
+        .order('current_period_end', { ascending: false });
+
+      if (activeSubs && activeSubs.length > 0) {
+        const mostRecent = activeSubs[0];
+        // Store remaining period for restoration on revoke
+        await adminClient.from('profiles').update({
+          free_access_prev_period_end: mostRecent.current_period_end,
+          free_access_prev_plan_id:    mostRecent.plan_id,
+        }).eq('id', target_user_id);
+
+        for (const sub of activeSubs) {
+          if (sub.stripe_subscription_id) {
+            try { await stripe.subscriptions.cancel(sub.stripe_subscription_id); } catch (_) {}
+          }
+          await adminClient.from('subscriptions').update({
+            status: 'canceled',
+            canceled_at: new Date().toISOString(),
+          }).eq('id', sub.id);
+        }
+      }
+
       return json({ success: true, free_access: true, plan_id: planId, plan_name: plan.name, free_access_expires_at: expiresAt });
     }
 
     // ── ACTION: revoke_free_access ───────────────────────
     if (action === 'revoke_free_access') {
+      // Check if there's a stored subscription period to give back as remaining days.
+      // This happens when free_access was granted while the user had an active Stripe sub
+      // that was cancelled at that time — on revoke, we restore those remaining days.
+      const { data: currentProf } = await adminClient
+        .from('profiles')
+        .select('free_access_prev_period_end, free_access_prev_plan_id, free_access_plan_id')
+        .eq('id', target_user_id)
+        .single();
+
+      const prevPeriodEnd = currentProf?.free_access_prev_period_end ?? null;
+      const prevPlanId    = currentProf?.free_access_prev_plan_id ?? currentProf?.free_access_plan_id ?? null;
+      const hasRemaining  = prevPeriodEnd && new Date(prevPeriodEnd) > new Date();
+
+      if (hasRemaining && prevPlanId) {
+        // Instead of fully revoking, give the remaining days from the original subscription.
+        // Keep free_access=true but with expiry = original period_end.
+        const { error } = await adminClient
+          .from('profiles')
+          .update({
+            free_access: true,
+            free_access_plan_id:    prevPlanId,
+            free_access_granted_by: null,
+            free_access_expires_at: prevPeriodEnd,
+            free_access_prev_period_end: null,
+            free_access_prev_plan_id:    null,
+            subscription_tier: 'paid',
+          })
+          .eq('id', target_user_id);
+
+        if (error) throw error;
+        return json({ success: true, free_access: true, has_remaining_days: true, expires_at: prevPeriodEnd, plan_id: prevPlanId });
+      }
+
+      // No remaining days — full revoke
       const { error } = await adminClient
         .from('profiles')
         .update({
           free_access: false,
-          free_access_plan_id: null,
-          free_access_granted_by: null,
-          free_access_expires_at: null,
+          free_access_plan_id:         null,
+          free_access_granted_by:      null,
+          free_access_expires_at:      null,
+          free_access_prev_period_end: null,
+          free_access_prev_plan_id:    null,
           subscription_tier: 'free',
         })
         .eq('id', target_user_id);
 
       if (error) throw error;
-      return json({ success: true, free_access: false });
+      return json({ success: true, free_access: false, has_remaining_days: false });
     }
 
     // ── ACTION: block_account ─────────────────────────
@@ -258,27 +331,25 @@ Deno.serve(async (req) => {
     if (action === 'revoke_paid_subscription') {
       const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!, { apiVersion: '2024-06-20' });
 
-      // Find active subscription row in DB
-      const { data: activeSub } = await adminClient
+      // Cancel ALL active/trialing subscriptions (never just one — prevents orphaned subs)
+      const { data: activeSubs } = await adminClient
         .from('subscriptions')
         .select('id, stripe_subscription_id')
         .eq('user_id', target_user_id)
-        .in('status', ['active', 'trialing'])
-        .limit(1)
-        .maybeSingle();
+        .in('status', ['active', 'trialing']);
 
-      if (activeSub) {
-        // Cancel in Stripe immediately
-        if (activeSub.stripe_subscription_id) {
-          try { await stripe.subscriptions.cancel(activeSub.stripe_subscription_id); } catch (_) {}
+      if (activeSubs && activeSubs.length > 0) {
+        for (const sub of activeSubs) {
+          if (sub.stripe_subscription_id) {
+            try { await stripe.subscriptions.cancel(sub.stripe_subscription_id); } catch (_) {}
+          }
+          await adminClient.from('subscriptions').update({
+            status: 'canceled',
+            canceled_at: new Date().toISOString(),
+          }).eq('id', sub.id);
         }
-        // Update subscription row
-        await adminClient.from('subscriptions').update({
-          status: 'canceled',
-          canceled_at: new Date().toISOString(),
-        }).eq('id', activeSub.id);
       } else {
-        // No DB row — try to cancel via Stripe customer_id from profile
+        // No DB rows — try to cancel via Stripe customer_id from profile
         const { data: prof } = await adminClient
           .from('profiles')
           .select('stripe_customer_id')

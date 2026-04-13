@@ -299,6 +299,11 @@ function openUserDetail(userId) {
             ? `<button class="btn btn-danger" style="width:100%;justify-content:center;" onclick="closeModal('userDetailModal'); revokeFreeAccess('${u.id}')">Revogar acesso gratuito</button>`
             : `<button class="btn btn-success" style="width:100%;justify-content:center;" onclick="closeModal('userDetailModal'); openFreeAccessModal('${u.id}', '${escHtml(u.full_name || u.email)}')">Conceder acesso gratuito</button>`;
 
+    // Button to revoke active Stripe subscription (only when no free_access)
+    const revokeSubDetailBtn = (!isSelf && canEditRole && activeSub && !u.free_access)
+        ? `<button class="btn btn-warning" style="width:100%;justify-content:center;" onclick="closeModal('userDetailModal'); revokePaidSubscription('${u.id}')">Revogar plano pago</button>`
+        : '';
+
     document.getElementById('userDetailBody').innerHTML = `
         <div class="user-detail-header">
             <div class="user-detail-avatar">${initials}</div>
@@ -338,6 +343,7 @@ function openUserDetail(userId) {
             <button class="btn btn-secondary" style="width:100%;justify-content:center;" onclick="closeModal('userDetailModal'); openRoleModal('${u.id}', '${escHtml(u.full_name || u.email)}', '${u.role}')">
                 Alterar função
             </button>` : ''}
+            ${revokeSubDetailBtn}
             ${freeAccessDetailBtn}
             ${(!isSelf && canEditRole) ? (u.is_blocked ? `
             <button class="btn btn-success" style="width:100%;justify-content:center;" onclick="closeModal('userDetailModal'); unblockAccount('${u.id}')">Desbloquear conta</button>` : `
@@ -406,6 +412,12 @@ function buildUserRow(u) {
         ? `<button class="btn btn-sm btn-success" onclick="unblockAccount('${u.id}')">Desbloquear</button>`
         : `<button class="btn btn-sm btn-danger" onclick="blockAccount('${u.id}')">Bloquear</button>`) : '';
 
+    // Show revoke sub button when user has active Stripe sub (without free_access).
+    // With free_access the sub was already canceled at grant time, so no separate revoke needed.
+    const revokeSubBtn = (!u.free_access && activeSub && !isSelf && canEditRole)
+        ? `<button class="btn btn-sm btn-warning" onclick="revokePaidSubscription('${u.id}')">Revogar sub</button>`
+        : '';
+
     return `
     <tr class="user-row-clickable" onclick="openUserDetail('${u.id}')">
         <td>
@@ -423,6 +435,7 @@ function buildUserRow(u) {
         <td onclick="event.stopPropagation()">
             <div class="actions-cell">
                 ${roleBtn}
+                ${revokeSubBtn}
                 ${freeAccessBtn}
                 ${blockBtn}
             </div>
@@ -782,17 +795,30 @@ async function revokeFreeAccess(userId) {
             throw new Error(body.error || 'Erro desconhecido');
         }
 
+        const data = await res.json();
         const user = allUsers.find(u => u.id === userId);
         if (user) {
-            user.free_access            = false;
-            user.free_access_plan_id    = null;
-            user.free_access_expires_at = null;
-            user.subscription_tier      = 'free';
+            if (data.has_remaining_days) {
+                // User gets remaining days from the subscription canceled when free_access was granted
+                user.free_access            = true;
+                user.free_access_plan_id    = data.plan_id || user.free_access_plan_id;
+                user.free_access_granted_by = null;
+                user.free_access_expires_at = data.expires_at;
+                user.subscription_tier      = 'paid';
+            } else {
+                user.free_access            = false;
+                user.free_access_plan_id    = null;
+                user.free_access_expires_at = null;
+                user.subscription_tier      = 'free';
+            }
         }
 
         renderUsersTable();
         updateUserStats();
-        showToast('Acesso gratuito revogado.', 'success');
+        const msg = data.has_remaining_days
+            ? `Acesso gratuito revogado. Usuário mantém acesso até ${new Date(data.expires_at).toLocaleDateString('pt-BR', {timeZone:'America/Sao_Paulo'})}.`
+            : 'Acesso gratuito revogado.';
+        showToast(msg, 'success');
     } catch (err) {
         showToast('Erro: ' + err.message, 'error');
     }
