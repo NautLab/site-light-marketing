@@ -898,10 +898,9 @@ function buildPlanCard(p) {
 
     // Cross-tab indicator: if subscribed on a different interval
     const subInterval = currentSubscription?.billing_interval || 'month';
+    // Always show interval label on the button when there is a real subscription
+    const subIntervalLabel = currentSubscription ? (subInterval === 'year' ? ' (anual)' : ' (mensal)') : '';
     const isOtherInterval = isCurrent && !currentSubscription?.cancel_at_period_end && subInterval !== currentInterval;
-    const intervalNote = isOtherInterval
-        ? (subInterval === 'year' ? ' (anual)' : ' (mensal)')
-        : '';
     const monthlyPrice = parseFloat(p.price_brl);
     const annualTotal  = p.annual_price_brl ? parseFloat(p.annual_price_brl) : null;
     const annualMonthly = annualTotal ? annualTotal / 12 : null;
@@ -940,16 +939,15 @@ function buildPlanCard(p) {
             const endDate = currentSubscription.current_period_end
                 ? new Date(currentSubscription.current_period_end).toLocaleDateString('pt-BR')
                 : '—';
-            const intervalLabel = currentSubscription.billing_interval === 'year' ? 'anual' : 'mensal';
             cancelBtnHtml = `
-                <div class="plan-cancel-notice">Cancelado (${intervalLabel}) · acesso até ${endDate}</div>
+                <div class="plan-cancel-notice">Cancelado · acesso até ${endDate}</div>
                 <button class="plan-btn plan-btn-outline" style="margin-top:8px;" onclick="handleResumeSubscription()">Assinar novamente</button>`;
         }
     }
 
     const hasBlockingSubscription = currentSubscription && !currentSubscription.cancel_at_period_end;
     const btnHtml = isCurrent
-        ? `<button class="plan-btn plan-btn-current" disabled>✓ Plano atual${intervalNote}</button>${cancelBtnHtml}`
+        ? `<button class="plan-btn plan-btn-current" disabled>✓ Plano atual${subIntervalLabel}</button>${cancelBtnHtml}`
         : hasBlockingSubscription
             ? `<div class="plan-cancel-notice">Você já possui uma assinatura ativa. Cancele o plano atual antes de assinar um novo.</div>`
             : `<button class="plan-btn plan-btn-primary" onclick="handleSubscribe('${p.id}', '${escHtml(p.name)}')">Assinar agora</button>`;
