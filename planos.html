@@ -940,8 +940,9 @@ function buildPlanCard(p) {
             const endDate = currentSubscription.current_period_end
                 ? new Date(currentSubscription.current_period_end).toLocaleDateString('pt-BR')
                 : '—';
+            const intervalLabel = currentSubscription.billing_interval === 'year' ? 'anual' : 'mensal';
             cancelBtnHtml = `
-                <div class="plan-cancel-notice">Cancelado · acesso até ${endDate}</div>
+                <div class="plan-cancel-notice">Cancelado (${intervalLabel}) · acesso até ${endDate}</div>
                 <button class="plan-btn plan-btn-outline" style="margin-top:8px;" onclick="handleResumeSubscription()">Assinar novamente</button>`;
         }
     }
@@ -1193,7 +1194,31 @@ async function confirmDowngrade() {
 
 async function handleResumeSubscription() {
     if (!currentSubscription) return;
-    if (!confirm('Deseja manter a assinatura ativa? O cancelamento agendado será removido.')) return;
+    showResumeModal();
+}
+
+function showResumeModal() {
+    const existing = document.getElementById('resumeModal');
+    if (existing) existing.remove();
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.id = 'resumeModal';
+    modal.innerHTML = `
+        <div class="modal-box">
+            <h3>Manter assinatura ativa?</h3>
+            <p>O cancelamento agendado será removido e sua assinatura continuará normalmente após o período atual.</p>
+            <div class="modal-actions">
+                <button class="modal-btn-cancel" onclick="document.getElementById('resumeModal')?.remove()">Voltar</button>
+                <button class="modal-btn-confirm" id="confirmResumeBtn" onclick="confirmResumeSubscription()">Confirmar</button>
+            </div>
+        </div>`;
+    document.body.appendChild(modal);
+    modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+}
+
+async function confirmResumeSubscription() {
+    const btn = document.getElementById('confirmResumeBtn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Processando…'; }
     try {
         const { data: { session } } = await supabase.auth.getSession();
         const res = await fetch(`${SUPABASE_FUNCTIONS_URL}/cancel-subscription`, {
@@ -1207,11 +1232,13 @@ async function handleResumeSubscription() {
         });
         const body = await res.json();
         if (!res.ok) throw new Error(body.error || 'Erro ao reativar');
+        document.getElementById('resumeModal')?.remove();
         currentSubscription.cancel_at_period_end = false;
         renderPaidPlans();
         updateFreePlanBtn();
         showToast('Assinatura reativada com sucesso!', 'success');
     } catch (err) {
+        if (btn) { btn.disabled = false; btn.textContent = 'Confirmar'; }
         showToast('Erro: ' + err.message, 'error');
     }
 }

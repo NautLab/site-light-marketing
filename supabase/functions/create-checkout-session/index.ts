@@ -167,7 +167,7 @@ Deno.serve(async (req) => {
       },
       subscription_data: {
         metadata: { user_id: user.id, plan_id, coupon_code: coupon_code || '', billing_interval: billing_interval || 'month' },
-        ...(trial_end ? { trial_end: Math.floor(new Date(trial_end).getTime() / 1000) } : {}),
+        ...(trial_end ? { billing_cycle_anchor: Math.floor(new Date(trial_end).getTime() / 1000), proration_behavior: 'none' } : {}),
       },
       locale: 'pt-BR',
     };
