@@ -1073,77 +1073,71 @@ function showSwitchIntervalModal(planId, planName) {
     if (existing) existing.remove();
     const targetLabel = currentInterval === 'year' ? 'anual' : 'mensal';
     const currentLabel = currentInterval === 'year' ? 'mensal' : 'anual';
-    const periodEnd = currentSubscription?.current_period_end;
-    const endDateStr = periodEnd ? new Date(periodEnd).toLocaleDateString('pt-BR') : '';
-    const daysUntilEnd = periodEnd ? (new Date(periodEnd) - new Date()) / (1000 * 86400) : 0;
-    const isLongPeriod = daysUntilEnd > 31;
-
+    let endDateStr = '';
+    if (currentSubscription?.current_period_end) {
+        endDateStr = new Date(currentSubscription.current_period_end).toLocaleDateString('pt-BR');
+    }
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
     modal.id = 'switchIntervalModal';
-
-    if (isLongPeriod) {
-        modal.innerHTML = `
-            <div class="modal-box">
-                <h3>Mudar para ${targetLabel}?</h3>
-                <p>Você já pagou pelo plano <span class="highlight">${currentLabel}</span> até <span class="highlight">${endDateStr}</span>. A assinatura será cancelada ao fim do período atual e você mantém acesso normalmente até lá.</p>
-                <p style="margin-bottom:0;font-size:13px;">Após ${endDateStr}, retorne a esta página para assinar o plano ${targetLabel}.</p>
-                <div class="modal-actions">
-                    <button class="modal-btn-cancel" onclick="document.getElementById('switchIntervalModal')?.remove()">Voltar</button>
-                    <button class="modal-btn-confirm" id="confirmSwitchBtn" onclick="confirmSwitchInterval('${planId}', true)">Confirmar cancelamento</button>
-                </div>
-            </div>`;
-    } else {
-        modal.innerHTML = `
-            <div class="modal-box">
-                <h3>Mudar para ${targetLabel}?</h3>
-                <p>Sua assinatura <span class="highlight">${currentLabel}</span> do plano <span class="highlight">${escHtml(planName)}</span> será cancelada${
-                    endDateStr ? ` — você mantém acesso até <span class="highlight">${endDateStr}</span>` : ''
-                }. Ao concluir o checkout, a <strong>primeira cobrança da versão ${targetLabel} só acontecerá no dia ${endDateStr || 'o fim do período atual'}</strong>, aproveitando os dias já pagos.</p>
-                <div class="modal-actions">
-                    <button class="modal-btn-cancel" onclick="document.getElementById('switchIntervalModal')?.remove()">Cancelar</button>
-                    <button class="modal-btn-confirm" id="confirmSwitchBtn" onclick="confirmSwitchInterval('${planId}', false)">Ir para o checkout</button>
-                </div>
-            </div>`;
-    }
+    modal.innerHTML = `
+        <div class="modal-box">
+            <h3>Mudar para ${targetLabel}?</h3>
+            <p>Sua assinatura <span class="highlight">${currentLabel}</span> do plano <span class="highlight">${escHtml(planName)}</span> será cancelada${
+                endDateStr ? ` — você mantém acesso até <span class="highlight">${endDateStr}</span>` : ''
+            }. Ao concluir o checkout, a <strong>primeira cobrança da versão ${targetLabel} só acontecerá no dia ${endDateStr || 'o fim do período atual'}</strong>.</p>
+            <div class="modal-actions">
+                <button class="modal-btn-cancel" onclick="document.getElementById('switchIntervalModal')?.remove()">Cancelar</button>
+                <button class="modal-btn-confirm" id="confirmSwitchBtn" onclick="confirmSwitchInterval('${planId}')">Ir para o checkout</button>
+            </div>
+        </div>`;
     document.body.appendChild(modal);
     modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
 }
 
-async function confirmSwitchInterval(planId, cancelOnly) {
+async function confirmSwitchInterval(planId) {
     if (!currentSubscription) return;
+    const trialEnd  = currentSubscription.current_period_end || null;
+    const now       = Date.now();
+    const trialEndMs = trialEnd ? new Date(trialEnd).getTime() : 0;
+    const daysAhead  = (trialEndMs - now) / 86400000;
+    const maxDays    = currentInterval === 'year' ? 366 : 31;
 
-    if (cancelOnly) {
+    // If remaining period is too long for billing_cycle_anchor (e.g. annual→monthly),
+    // use the API directly — avoids "X days free" text in Checkout
+    if (daysAhead > maxDays) {
         const btn = document.getElementById('confirmSwitchBtn');
         if (btn) { btn.disabled = true; btn.textContent = 'Processando…'; }
         try {
             const { data: { session } } = await supabase.auth.getSession();
-            const res = await fetch(`${SUPABASE_FUNCTIONS_URL}/cancel-subscription`, {
+            const res = await fetch(`${SUPABASE_FUNCTIONS_URL}/switch-subscription`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${session.access_token}`,
                     'apikey': SUPABASE_ANON_KEY,
                 },
-                body: JSON.stringify({ subscription_id: currentSubscription.id, cancel_at_period_end: true }),
+                body: JSON.stringify({
+                    current_subscription_id: currentSubscription.id,
+                    new_plan_id: planId,
+                    new_billing_interval: currentInterval,
+                }),
             });
             const body = await res.json();
-            if (!res.ok) throw new Error(body.error || 'Erro ao cancelar');
+            if (!res.ok) throw new Error(body.error || 'Erro ao mudar intervalo');
             document.getElementById('switchIntervalModal')?.remove();
-            currentSubscription.cancel_at_period_end = true;
-            renderPaidPlans();
-            updateFreePlanBtn();
-            const endDate = currentSubscription.current_period_end
-                ? new Date(currentSubscription.current_period_end).toLocaleDateString('pt-BR') : '';
-            showToast(`Assinatura cancelada. Acesso mantido até ${endDate}.`, 'info');
+            const endDateStr = trialEnd ? new Date(trialEnd).toLocaleDateString('pt-BR') : '';
+            showToast(`Intervalo alterado. Primeira cobrança em ${endDateStr}.`, 'success');
+            // Refresh page to reflect updated subscriptions
+            setTimeout(() => window.location.reload(), 1500);
         } catch (err) {
-            if (btn) { btn.disabled = false; btn.textContent = 'Confirmar cancelamento'; }
+            const btn = document.getElementById('confirmSwitchBtn');
+            if (btn) { btn.disabled = false; btn.textContent = 'Ir para o checkout'; }
             showToast('Erro: ' + err.message, 'error');
         }
         return;
     }
 
-    const trialEnd = currentSubscription.current_period_end || null;
     _proceedToCheckout(planId, trialEnd);
 }
 
