@@ -167,7 +167,20 @@ Deno.serve(async (req) => {
       },
       subscription_data: {
         metadata: { user_id: user.id, plan_id, coupon_code: coupon_code || '', billing_interval: billing_interval || 'month' },
-        ...(trial_end ? { billing_cycle_anchor: Math.floor(new Date(trial_end).getTime() / 1000), proration_behavior: 'none' } : {}),
+        ...(trial_end ? (() => {
+          const trialEndTs = Math.floor(new Date(trial_end).getTime() / 1000);
+          const nowTs      = Math.floor(Date.now() / 1000);
+          const daysAhead  = (trialEndTs - nowTs) / 86400;
+          // billing_cycle_anchor must not exceed next natural billing date
+          // monthly → max ~31 days; annual → max ~366 days
+          const maxDays = (billing_interval === 'year') ? 366 : 31;
+          if (daysAhead <= maxDays) {
+            return { billing_cycle_anchor: trialEndTs, proration_behavior: 'none' };
+          }
+          // Exceeds next natural billing date (e.g. switching annual→monthly):
+          // fall back to trial_end — Stripe shows "X days free" but it works
+          return { trial_end: trialEndTs };
+        })() : {}),
       },
       locale: 'pt-BR',
     };
