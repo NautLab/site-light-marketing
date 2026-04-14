@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
     const { data: { user } } = await callerClient.auth.getUser();
     if (!user) return json({ error: 'Unauthorized' }, 401);
 
-    const { plan_id, coupon_code, billing_interval, ui_mode } = await req.json();
+    const { plan_id, coupon_code, billing_interval, ui_mode, trial_end } = await req.json();
     if (!plan_id) return json({ error: 'Missing plan_id' }, 400);
 
     // Load plan from DB
@@ -155,6 +155,7 @@ Deno.serve(async (req) => {
       },
       subscription_data: {
         metadata: { user_id: user.id, plan_id, coupon_code: coupon_code || '', billing_interval: billing_interval || 'month' },
+        ...(trial_end ? { trial_end: Math.floor(new Date(trial_end).getTime() / 1000) } : {}),
       },
       locale: 'pt-BR',
     };

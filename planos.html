@@ -1043,13 +1043,14 @@ async function handleSubscribe(planId, planName) {
     _proceedToCheckout(planId);
 }
 
-function _proceedToCheckout(planId) {
+function _proceedToCheckout(planId, trialEndIso = null) {
     // Redirect to custom checkout page
     const params = new URLSearchParams({
         plan_id: planId,
         interval: currentInterval,
     });
     if (activeCouponCode) params.set('coupon', activeCouponCode);
+    if (trialEndIso) params.set('trial_end', trialEndIso);
     window.location.href = `checkout.html?${params.toString()}`;
 }
 
@@ -1080,7 +1081,7 @@ function showSwitchIntervalModal(planId, planName) {
             <h3>Mudar para ${targetLabel}?</h3>
             <p>Sua assinatura <span class="highlight">${currentLabel}</span> do plano <span class="highlight">${escHtml(planName)}</span> será cancelada${
                 endDateStr ? ` — você mantém acesso até <span class="highlight">${endDateStr}</span>` : ''
-            }. A próxima cobrança só ocorrerá após a conclusão do checkout da versão ${targetLabel}.</p>
+            }. Ao concluir o checkout, a <strong>primeira cobrança da versão ${targetLabel} só acontecerá após ${endDateStr || 'o fim do período atual'}</strong>, aproveitando os dias já pagos.</p>
             <div class="modal-actions">
                 <button class="modal-btn-cancel" onclick="document.getElementById('switchIntervalModal')?.remove()">Cancelar</button>
                 <button class="modal-btn-confirm" id="confirmSwitchBtn" onclick="confirmSwitchInterval('${planId}')">Ir para o checkout</button>
@@ -1107,7 +1108,8 @@ async function confirmSwitchInterval(planId) {
         });
         const body = await res.json();
         if (!res.ok) throw new Error(body.error || 'Erro ao cancelar');
-        _proceedToCheckout(planId);
+        const trialEnd = currentSubscription.current_period_end || null;
+        _proceedToCheckout(planId, trialEnd);
     } catch (err) {
         if (btn) { btn.disabled = false; btn.textContent = 'Ir para o checkout'; }
         alert('Erro: ' + err.message);

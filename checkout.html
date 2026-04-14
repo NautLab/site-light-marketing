@@ -284,6 +284,7 @@
         const planId  = params.get('plan_id');
         const coupon  = params.get('coupon');
         const interval = params.get('interval') || 'month';
+        const trialEnd = params.get('trial_end') || null;
 
         if (!planId) {
             showError('Nenhum plano selecionado.');
@@ -358,6 +359,11 @@
                 <span>Cupom (${escHtml(coupon)})</span>
                 <span style="font-weight:600;">${discountDisplay}</span>
             </div>` : coupon ? `<div class="summary-coupon" style="background:rgba(239,68,68,0.1);border-color:rgba(239,68,68,0.3);color:#f87171;">Cupom &quot;${escHtml(coupon)}&quot; não encontrado</div>` : ''}
+            ${trialEnd ? `
+            <div class="summary-row" style="color:#f59e0b;font-size:12px;">
+                <span>Primeira cobrança em</span>
+                <span style="font-weight:600;">${new Date(trialEnd).toLocaleDateString('pt-BR')}</span>
+            </div>` : ''}
             <div class="summary-total">
                 <span class="label">Total</span>
                 <span>
@@ -387,6 +393,7 @@
                     coupon_code: coupon || undefined,
                     billing_interval: interval,
                     ui_mode: 'embedded',
+                    trial_end: trialEnd || undefined,
                 }),
             });
 
