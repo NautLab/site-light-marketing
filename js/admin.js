@@ -676,8 +676,13 @@ function openRefundModal(userId, userName, lastAmountCents) {
                     const parts = [];
                     if (refunded > 0) parts.push(`Já reembolsado: R$ ${(refunded / 100).toFixed(2).replace('.', ',')}`);
                     parts.push(`Disponível para reembolso: R$ ${(available / 100).toFixed(2).replace('.', ',')}`);
-                    infoHint.textContent = parts.join(' · ');
-                    infoHint.style.display = '';
+                    const el = document.getElementById('refundInfoHint');
+                    if (el) {
+                        el.textContent = parts.join(' · ');
+                        el.style.display = 'block';
+                        // Force repaint so element becomes visible without user interaction
+                        el.getBoundingClientRect();
+                    }
                 }
             } catch (_) { /* silent */ }
         })();

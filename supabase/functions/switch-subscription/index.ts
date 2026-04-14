@@ -68,10 +68,26 @@ Deno.serve(async (req) => {
 
     if (!profile?.stripe_customer_id) return json({ error: 'Cliente Stripe não encontrado.' }, 400);
 
-    const customer = await stripe.customers.retrieve(profile.stripe_customer_id) as Stripe.Customer;
-    const paymentMethodId = customer.invoice_settings?.default_payment_method as string
-      || (customer.default_source as string)
-      || null;
+    // Get payment method from the current subscription (set by Stripe Checkout)
+    const stripeSub = await stripe.subscriptions.retrieve(currentSub.stripe_subscription_id);
+    let paymentMethodId = stripeSub.default_payment_method as string || null;
+
+    // Fallback: check customer's default payment method
+    if (!paymentMethodId) {
+      const customer = await stripe.customers.retrieve(profile.stripe_customer_id) as Stripe.Customer;
+      paymentMethodId = customer.invoice_settings?.default_payment_method as string
+        || (customer.default_source as string)
+        || null;
+    }
+
+    // Fallback: use the payment method from the latest invoice
+    if (!paymentMethodId && stripeSub.latest_invoice) {
+      const invoice = await stripe.invoices.retrieve(stripeSub.latest_invoice as string);
+      const pi = invoice.payment_intent
+        ? await stripe.paymentIntents.retrieve(invoice.payment_intent as string)
+        : null;
+      paymentMethodId = pi?.payment_method as string || null;
+    }
 
     if (!paymentMethodId) {
       return json({ error: 'Nenhum método de pagamento salvo. Por favor, use o checkout.' }, 400);
