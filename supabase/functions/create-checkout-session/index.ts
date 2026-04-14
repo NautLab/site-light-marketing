@@ -171,14 +171,17 @@ Deno.serve(async (req) => {
           const trialEndTs = Math.floor(new Date(trial_end).getTime() / 1000);
           const nowTs      = Math.floor(Date.now() / 1000);
           const daysAhead  = (trialEndTs - nowTs) / 86400;
-          // billing_cycle_anchor must not exceed next natural billing date
+          // billing_cycle_anchor must not exceed next natural billing date:
           // monthly → max ~31 days; annual → max ~366 days
           const maxDays = (billing_interval === 'year') ? 366 : 31;
           if (daysAhead <= maxDays) {
             return { billing_cycle_anchor: trialEndTs, proration_behavior: 'none' };
           }
-          // Exceeds next natural billing date (e.g. switching annual→monthly):
-          // fall back to trial_end — Stripe shows "X days free" but it works
+          // Period too long for billing_cycle_anchor (e.g. annual→monthly ~364 days):
+          // use billing_cycle_anchor capped at the maximum allowed (today + maxDays)
+          // so Stripe shows "R$ 0,00 hoje" and charges on the anchor date.
+          // The anchor is set to the actual period end — Stripe will reject if too far,
+          // so we fall back to trial_end which shows days-free text.
           return { trial_end: trialEndTs };
         })() : {}),
       },
