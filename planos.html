@@ -1040,7 +1040,12 @@ async function handleSubscribe(planId, planName) {
         return;
     }
 
-    _proceedToCheckout(planId);
+    // Se há assinatura cancelada ainda vigente, preservar os dias restantes usando trial_end
+    const trialEnd = (currentSubscription?.cancel_at_period_end && currentSubscription?.current_period_end)
+        ? currentSubscription.current_period_end
+        : null;
+
+    _proceedToCheckout(planId, trialEnd);
 }
 
 function _proceedToCheckout(planId, trialEndIso = null) {
