@@ -71,21 +71,33 @@ Deno.serve(async (req) => {
 
     if (existingSubs && existingSubs.length > 0) {
       const blocking = existingSubs.filter(s => !s.cancel_at_period_end);
-      if (blocking.length > 0) {
-        return json({
-          error: 'Você já possui uma assinatura ativa. Cancele o plano atual antes de assinar um novo.',
-        }, 409);
-      }
 
-      // Only subs already scheduled to cancel — cancel them immediately and proceed
-      for (const sub of existingSubs) {
-        if (sub.stripe_subscription_id) {
-          try { await stripe.subscriptions.cancel(sub.stripe_subscription_id); } catch (_) {}
+      if (trial_end) {
+        // Switch-interval flow: schedule all active subs to cancel at period end, keep access
+        for (const sub of blocking) {
+          if (sub.stripe_subscription_id) {
+            try { await stripe.subscriptions.update(sub.stripe_subscription_id, { cancel_at_period_end: true }); } catch (_) {}
+          }
+          await adminClient.from('subscriptions').update({ cancel_at_period_end: true }).eq('id', sub.id);
         }
-        await adminClient.from('subscriptions').update({
-          status: 'canceled',
-          canceled_at: new Date().toISOString(),
-        }).eq('id', sub.id);
+        // Already-scheduled subs: leave them running until period end
+      } else {
+        if (blocking.length > 0) {
+          return json({
+            error: 'Você já possui uma assinatura ativa. Cancele o plano atual antes de assinar um novo.',
+          }, 409);
+        }
+
+        // Only subs already scheduled to cancel — cancel them immediately and proceed
+        for (const sub of existingSubs) {
+          if (sub.stripe_subscription_id) {
+            try { await stripe.subscriptions.cancel(sub.stripe_subscription_id); } catch (_) {}
+          }
+          await adminClient.from('subscriptions').update({
+            status: 'canceled',
+            canceled_at: new Date().toISOString(),
+          }).eq('id', sub.id);
+        }
       }
     }
 

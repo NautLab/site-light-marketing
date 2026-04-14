@@ -1081,7 +1081,7 @@ function showSwitchIntervalModal(planId, planName) {
             <h3>Mudar para ${targetLabel}?</h3>
             <p>Sua assinatura <span class="highlight">${currentLabel}</span> do plano <span class="highlight">${escHtml(planName)}</span> será cancelada${
                 endDateStr ? ` — você mantém acesso até <span class="highlight">${endDateStr}</span>` : ''
-            }. Ao concluir o checkout, a <strong>primeira cobrança da versão ${targetLabel} só acontecerá após ${endDateStr || 'o fim do período atual'}</strong>, aproveitando os dias já pagos.</p>
+            }. Ao concluir o checkout, a <strong>primeira cobrança da versão ${targetLabel} só acontecerá no dia ${endDateStr || 'o fim do período atual'}</strong>.</p>
             <div class="modal-actions">
                 <button class="modal-btn-cancel" onclick="document.getElementById('switchIntervalModal')?.remove()">Cancelar</button>
                 <button class="modal-btn-confirm" id="confirmSwitchBtn" onclick="confirmSwitchInterval('${planId}')">Ir para o checkout</button>
@@ -1093,27 +1093,8 @@ function showSwitchIntervalModal(planId, planName) {
 
 async function confirmSwitchInterval(planId) {
     if (!currentSubscription) return;
-    const btn = document.getElementById('confirmSwitchBtn');
-    if (btn) { btn.disabled = true; btn.textContent = 'Processando…'; }
-    try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const res = await fetch(`${SUPABASE_FUNCTIONS_URL}/cancel-subscription`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${session.access_token}`,
-                'apikey': SUPABASE_ANON_KEY,
-            },
-            body: JSON.stringify({ subscription_id: currentSubscription.id, cancel_at_period_end: true }),
-        });
-        const body = await res.json();
-        if (!res.ok) throw new Error(body.error || 'Erro ao cancelar');
-        const trialEnd = currentSubscription.current_period_end || null;
-        _proceedToCheckout(planId, trialEnd);
-    } catch (err) {
-        if (btn) { btn.disabled = false; btn.textContent = 'Ir para o checkout'; }
-        alert('Erro: ' + err.message);
-    }
+    const trialEnd = currentSubscription.current_period_end || null;
+    _proceedToCheckout(planId, trialEnd);
 }
 
 function showAlreadySubscribedModal(currentPlanName) {
