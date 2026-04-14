@@ -669,23 +669,18 @@ async function openRefundModal(userId, userName, lastAmountCents) {
         document.getElementById('refundUserName').textContent = userName;
         const hint     = document.getElementById('refundLastAmountHint');
         const infoHint = document.getElementById('refundInfoHint');
-        if (hint) {
-            if (lastAmountCents) {
-                const formatted = (lastAmountCents / 100).toFixed(2).replace('.', ',');
-                hint.textContent = `Último pagamento: R$ ${formatted}`;
-                hint.style.display = '';
-            } else {
-                hint.style.display = 'none';
-            }
-        }
+        // refundLastAmountHint fica oculto — a API já inclui o valor total no infoHint
+        if (hint) hint.style.display = 'none';
         if (infoHint) {
             if (res.ok && body.amount_cents != null) {
-                const refunded  = body.amount_refunded_cents || 0;
-                const available = body.amount_cents - refunded;
-                const parts = [];
-                if (refunded > 0) parts.push(`Já reembolsado: R$ ${(refunded / 100).toFixed(2).replace('.', ',')}`);
-                parts.push(`Disponível para reembolso: R$ ${(available / 100).toFixed(2).replace('.', ',')}`);
-                infoHint.textContent = parts.join(' · ');
+                const total     = body.amount_cents;
+                const refunded  = body.amount_refunded_cents ?? 0;
+                const available = total - refunded;
+                infoHint.textContent = [
+                    `Último pagamento: R$ ${(total / 100).toFixed(2).replace('.', ',')}`,
+                    `Já reembolsado: R$ ${(refunded / 100).toFixed(2).replace('.', ',')}`,
+                    `Disponível para reembolso: R$ ${(available / 100).toFixed(2).replace('.', ',')}`,
+                ].join(' · ');
                 infoHint.style.display = 'block';
             } else {
                 infoHint.style.display = 'none';
