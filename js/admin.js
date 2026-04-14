@@ -659,11 +659,14 @@ async function openRefundModal(userId, userName, lastAmountCents) {
         }
     }
     if (infoHint) {
-        infoHint.textContent = 'A carregar…';
+        infoHint.innerHTML = '<span class="spinner-inline"></span>';
         infoHint.style.display = 'block';
     }
 
-    // Fetch charge info BEFORE opening modal so everything appears together
+    document.getElementById('refundAmount').value = '';
+    openModal('refundModal');
+
+    // Fetch charge info after modal is open
     try {
         const session = await supabase.auth.getSession();
         const res = await callFunction('admin-update-user', {
@@ -686,9 +689,6 @@ async function openRefundModal(userId, userName, lastAmountCents) {
     } catch (_) {
         if (infoHint) infoHint.style.display = 'none';
     }
-
-    document.getElementById('refundAmount').value = '';
-    openModal('refundModal');
 }
 
 async function submitRefund() {
