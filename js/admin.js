@@ -642,12 +642,13 @@ async function revokePaidSubscription(userId) {
 
 // ─── Refund ──────────────────────────────────────────────────
 
-function openRefundModal(userId, userName, lastAmountCents) {
+async function openRefundModal(userId, userName, lastAmountCents) {
     selectedUserId   = userId;
     selectedUserName = userName;
     document.getElementById('refundUserName').textContent = userName;
-    document.getElementById('refundAmount').value = '';
-    const hint = document.getElementById('refundLastAmountHint');
+    const hint     = document.getElementById('refundLastAmountHint');
+    const infoHint = document.getElementById('refundInfoHint');
+
     if (hint) {
         if (lastAmountCents) {
             const formatted = (lastAmountCents / 100).toFixed(2).replace('.', ',');
@@ -657,36 +658,37 @@ function openRefundModal(userId, userName, lastAmountCents) {
             hint.style.display = 'none';
         }
     }
-    const infoHint = document.getElementById('refundInfoHint');
-    if (infoHint) { infoHint.style.display = 'none'; infoHint.textContent = ''; }
-    openModal('refundModal');
-    // Async: load remaining refund info from Stripe
     if (infoHint) {
-        (async () => {
-            try {
-                const session = await supabase.auth.getSession();
-                const res = await callFunction('admin-update-user', {
-                    target_user_id: userId,
-                    action: 'get_charge_info',
-                }, session.data.session.access_token);
-                const body = await res.json();
-                if (res.ok && body.amount_cents != null) {
-                    const refunded = body.amount_refunded_cents || 0;
-                    const available = body.amount_cents - refunded;
-                    const parts = [];
-                    if (refunded > 0) parts.push(`Já reembolsado: R$ ${(refunded / 100).toFixed(2).replace('.', ',')}`);
-                    parts.push(`Disponível para reembolso: R$ ${(available / 100).toFixed(2).replace('.', ',')}`);
-                    const el = document.getElementById('refundInfoHint');
-                    if (el) {
-                        el.textContent = parts.join(' · ');
-                        el.style.display = 'block';
-                        // Force repaint so element becomes visible without user interaction
-                        el.getBoundingClientRect();
-                    }
-                }
-            } catch (_) { /* silent */ }
-        })();
+        infoHint.textContent = 'A carregar…';
+        infoHint.style.display = 'block';
     }
+
+    // Fetch charge info BEFORE opening modal so everything appears together
+    try {
+        const session = await supabase.auth.getSession();
+        const res = await callFunction('admin-update-user', {
+            target_user_id: userId,
+            action: 'get_charge_info',
+        }, session.data.session.access_token);
+        const body = await res.json();
+        if (infoHint) {
+            if (res.ok && body.amount_cents != null) {
+                const refunded  = body.amount_refunded_cents || 0;
+                const available = body.amount_cents - refunded;
+                const parts = [];
+                if (refunded > 0) parts.push(`Já reembolsado: R$ ${(refunded / 100).toFixed(2).replace('.', ',')}`);
+                parts.push(`Disponível para reembolso: R$ ${(available / 100).toFixed(2).replace('.', ',')}`);
+                infoHint.textContent = parts.join(' · ');
+            } else {
+                infoHint.style.display = 'none';
+            }
+        }
+    } catch (_) {
+        if (infoHint) infoHint.style.display = 'none';
+    }
+
+    document.getElementById('refundAmount').value = '';
+    openModal('refundModal');
 }
 
 async function submitRefund() {
