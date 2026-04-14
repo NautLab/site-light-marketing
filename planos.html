@@ -932,7 +932,7 @@ function buildPlanCard(p) {
         if (!currentSubscription.cancel_at_period_end) {
             if (isOtherInterval) {
                 const targetLabel = currentInterval === 'year' ? 'anual' : 'mensal';
-                cancelBtnHtml = `<button class="plan-btn plan-btn-primary" onclick="showSwitchIntervalModal('${p.id}', '${escHtml(p.name)}')">Mudar para ${targetLabel}</button>`;
+                cancelBtnHtml = `<button class="plan-btn plan-btn-primary" style="margin-top:8px;" onclick="showSwitchIntervalModal('${p.id}', '${escHtml(p.name)}')">Mudar para ${targetLabel}</button>`;
             } else {
                 cancelBtnHtml = `<button class="plan-btn plan-btn-danger" onclick="handleCancelSubscription()">Cancelar assinatura</button>`;
             }
@@ -1080,7 +1080,7 @@ function showSwitchIntervalModal(planId, planName) {
             <h3>Mudar para ${targetLabel}?</h3>
             <p>Sua assinatura <span class="highlight">${currentLabel}</span> do plano <span class="highlight">${escHtml(planName)}</span> será cancelada${
                 endDateStr ? ` — você mantém acesso até <span class="highlight">${endDateStr}</span>` : ''
-            }. Em seguida, será direcionado ao checkout para assinar a versão ${targetLabel}.</p>
+            }. A próxima cobrança só ocorrerá após a conclusão do checkout da versão ${targetLabel}.</p>
             <div class="modal-actions">
                 <button class="modal-btn-cancel" onclick="document.getElementById('switchIntervalModal')?.remove()">Cancelar</button>
                 <button class="modal-btn-confirm" id="confirmSwitchBtn" onclick="confirmSwitchInterval('${planId}')">Ir para o checkout</button>
