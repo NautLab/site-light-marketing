@@ -1080,53 +1080,27 @@ function showSwitchIntervalModal(planId, planName) {
     const currentLabel = currentInterval === 'year' ? 'mensal' : 'anual';
     const periodEnd = currentSubscription?.current_period_end;
     let endDateStr = '';
-    let endDateLong = '';
     if (periodEnd) {
-        endDateStr  = new Date(periodEnd).toLocaleDateString('pt-BR');
-        endDateLong = new Date(periodEnd).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
+        endDateStr = new Date(periodEnd).toLocaleDateString('pt-BR');
     }
 
-    const daysAhead = periodEnd ? (new Date(periodEnd).getTime() - Date.now()) / 86400000 : 0;
     const isAnnualToMonthly = currentSubscription?.billing_interval === 'year' && currentInterval === 'month';
-    const useDirectApi = isAnnualToMonthly && daysAhead > 31;
-
-    const plan = allPlans.find(p => p.id === planId);
-    let innerHtml;
-
-    if (useDirectApi && plan) {
-        const monthlyPriceStr = parseFloat(plan.price_brl).toFixed(2).replace('.', ',');
-        innerHtml = `
-        <div class="modal-box">
-            <h3>Mudar para mensal?</h3>
-            <div class="switch-preview">
-                <div class="switch-preview-name">Assinar ${escHtml(planName)}</div>
-                <div class="switch-preview-price">R$ 0,00</div>
-                <div class="switch-preview-due">vence hoje</div>
-                <div class="switch-preview-after">Depois R$ ${monthlyPriceStr} por mês a partir de ${endDateLong}</div>
-            </div>
-            <div class="modal-actions">
-                <button class="modal-btn-cancel" onclick="document.getElementById('switchIntervalModal')?.remove()">Cancelar</button>
-                <button class="modal-btn-confirm" id="confirmSwitchBtn" onclick="confirmSwitchInterval('${planId}')">Confirmar</button>
-            </div>
-        </div>`;
-    } else {
-        innerHtml = `
-        <div class="modal-box">
-            <h3>Mudar para ${targetLabel}?</h3>
-            <p>Sua assinatura <span class="highlight">${currentLabel}</span> do plano <span class="highlight">${escHtml(planName)}</span> será cancelada${
-                endDateStr ? ` — você mantém acesso até <span class="highlight">${endDateStr}</span>` : ''
-            }. Ao concluir o checkout, a <strong>primeira cobrança da versão ${targetLabel} só acontecerá no dia ${endDateStr || 'o fim do período atual'}</strong>.</p>
-            <div class="modal-actions">
-                <button class="modal-btn-cancel" onclick="document.getElementById('switchIntervalModal')?.remove()">Cancelar</button>
-                <button class="modal-btn-confirm" id="confirmSwitchBtn" onclick="confirmSwitchInterval('${planId}')">Ir para o checkout</button>
-            </div>
-        </div>`;
-    }
+    const confirmLabel = isAnnualToMonthly ? 'Confirmar' : 'Ir para o checkout';
 
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
     modal.id = 'switchIntervalModal';
-    modal.innerHTML = innerHtml;
+    modal.innerHTML = `
+        <div class="modal-box">
+            <h3>Mudar para ${targetLabel}?</h3>
+            <p>Sua assinatura <span class="highlight">${currentLabel}</span> do plano <span class="highlight">${escHtml(planName)}</span> será cancelada${
+                endDateStr ? ` — você mantém acesso até <span class="highlight">${endDateStr}</span>` : ''
+            }. A <strong>primeira cobrança da versão ${targetLabel} só acontecerá no dia ${endDateStr || 'o fim do período atual'}</strong>.</p>
+            <div class="modal-actions">
+                <button class="modal-btn-cancel" onclick="document.getElementById('switchIntervalModal')?.remove()">Cancelar</button>
+                <button class="modal-btn-confirm" id="confirmSwitchBtn" onclick="confirmSwitchInterval('${planId}')">${confirmLabel}</button>
+            </div>
+        </div>`;
     document.body.appendChild(modal);
     modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
 }
