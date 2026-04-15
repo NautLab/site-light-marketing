@@ -1384,11 +1384,13 @@ function renderSubscriptionsTable(list) {
     // ── Count bar ──────────────────────────────────────────
     const countBar = document.getElementById('subsCountBar');
     if (countBar) {
-        const activeCount   = display.filter(s => s.status === 'active' || s.status === 'trialing').length;
+        const activeCount   = display.filter(s => s.status === 'active').length;
+        const waitingCount  = display.filter(s => s.status === 'trialing').length;
         const canceledCount = display.filter(s => s.status === 'canceled').length;
-        const otherCount    = display.length - activeCount - canceledCount;
+        const otherCount    = display.length - activeCount - waitingCount - canceledCount;
         const parts = [];
         if (activeCount)   parts.push(`<span style="color:#34d399;font-weight:600;">${activeCount} ativa${activeCount !== 1 ? 's' : ''}</span>`);
+        if (waitingCount)  parts.push(`<span style="color:#f59e0b;font-weight:600;">${waitingCount} em espera</span>`);
         if (canceledCount) parts.push(`<span style="color:#f87171;font-weight:600;">${canceledCount} cancelada${canceledCount !== 1 ? 's' : ''}</span>`);
         if (otherCount)    parts.push(`<span>${otherCount} outro${otherCount !== 1 ? 's' : ''}</span>`);
         countBar.innerHTML = parts.length ? parts.join('<span style="color:var(--border)"> · </span>') + `<span style="margin-left:4px;">— total: ${display.length}</span>` : '';
@@ -1466,7 +1468,7 @@ function revokeSubImmediate(subId) {
     const existing = document.getElementById('revokeSubImmediateModal');
     if (existing) existing.remove();
     const modal = document.createElement('div');
-    modal.className = 'modal-overlay active';
+    modal.className = 'modal-overlay open';
     modal.id = 'revokeSubImmediateModal';
     modal.innerHTML = `
         <div class="modal" role="dialog" aria-modal="true">
@@ -2321,7 +2323,7 @@ function roleBadgeClass(role) {
 }
 
 function statusLabel(s) {
-    return { active: 'Ativa', canceled: 'Cancelada', past_due: 'Vencida', unpaid: 'Não Paga', trialing: 'Em teste', incomplete: 'Incompleta' }[s] || s;
+    return { active: 'Ativa', canceled: 'Cancelada', past_due: 'Vencida', unpaid: 'Não Paga', trialing: 'Em espera', incomplete: 'Incompleta' }[s] || s;
 }
 
 function durationLabel(d) {
