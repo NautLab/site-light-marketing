@@ -187,6 +187,11 @@ Deno.serve(async (req) => {
       locale: 'pt-BR',
     };
 
+    const observation = useAnnual ? (plan.annual_observation || '') : (plan.observation || '');
+    if (observation) {
+      sessionParams.custom_text = { submit_button: { message: observation } };
+    }
+
     if (ui_mode === 'embedded') {
       sessionParams.ui_mode = 'embedded';
       sessionParams.return_url = `${SITE_URL}/planos.html?checkout=success&session_id={CHECKOUT_SESSION_ID}`;
