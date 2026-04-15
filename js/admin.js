@@ -414,9 +414,7 @@ function buildUserRow(u) {
 
     // Show revoke sub button when user has active Stripe sub (without free_access).
     // With free_access the sub was already canceled at grant time, so no separate revoke needed.
-    const revokeSubBtn = (!u.free_access && activeSub && !isSelf && canEditRole)
-        ? `<button class="btn btn-sm btn-warning" onclick="revokePaidSubscription('${u.id}')">Revogar sub</button>`
-        : '';
+    const revokeSubBtn = '';
 
     return `
     <tr class="user-row-clickable" onclick="openUserDetail('${u.id}')">
