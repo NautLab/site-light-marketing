@@ -720,7 +720,7 @@ async function submitRefund() {
 
         closeModal('refundModal');
         const refundedAmount = (body.amount / 100).toFixed(2).replace('.', ',');
-        showToast(`Reembolso de R$ \${refundedAmount} processado com sucesso.`, 'success');
+        showToast(`Reembolso de R$ ${refundedAmount} processado com sucesso.`, 'success');
     } catch (err) {
         showToast('Erro: ' + err.message, 'error');
     } finally {

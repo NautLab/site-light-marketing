@@ -525,10 +525,16 @@ function translateStripeError(msg: string): string {
   if (!msg) return '';
   if (/already been refunded/i.test(msg)) return 'Este pagamento já foi reembolsado integralmente.';
   if (/greater than unrefunded amount/i.test(msg)) {
-    const m = msg.match(/\(R\$\s*([\d.,]+)\)/g);
-    if (m && m.length >= 2) return `Valor de reembolso (${m[0]}) maior que o disponível ${m[1]}.`;
+    const m = msg.match(/\(R\$\s*[\d.,]+\)/g);
+    if (m && m.length >= 2) return `Valor de reembolso ${m[0]} maior que o disponível ${m[1]}.`;
     return 'Valor de reembolso maior que o disponível na cobrança.';
   }
+  if (/Refund amount.*is greater than charge amount/i.test(msg)) {
+    const m = msg.match(/\([^)]+\)/g);
+    if (m && m.length >= 2) return `Valor de reembolso ${m[0]} maior que o valor cobrado ${m[1]}.`;
+    return 'Valor de reembolso maior que o valor cobrado.';
+  }
+  if (/No payment intent found for invoice/i.test(msg)) return 'Nenhum pagamento encontrado para reembolsar.';
   if (/charge.*not found/i.test(msg)) return 'Cobrança não encontrada no Stripe.';
   if (/no such payment_intent/i.test(msg)) return 'Intenção de pagamento não encontrada.';
   if (/no such invoice/i.test(msg)) return 'Fatura não encontrada.';
