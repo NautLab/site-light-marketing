@@ -2291,7 +2291,7 @@ function roleBadgeClass(role) {
 }
 
 function statusLabel(s) {
-    return { active: 'Ativa', canceled: 'Cancelada', past_due: 'Vencida', unpaid: 'Não Paga', trialing: 'Trial', incomplete: 'Incompleta' }[s] || s;
+    return { active: 'Ativa', canceled: 'Cancelada', past_due: 'Vencida', unpaid: 'Não Paga', trialing: 'Em teste', incomplete: 'Incompleta' }[s] || s;
 }
 
 function durationLabel(d) {

@@ -462,34 +462,46 @@ Deno.serve(async (req) => {
     if (action === 'get_charge_info') {
       const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!, { apiVersion: '2024-06-20' });
 
-      const { data: activeSub } = await adminClient
+      // Fetch all recent subscriptions — not just the newest one,
+      // because after a plan switch the newest sub may be in trial (no charge yet).
+      const { data: allSubs } = await adminClient
         .from('subscriptions')
         .select('stripe_subscription_id')
         .eq('user_id', target_user_id)
         .not('stripe_subscription_id', 'is', null)
         .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .limit(10);
 
-      if (!activeSub?.stripe_subscription_id) return json({ error: 'No subscription found' }, 404);
+      if (!allSubs || allSubs.length === 0) return json({ error: 'No subscription found' }, 404);
 
-      const stripeSub = await stripe.subscriptions.retrieve(activeSub.stripe_subscription_id);
-      const invoiceId = stripeSub.latest_invoice as string;
-      if (!invoiceId) return json({ error: 'No invoice found' }, 404);
+      // Walk through subscriptions newest-first, find the first one with a real paid invoice.
+      for (const sub of allSubs) {
+        const stripeSub = await stripe.subscriptions.retrieve(sub.stripe_subscription_id);
+        const invoiceId = stripeSub.latest_invoice as string;
+        if (!invoiceId) continue;
 
-      const invoice = await stripe.invoices.retrieve(invoiceId);
-      const piId = invoice.payment_intent as string;
-      if (!piId) return json({ error: 'No payment intent' }, 404);
+        const invoice = await stripe.invoices.retrieve(invoiceId);
+        if (invoice.amount_paid === 0 && !invoice.payment_intent) continue; // trial invoice, skip
 
-      const pi = await stripe.paymentIntents.retrieve(piId);
-      const chargeId = typeof pi.latest_charge === 'string' ? pi.latest_charge : pi.latest_charge?.id;
-      if (!chargeId) return json({ amount_cents: invoice.amount_paid, amount_refunded_cents: 0 });
+        const piId = invoice.payment_intent as string;
+        if (!piId) {
+          // Invoice exists but no payment intent (e.g. free trial, $0 invoice) — report zeros
+          return json({ amount_cents: 0, amount_refunded_cents: 0 });
+        }
 
-      const charge = await stripe.charges.retrieve(chargeId);
-      return json({
-        amount_cents: charge.amount,
-        amount_refunded_cents: charge.amount_refunded,
-      });
+        const pi = await stripe.paymentIntents.retrieve(piId);
+        const chargeId = typeof pi.latest_charge === 'string' ? pi.latest_charge : (pi.latest_charge as any)?.id;
+        if (!chargeId) return json({ amount_cents: invoice.amount_paid, amount_refunded_cents: 0 });
+
+        const charge = await stripe.charges.retrieve(chargeId);
+        return json({
+          amount_cents: charge.amount,
+          amount_refunded_cents: charge.amount_refunded,
+        });
+      }
+
+      // No paid invoice found across any subscription
+      return json({ amount_cents: 0, amount_refunded_cents: 0 });
     }
 
     return json({ error: 'Unknown action' }, 400);
