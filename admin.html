@@ -832,20 +832,12 @@
             <button class="modal-close-btn" onclick="closeModal('cancelSubModal')">×</button>
         </div>
         <div class="modal-body">
-            <p style="font-size:13px;color:var(--text-muted);">
-                Cancelar assinatura de <strong id="cancelSubUserName" style="color:var(--text);">—</strong>.
-            </p>
-            <div class="form-group" style="margin-top:6px;">
-                <label class="form-label" for="cancelSubMode">Quando cancelar</label>
-                <select class="form-control form-select" id="cancelSubMode">
-                    <option value="period_end">Ao fim do período atual</option>
-                    <option value="now">Imediatamente</option>
-                </select>
-            </div>
+            <p style="font-size:13px;color:var(--text-muted);">Confirmar cancelamento da assinatura de <strong id="cancelSubUserName" style="color:var(--text);">—</strong>?</p>
+            <div class="info-row warning" style="margin-top:10px;">O utilizador mantém acesso até ao fim do período já pago.</div>
         </div>
         <div class="modal-footer">
             <button class="btn btn-secondary" onclick="closeModal('cancelSubModal')">Voltar</button>
-            <button class="btn btn-danger" id="cancelSubBtn" onclick="confirmCancelSub()">Cancelar Assinatura</button>
+            <button class="btn btn-danger" id="cancelSubBtn" onclick="confirmCancelSub()">Confirmar</button>
         </div>
     </div>
 </div>

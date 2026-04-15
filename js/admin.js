@@ -1432,7 +1432,6 @@ function openCancelSubModal(subId, userName) {
 }
 
 async function confirmCancelSub() {
-    const mode = document.getElementById('cancelSubMode').value;
     const btn  = document.getElementById('cancelSubBtn');
     btn.disabled = true;
     btn.textContent = 'A cancelar…';
@@ -1441,7 +1440,7 @@ async function confirmCancelSub() {
         const session = await supabase.auth.getSession();
         const res = await callFunction('cancel-subscription', {
             subscription_id: selectedSubId,
-            cancel_at_period_end: mode === 'period_end',
+            cancel_at_period_end: true,
         }, session.data.session.access_token);
 
         if (!res.ok) {
@@ -1450,21 +1449,48 @@ async function confirmCancelSub() {
         }
 
         closeModal('cancelSubModal');
-        allSubs = []; // force reload
+        allSubs = [];
         await loadSubscriptions();
         showToast('Assinatura cancelada com sucesso.', 'success');
     } catch (err) {
         showToast('Erro: ' + err.message, 'error');
     } finally {
         btn.disabled = false;
-        btn.textContent = 'Cancelar Assinatura';
+        btn.textContent = 'Confirmar';
     }
 }
 
-async function revokeSubImmediate(subId) {
+function revokeSubImmediate(subId) {
     const sub = allSubs.find(s => s.id === subId);
     const userEmail = sub?.userEmail || subId;
-    if (!confirm(`Revogar imediatamente o plano de ${userEmail}? A assinatura será cancelada agora no Stripe.`)) return;
+    const existing = document.getElementById('revokeSubImmediateModal');
+    if (existing) existing.remove();
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay active';
+    modal.id = 'revokeSubImmediateModal';
+    modal.innerHTML = `
+        <div class="modal" role="dialog" aria-modal="true">
+            <div class="modal-header">
+                <h3 class="modal-title">Revogar Plano</h3>
+                <button class="modal-close-btn" onclick="document.getElementById('revokeSubImmediateModal').remove()">×</button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size:13px;color:var(--text-muted);">Revogar imediatamente o plano de <strong style="color:var(--text);">${escHtml(userEmail)}</strong>?</p>
+                <div class="info-row warning" style="margin-top:10px;">A assinatura será cancelada agora no Stripe. Esta ação não pode ser desfeita.</div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="document.getElementById('revokeSubImmediateModal').remove()">Cancelar</button>
+                <button class="btn btn-danger" id="revokeSubImmediateBtn" onclick="_doRevokeSubImmediate('${subId}')">Revogar</button>
+            </div>
+        </div>`;
+    document.body.appendChild(modal);
+    modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+}
+
+async function _doRevokeSubImmediate(subId) {
+    const sub = allSubs.find(s => s.id === subId);
+    const btn = document.getElementById('revokeSubImmediateBtn');
+    if (btn) { btn.disabled = true; btn.textContent = 'A revogar…'; }
     try {
         const session = await supabase.auth.getSession();
         const res = await callFunction('cancel-subscription', {
@@ -1487,8 +1513,12 @@ async function revokeSubImmediate(subId) {
         }
         allSubs = [];
         await loadSubscriptions();
+        document.getElementById('revokeSubImmediateModal')?.remove();
         showToast('Plano revogado com sucesso.', 'success');
-    } catch (err) { showToast('Erro: ' + err.message, 'error'); }
+    } catch (err) {
+        showToast('Erro: ' + err.message, 'error');
+        if (btn) { btn.disabled = false; btn.textContent = 'Revogar'; }
+    }
 }
 
 async function deleteSubscriptionRow(subId, userEmail) {
