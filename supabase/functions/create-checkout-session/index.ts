@@ -171,17 +171,16 @@ Deno.serve(async (req) => {
           const trialEndTs = Math.floor(new Date(trial_end).getTime() / 1000);
           const nowTs      = Math.floor(Date.now() / 1000);
           const daysAhead  = (trialEndTs - nowTs) / 86400;
-          // billing_cycle_anchor must not exceed next natural billing date:
-          // monthly → max ~31 days; annual → max ~366 days
-          const maxDays = (billing_interval === 'year') ? 366 : 31;
-          if (daysAhead <= maxDays) {
+          // Annual target: always use trial_end so the subscription starts as "trialing"
+          // (consistent with annual→monthly behavior — shows "X dias grátis" in checkout).
+          if (billing_interval === 'year') {
+            return { trial_end: trialEndTs };
+          }
+          // Monthly target (annual→monthly, ~364 days): billing_cycle_anchor only accepts
+          // up to ~31 days ahead, so fall back to trial_end for long periods.
+          if (daysAhead <= 31) {
             return { billing_cycle_anchor: trialEndTs, proration_behavior: 'none' };
           }
-          // Period too long for billing_cycle_anchor (e.g. annual→monthly ~364 days):
-          // use billing_cycle_anchor capped at the maximum allowed (today + maxDays)
-          // so Stripe shows "R$ 0,00 hoje" and charges on the anchor date.
-          // The anchor is set to the actual period end — Stripe will reject if too far,
-          // so we fall back to trial_end which shows days-free text.
           return { trial_end: trialEndTs };
         })() : {}),
       },
