@@ -1478,7 +1478,7 @@ function revokeSubImmediate(subId) {
             </div>
             <div class="modal-body">
                 <p style="font-size:13px;color:var(--text-muted);">Revogar imediatamente o plano de <strong style="color:var(--text);">${escHtml(userEmail)}</strong>?</p>
-                <div class="info-row warning" style="margin-top:10px;">A assinatura será cancelada agora no Stripe. Esta ação não pode ser desfeita.</div>
+                <div class="info-row warning" style="margin-top:10px;">Se a assinatura estiver ativa, será cancelada agora no Stripe. Esta ação não pode ser desfeita.</div>
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="document.getElementById('revokeSubImmediateModal').remove()">Cancelar</button>
