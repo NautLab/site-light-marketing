@@ -189,7 +189,7 @@ Deno.serve(async (req) => {
 
     const observation = useAnnual ? (plan.annual_observation || '') : (plan.observation || '');
     if (observation) {
-      sessionParams.custom_text = { submit_button: { message: observation } };
+      sessionParams.custom_text = { submit: { message: observation } };
     }
 
     if (ui_mode === 'embedded') {
