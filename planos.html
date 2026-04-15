@@ -1085,7 +1085,7 @@ function showSwitchIntervalModal(planId, planName) {
     }
 
     const isAnnualToMonthly = currentSubscription?.billing_interval === 'year' && currentInterval === 'month';
-    const confirmLabel = isAnnualToMonthly ? 'Confirmar' : 'Ir para o checkout';
+    const confirmLabel = 'Ir para o checkout';
 
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
@@ -1108,42 +1108,6 @@ function showSwitchIntervalModal(planId, planName) {
 async function confirmSwitchInterval(planId) {
     if (!currentSubscription) return;
     const trialEnd = currentSubscription.current_period_end || null;
-    const daysAhead = trialEnd ? (new Date(trialEnd).getTime() - Date.now()) / 86400000 : 0;
-    const isAnnualToMonthly = currentSubscription.billing_interval === 'year' && currentInterval === 'month';
-
-    if (isAnnualToMonthly && daysAhead > 31) {
-        // Período longo: usar API direta (sem Stripe Checkout) para evitar "X dias grátis"
-        const btn = document.getElementById('confirmSwitchBtn');
-        if (btn) { btn.disabled = true; btn.textContent = 'Processando…'; }
-        try {
-            const { data: { session } } = await supabase.auth.getSession();
-            const res = await fetch(`${SUPABASE_FUNCTIONS_URL}/switch-subscription`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${session.access_token}`,
-                    'apikey': SUPABASE_ANON_KEY,
-                },
-                body: JSON.stringify({
-                    current_subscription_id: currentSubscription.id,
-                    new_plan_id: planId,
-                    new_billing_interval: 'month',
-                }),
-            });
-            const body = await res.json();
-            if (!res.ok) throw new Error(body.error || 'Erro ao trocar plano');
-            document.getElementById('switchIntervalModal')?.remove();
-            currentSubscription = null;
-            await loadActiveSubscription();
-            renderPaidPlans();
-            showToast('Assinatura alterada para mensal com sucesso!', 'success');
-        } catch (err) {
-            showToast('Erro: ' + err.message, 'error');
-            if (btn) { btn.disabled = false; btn.textContent = 'Confirmar'; }
-        }
-        return;
-    }
-
     _proceedToCheckout(planId, trialEnd);
 }
 
