@@ -418,26 +418,35 @@ Deno.serve(async (req) => {
       const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!, { apiVersion: '2024-06-20' });
       const amountCents = body.amount ? Math.round(parseFloat(body.amount) * 100) : undefined;
 
-      // Find the most recent subscription with a Stripe ID (active or recently canceled)
-      const { data: activeSub } = await adminClient
+      // Walk through all recent subs for this user (newest first) to find one with a real paid invoice
+      const { data: allUserSubs } = await adminClient
         .from('subscriptions')
         .select('stripe_subscription_id')
         .eq('user_id', target_user_id)
         .not('stripe_subscription_id', 'is', null)
         .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .limit(10);
 
-      if (!activeSub?.stripe_subscription_id) return json({ error: 'No active subscription found' }, 404);
+      if (!allUserSubs || allUserSubs.length === 0) return json({ error: 'No subscription found' }, 404);
 
-      // Get latest invoice from Stripe subscription
-      const stripeSub = await stripe.subscriptions.retrieve(activeSub.stripe_subscription_id);
-      const invoiceId = stripeSub.latest_invoice as string;
-      if (!invoiceId) return json({ error: 'No invoice found for subscription' }, 404);
+      let paymentIntentId: string | null = null;
 
-      const invoice = await stripe.invoices.retrieve(invoiceId);
-      const paymentIntentId = invoice.payment_intent as string;
-      if (!paymentIntentId) return json({ error: 'No payment intent found for invoice' }, 404);
+      for (const sub of allUserSubs) {
+        const stripeSub = await stripe.subscriptions.retrieve(sub.stripe_subscription_id);
+        const invoiceId = stripeSub.latest_invoice as string;
+        if (!invoiceId) continue;
+
+        const invoice = await stripe.invoices.retrieve(invoiceId);
+        if (invoice.amount_paid === 0 && !invoice.payment_intent) continue; // trial $0 invoice
+
+        const piId = invoice.payment_intent as string;
+        if (!piId) continue;
+
+        paymentIntentId = piId;
+        break;
+      }
+
+      if (!paymentIntentId) return json({ error: 'Nenhum pagamento encontrado para reembolsar.' }, 404);
 
       // Create refund (full or partial)
       const refundParams: Record<string, unknown> = { payment_intent: paymentIntentId };
