@@ -299,10 +299,7 @@ function openUserDetail(userId) {
             ? `<button class="btn btn-danger" style="width:100%;justify-content:center;" onclick="closeModal('userDetailModal'); revokeFreeAccess('${u.id}')">Revogar acesso gratuito</button>`
             : `<button class="btn btn-success" style="width:100%;justify-content:center;" onclick="closeModal('userDetailModal'); openFreeAccessModal('${u.id}', '${escHtml(u.full_name || u.email)}')">Conceder acesso gratuito</button>`;
 
-    // Button to revoke active Stripe subscription (only when no free_access)
-    const revokeSubDetailBtn = (!isSelf && canEditRole && activeSub && !u.free_access)
-        ? `<button class="btn btn-warning" style="width:100%;justify-content:center;" onclick="closeModal('userDetailModal'); revokePaidSubscription('${u.id}')">Revogar plano pago</button>`
-        : '';
+    const revokeSubDetailBtn = '';
 
     document.getElementById('userDetailBody').innerHTML = `
         <div class="user-detail-header">

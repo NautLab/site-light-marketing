@@ -733,8 +733,7 @@ async function initAuthHeader() {
     try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
-            authSection.innerHTML = `<a href="login.html" class="auth-btn-header">Entrar</a>`;
-            authSection.style.display = 'block';
+            window.location.href = 'login.html?next=planos.html';
             return;
         }
 
