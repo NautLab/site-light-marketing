@@ -300,6 +300,33 @@
             return;
         }
 
+        // ── Guard: verificar perfil e assinatura ─────────
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('free_access, subscription_tier')
+            .eq('id', session.user.id)
+            .single();
+
+        if (profile?.free_access) {
+            window.location.href = 'planos.html';
+            return;
+        }
+
+        const { data: activeSubs } = await supabase
+            .from('subscriptions')
+            .select('id, cancel_at_period_end, current_period_end')
+            .eq('user_id', session.user.id)
+            .in('status', ['active', 'trialing'])
+            .order('created_at', { ascending: false });
+
+        const hasBlockingSub = activeSubs && activeSubs.some(s => !s.cancel_at_period_end);
+
+        // Bloquear se há sub activa sem cancelamento pendente E não é fluxo de troca de intervalo
+        if (hasBlockingSub && !trialEnd) {
+            window.location.href = 'planos.html';
+            return;
+        }
+
         // ── Load plan details ─────────────────────────────
         const { data: plan } = await supabase
             .from('plans')
