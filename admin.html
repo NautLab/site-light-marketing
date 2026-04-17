@@ -215,10 +215,7 @@
                     <select class="filter-select" id="subsStatusFilter" onchange="filterSubs()">
                         <option value="">Todos os status</option>
                         <option value="active">Ativa</option>
-                        <option value="trialing">Em espera</option>
                         <option value="canceled">Cancelada</option>
-                        <option value="past_due">Vencida</option>
-                        <option value="incomplete">Incompleta</option>
                     </select>
                     <select class="filter-select" id="subsSortSelect" onchange="filterSubs()">
                         <option value="default">Mais recentes</option>
@@ -428,11 +425,8 @@
         </div>
         <div class="modal-body">
             <p style="font-size:13px;color:var(--text-muted);">
-                Tem certeza que deseja bloquear a conta de <strong id="blockConfirmUserName" style="color:var(--text);">—</strong>?
+                Bloquear a conta de <strong id="blockConfirmUserName" style="color:var(--text);">—</strong>? O usuário perderá os acessos imediatamente.
             </p>
-            <div id="blockConfirmSubWarning" class="info-row warning" style="margin-top:12px;">
-                A assinatura ativa será cancelada imediatamente. O acesso poderá ser retomado ao desbloquear, caso nenhum reembolso seja processado.
-            </div>
         </div>
         <div class="modal-footer">
             <button class="btn btn-secondary" onclick="closeModal('blockConfirmModal')">Cancelar</button>
@@ -701,9 +695,9 @@
                         <option value="forever">Para sempre</option>
                     </select>
                 </div>
-                <div class="form-group" id="couponDurationMonthsGroup" style="display:none;">
+                <div class="form-group" id="couponDurationMonthsGroup">
                     <label class="form-label" for="couponDurationMonths">Meses</label>
-                    <input class="form-control" id="couponDurationMonths" type="number" min="1" placeholder="3" />
+                    <input class="form-control" id="couponDurationMonths" type="text" value="1" readonly style="opacity:0.6" />
                 </div>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">

@@ -596,7 +596,7 @@ function renderBlockedOverlay(waUrl) {
     const overlay = document.createElement('div');
     overlay.className = 'tool-lock-overlay';
     overlay.id = 'blockedOverlay';
-    overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;border-radius:0;background:rgba(13,16,20,0.92);backdrop-filter:blur(4px);';
+    overlay.style.cssText = 'position:fixed;left:0;right:0;top:70px;bottom:0;z-index:999;border-radius:0;background:rgba(13,16,20,0.92);backdrop-filter:blur(4px);';
     overlay.innerHTML = `<div class="tool-lock-inner">
         <div class="tool-lock-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="5" y="11" width="14" height="10" rx="2" stroke="#0C7E92" stroke-width="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4" stroke="#0C7E92" stroke-width="2" stroke-linecap="round"/></svg></div>
         <h3>Conta temporariamente bloqueada</h3>
@@ -752,6 +752,27 @@ async function initAuthHeader() {
                 currentProfile = res;
                 userRole = res.role || 'user';
                 sessionStorage.setItem('lm_user_role', userRole);
+            }
+
+            // Check free access expiry
+            if (currentProfile?.free_access && currentProfile?.free_access_expires_at) {
+                try {
+                    const { data: { session: authSess } } = await supabase.auth.getSession();
+                    if (authSess) {
+                        const expiryRes = await fetch(`${SUPABASE_FUNCTIONS_URL}/check-access-expiry`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${authSess.access_token}`,
+                                'apikey': SUPABASE_ANON_KEY,
+                            },
+                        });
+                        const expiryData = await expiryRes.json();
+                        if (expiryData.expired) {
+                            currentProfile = await getUserProfile();
+                        }
+                    }
+                } catch (_) { /* silent */ }
             }
         } catch(_) {}
 
@@ -999,7 +1020,7 @@ function updateFreePlanBtn() {
         btn.style.opacity = '0.8';
         btn.disabled = true;
     } else {
-        btn.textContent = 'Voltar para plano free';
+        btn.textContent = 'Voltar para plano gratuito';
         btn.className = 'plan-btn plan-btn-outline';
         btn.style.opacity = '';
         btn.disabled = false;
@@ -1154,7 +1175,7 @@ function showDowngradeModal() {
         }
         modal.innerHTML = `
             <div class="modal-box">
-                <h3>Voltar para o plano Free?</h3>
+                <h3>Voltar para o plano gratuito?</h3>
                 <p>Sua assinatura paga será cancelada.${endDateStr
                     ? ` Você mantém acesso aos recursos do plano atual até <span class="highlight">${endDateStr}</span>.`
                     : ''} Após esse período, sua conta será migrada automaticamente para o plano Free com os recursos básicos.</p>
@@ -1361,8 +1382,11 @@ if (params.get('checkout') === 'success') {
                     });
                     if (syncRes.ok) {
                         await loadActiveSubscription();
+                        currentProfile = await getUserProfile();
                         if (currentSubscription) {
                             renderPaidPlans();
+                            updateFreePlanBtn();
+                            document.querySelectorAll('.toast').forEach(t => t.remove());
                             showToast('Plano ativado com sucesso!', 'success');
                             return;
                         }
@@ -1376,8 +1400,11 @@ if (params.get('checkout') === 'success') {
         async function poll() {
             attempts++;
             await loadActiveSubscription();
+            currentProfile = await getUserProfile();
             if (currentSubscription) {
                 renderPaidPlans();
+                updateFreePlanBtn();
+                document.querySelectorAll('.toast').forEach(t => t.remove());
                 showToast('Plano ativado com sucesso!', 'success');
             } else if (attempts < 12) {
                 setTimeout(poll, 2500);

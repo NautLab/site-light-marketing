@@ -13,10 +13,15 @@ if (!menuOverlay) {
 
 // Função para fechar dropdown da conta
 function closeAccountDropdown() {
-    const dropdown = document.getElementById('user-dropdown');
-    if (dropdown) {
-        dropdown.classList.remove('active');
-    }
+    document.querySelectorAll('.user-dropdown').forEach(d => d.classList.remove('active'));
+}
+
+// Função para fechar menu hambúrguer
+function closeHamburgerMenu() {
+    menuToggle.classList.remove('active');
+    nav.classList.remove('active');
+    menuOverlay.classList.remove('active');
+    document.body.classList.remove('menu-open');
 }
 
 menuToggle.addEventListener('click', () => {
@@ -31,10 +36,15 @@ menuToggle.addEventListener('click', () => {
 
 // Fechar menu ao clicar no overlay
 menuOverlay.addEventListener('click', () => {
-    menuToggle.classList.remove('active');
-    nav.classList.remove('active');
-    menuOverlay.classList.remove('active');
-    document.body.classList.remove('menu-open');
+    closeHamburgerMenu();
+});
+
+// Ao clicar no botão de conta, fechar menu hambúrguer
+document.addEventListener('click', function(e) {
+    const accountBtn = e.target.closest('.user-account-btn');
+    if (accountBtn && nav.classList.contains('active')) {
+        closeHamburgerMenu();
+    }
 });
 
 // Fechar menu ao clicar em um link
@@ -44,10 +54,7 @@ navLinks.forEach(link => {
         const href = link.getAttribute('href') || '';
 
         // Fechar menu
-        menuToggle.classList.remove('active');
-        nav.classList.remove('active');
-        menuOverlay.classList.remove('active');
-        document.body.classList.remove('menu-open');
+        closeHamburgerMenu();
 
         // Links de âncora (#section): rolar suavemente
         if (href.startsWith('#')) {

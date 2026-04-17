@@ -457,7 +457,6 @@ function blockAccount(userId) {
 
     _pendingBlockUserId = userId;
     document.getElementById('blockConfirmUserName').textContent = userName;
-    document.getElementById('blockConfirmSubWarning').style.display = (hasActiveSub || hasFreeAccess) ? '' : 'none';
     openModal('blockConfirmModal');
 }
 
@@ -2041,7 +2040,6 @@ function notifTargetDesc(n) {
     if (n.target_type === 'role')     return `Funções: ${(n.target_roles || []).map(roleLabel).join(', ') || '—'}`;
     if (n.target_type === 'tier' || n.target_type === 'plan') {
         const names = (n.target_tiers || []).map(t => {
-            if (t === 'free') return 'Gratuito';
             const p = allPlans.find(x => x.id === t);
             return p ? p.name : t;
         });
@@ -2101,7 +2099,6 @@ function populateNotifPlanCheckboxes() {
     if (!container) return;
     const plans = allPlans.filter(p => p.is_active && !p.is_archived);
     container.innerHTML =
-        `<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" class="notif-tier-check" value="free" /> Gratuito (sem plano)</label>` +
         plans.map(p =>
             `<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" class="notif-tier-check" value="${escHtml(p.id)}" /> ${escHtml(p.name)}</label>`
         ).join('');

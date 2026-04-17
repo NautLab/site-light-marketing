@@ -24,9 +24,9 @@
     <!-- Header -->
     <header class="header">
         <div class="container">
-            <div class="logo">
+            <a href="index.html" class="logo" style="text-decoration:none;">
                 <img src="logo-light-marketing.png?v=3" alt="Light Marketing Logo" class="logo-icon">
-            </div>
+            </a>
             <nav class="nav">
                 <a href="#inicio">Início</a>
                 <a href="#como-usar">Como Usar</a>
@@ -354,6 +354,24 @@
                     if (profileResult) userRole = profileResult.role || 'user';
                     // Cache role for instant display on next page load within session
                     sessionStorage.setItem('lm_user_role', userRole);
+
+                    // Check free access expiry
+                    if (profileResult?.free_access && profileResult?.free_access_expires_at) {
+                        try {
+                            const expiryRes = await fetch(`${SUPABASE_URL}/functions/v1/check-access-expiry`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': `Bearer ${session.access_token}`,
+                                    'apikey': SUPABASE_ANON_KEY,
+                                },
+                            });
+                            const expiryData = await expiryRes.json();
+                            if (expiryData.expired) {
+                                profileResult = await getUserProfile();
+                            }
+                        } catch (_) { /* silent */ }
+                    }
                 } catch (_) { /* silent – admin link just won't appear */ }
 
                 const adminLinkHTML = ['admin', 'super_admin'].includes(userRole) ? `
@@ -649,6 +667,7 @@
                                             <a href="planos.html" class="tool-lock-btn">Ver planos</a>
                                            </div>`;
                                         content.style.position = 'relative';
+                                        content.innerHTML = '';
                                         content.appendChild(overlay);
                                     }
                                 });

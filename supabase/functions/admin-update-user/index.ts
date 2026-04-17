@@ -427,7 +427,7 @@ Deno.serve(async (req) => {
         .order('created_at', { ascending: false })
         .limit(10);
 
-      if (!allUserSubs || allUserSubs.length === 0) return json({ error: 'No subscription found' }, 404);
+      if (!allUserSubs || allUserSubs.length === 0) return json({ error: 'Nenhuma assinatura encontrada.' }, 404);
 
       let paymentIntentId: string | null = null;
 
@@ -481,7 +481,7 @@ Deno.serve(async (req) => {
         .order('created_at', { ascending: false })
         .limit(10);
 
-      if (!allSubs || allSubs.length === 0) return json({ error: 'No subscription found' }, 404);
+      if (!allSubs || allSubs.length === 0) return json({ error: 'Nenhuma assinatura encontrada.' }, 404);
 
       // Walk through subscriptions newest-first, find the first one with a real paid invoice.
       for (const sub of allSubs) {
