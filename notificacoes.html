@@ -337,6 +337,15 @@ async function loadNotifications() {
             currentPlanId = activeSub?.plan_id || null;
         } catch (_) { /* silent */ }
 
+        // For free-tier or free-access users, resolve their plan ID
+        if (!currentPlanId) {
+            if (currentProfile?.free_access && currentProfile?.free_access_plan_id) {
+                currentPlanId = currentProfile.free_access_plan_id;
+            } else {
+                try { const { data: fp } = await supabase.from('plans').select('id').eq('is_free', true).eq('is_active', true).maybeSingle(); if (fp) currentPlanId = fp.id; } catch(_) {}
+            }
+        }
+
         const { data: reads } = await supabase
             .from('notification_reads')
             .select('notification_id')

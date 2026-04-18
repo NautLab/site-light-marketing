@@ -200,6 +200,11 @@
             color: unset;
             flex-shrink: 0;
         }
+        .header {
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
 
         /* ── Responsive ──────────────────────────────────────── */
         @media (max-width: 768px) {
@@ -496,6 +501,16 @@ document.addEventListener('DOMContentLoaded', function() {
     if (btn && dropdown) {
         btn.addEventListener('click', function(e) {
             e.stopPropagation();
+            // Close hamburger menu first (same as other pages)
+            var mt = document.querySelector('.menu-toggle');
+            var nv = document.querySelector('.nav');
+            var mo = document.querySelector('.menu-overlay');
+            if (mt && nv && nv.classList.contains('active')) {
+                mt.classList.remove('active');
+                nv.classList.remove('active');
+                if (mo) mo.classList.remove('active');
+                document.body.classList.remove('menu-open');
+            }
             dropdown.classList.toggle('active');
         });
         document.addEventListener('click', function() {

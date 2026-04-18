@@ -667,7 +667,8 @@
                                             <a href="planos.html" class="tool-lock-btn">Ver planos</a>
                                            </div>`;
                                         content.style.position = 'relative';
-                                        content.innerHTML = '';
+                                        Array.from(content.children).forEach(c => c.style.display = 'none');
+                                        content.style.minHeight = '300px';
                                         content.appendChild(overlay);
                                     }
                                 });
@@ -730,6 +731,18 @@
                         .maybeSingle();
                     userPlanId = activeSub?.plan_id || null;
                 } catch (_) { /* silent */ }
+
+                // For free-tier or free-access users, also resolve their plan ID
+                if (!userPlanId) {
+                    if (profileResult?.free_access && profileResult?.free_access_plan_id) {
+                        userPlanId = profileResult.free_access_plan_id;
+                    } else {
+                        try {
+                            const { data: fp } = await supabase.from('plans').select('id').eq('is_free', true).eq('is_active', true).maybeSingle();
+                            if (fp) userPlanId = fp.id;
+                        } catch (_) {}
+                    }
+                }
 
                 // Fetch already-read notifications for this user
                 const { data: reads } = await supabase
@@ -806,7 +819,7 @@
                 const isLast = current === notifications.length - 1;
                 overlay.innerHTML = `
                     <div class="notif-popup-card" style="background:#1a1a1a;border:1px solid rgba(12,126,146,.4);border-radius:18px;
-                                padding:32px;max-width:480px;width:100%;box-shadow:0 24px 80px rgba(0,0,0,.7);
+                                padding:32px;width:480px;max-width:calc(100vw - 32px);box-shadow:0 24px 80px rgba(0,0,0,.7);
                                 max-height:85svh;overflow-y:auto;">
                         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:16px;">
                             <div style="display:flex;align-items:center;gap:10px;">

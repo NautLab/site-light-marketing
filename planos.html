@@ -596,7 +596,10 @@ function renderBlockedOverlay(waUrl) {
     const overlay = document.createElement('div');
     overlay.className = 'tool-lock-overlay';
     overlay.id = 'blockedOverlay';
-    overlay.style.cssText = 'position:fixed;left:0;right:0;top:70px;bottom:0;z-index:999;border-radius:0;background:rgba(13,16,20,0.92);backdrop-filter:blur(4px);';
+    overlay.style.cssText = 'position:fixed;left:0;right:0;top:70px;z-index:999;border-radius:0;background:rgba(13,16,20,0.92);backdrop-filter:blur(4px);';
+    const footer = document.querySelector('.footer');
+    const footerH = footer ? footer.offsetHeight : 0;
+    overlay.style.bottom = footerH + 'px';
     overlay.innerHTML = `<div class="tool-lock-inner">
         <div class="tool-lock-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="5" y="11" width="14" height="10" rx="2" stroke="#0C7E92" stroke-width="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4" stroke="#0C7E92" stroke-width="2" stroke-linecap="round"/></svg></div>
         <h3>Conta temporariamente bloqueada</h3>
@@ -688,6 +691,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Realtime: show popup instantly for new notifications
             const _uid = session.user.id;
             const _prof = profile || currentProfile;
+            let _freePlanId = null;
+            if (!currentSubscription && !_prof?.free_access) {
+                try { const { data: fp } = await supabase.from('plans').select('id').eq('is_free', true).eq('is_active', true).maybeSingle(); if (fp) _freePlanId = fp.id; } catch(_) {}
+            }
             supabase.channel('notif-realtime-plans-' + _uid)
                 .on('postgres_changes', {
                     event: 'INSERT',
@@ -706,7 +713,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                     else if (n.target_type === 'tier' || n.target_type === 'plan') {
                         const tier = _prof?.subscription_tier || 'free';
-                        const planId = currentSubscription?.plan_id || null;
+                        const planId = currentSubscription?.plan_id || _prof?.free_access_plan_id || _freePlanId || null;
                         applies = (n.target_tiers || []).some(t => t === tier || (planId && t === planId));
                     }
                     else if (n.target_type === 'specific') {
@@ -1020,7 +1027,7 @@ function updateFreePlanBtn() {
         btn.style.opacity = '0.8';
         btn.disabled = true;
     } else {
-        btn.textContent = 'Voltar para plano gratuito';
+        btn.textContent = 'Voltar para o plano gratuito';
         btn.className = 'plan-btn plan-btn-outline';
         btn.style.opacity = '';
         btn.disabled = false;
@@ -1453,6 +1460,12 @@ async function checkAdminNotifications(userId, profile) {
 
         if (nErr || !notifications || notifications.length === 0) return;
 
+        // Resolve plan ID for free-tier users
+        let resolvedPlanId = currentSubscription?.plan_id || profile?.free_access_plan_id || null;
+        if (!resolvedPlanId) {
+            try { const { data: fp } = await supabase.from('plans').select('id').eq('is_free', true).eq('is_active', true).maybeSingle(); if (fp) resolvedPlanId = fp.id; } catch(_) {}
+        }
+
         const { data: reads } = await supabase
             .from('notification_reads')
             .select('notification_id')
@@ -1469,7 +1482,7 @@ async function checkAdminNotifications(userId, profile) {
             }
             if (n.target_type === 'tier' || n.target_type === 'plan') {
                 const currentTier = profile?.subscription_tier || 'free';
-                const currentPlanId = currentSubscription?.plan_id || null;
+                const currentPlanId = resolvedPlanId;
                 return (n.target_tiers || []).some(t => t === currentTier || (currentPlanId && t === currentPlanId));
             }
             if (n.target_type === 'specific') return (n.target_user_ids || []).includes(userId);
@@ -1521,7 +1534,7 @@ function showNotificationPopup(notifications, userId) {
         const isLast = current === notifications.length - 1;
         overlay.innerHTML = `
             <div class="notif-popup-card" style="background:#1a1a1a;border:1px solid rgba(12,126,146,.4);border-radius:18px;
-                        padding:32px;max-width:480px;width:100%;box-shadow:0 24px 80px rgba(0,0,0,.7);
+                        padding:32px;width:480px;max-width:calc(100vw - 32px);box-shadow:0 24px 80px rgba(0,0,0,.7);
                         max-height:85svh;overflow-y:auto;">
                 <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:16px;">
                     <div style="display:flex;align-items:center;gap:10px;">

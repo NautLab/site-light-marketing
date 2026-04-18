@@ -572,7 +572,7 @@ async function unblockAccount(userId) {
         : remainingDaysStr
             ? `Desbloquear a conta de ${userName}?\n\nO acesso ao plano anterior será concedido por ${remainingDaysStr} a partir de hoje.`
             : `Desbloquear a conta de ${userName}?`;
-    if (!confirm(msg)) return;
+    showConfirmModal('Desbloquear Conta', msg, async () => {
     try {
         const session = await supabase.auth.getSession();
         const res = await callFunction('admin-update-user', {
@@ -604,6 +604,7 @@ async function unblockAccount(userId) {
             : 'Conta desbloqueada com sucesso.';
         showToast(msg2, 'success');
     } catch (err) { showToast('Erro: ' + err.message, 'error'); }
+    }, 'Desbloquear', 'btn-primary');
 }
 
 // ─── Revoke Paid Subscription ────────────────────────────────
@@ -611,7 +612,7 @@ async function unblockAccount(userId) {
 async function revokePaidSubscription(userId) {
     const u = allUsers.find(x => x.id === userId);
     const userName = u?.full_name || u?.email || userId;
-    if (!confirm(`Revogar o plano pago de ${userName}? A assinatura será cancelada imediatamente no Stripe.`)) return;
+    showConfirmModal('Revogar Plano Pago', `Revogar o plano pago de ${userName}? A assinatura será cancelada imediatamente no Stripe.`, async () => {
     try {
         const session = await supabase.auth.getSession();
         const res = await callFunction('admin-update-user', {
@@ -632,6 +633,7 @@ async function revokePaidSubscription(userId) {
         updateUserStats();
         showToast('Plano pago revogado com sucesso.', 'success');
     } catch (err) { showToast('Erro: ' + err.message, 'error'); }
+    });
 }
 
 // ─── Refund ──────────────────────────────────────────────────
@@ -814,7 +816,7 @@ async function confirmFreeAccess() {
 async function revokeFreeAccess(userId) {
     const u = allUsers.find(x => x.id === userId);
     const userName = u?.full_name || u?.email || userId;
-    if (!confirm(`Revogar acesso gratuito de ${userName}?`)) return;
+    showConfirmModal('Revogar Acesso Gratuito', `Revogar acesso gratuito de ${userName}?`, async () => {
 
     try {
         const session = await supabase.auth.getSession();
@@ -855,6 +857,7 @@ async function revokeFreeAccess(userId) {
     } catch (err) {
         showToast('Erro: ' + err.message, 'error');
     }
+    });
 }
 
 // Corrige estado inconsistente: free_access=true mas subscription_tier='free'
@@ -1246,7 +1249,7 @@ async function submitEditPlan() {
 
 // ── Delete plan ───────────────────────────────────────────────
 async function deletePlan(planId, planName) {
-    if (!confirm(`Excluir o plano "${planName}" permanentemente?\n\nSó é possível excluir planos sem assinaturas ativas.`)) return;
+    showConfirmModal('Excluir Plano', `Excluir o plano "${planName}" permanentemente?\n\nSó é possível excluir planos sem assinaturas ativas.`, async () => {
 
     try {
         const session = await supabase.auth.getSession();
@@ -1264,6 +1267,7 @@ async function deletePlan(planId, planName) {
     } catch (err) {
         showToast('Erro: ' + err.message, 'error');
     }
+    });
 }
 
 async function togglePlan(planId, currentActive) {
@@ -1287,7 +1291,7 @@ async function togglePlan(planId, currentActive) {
 
 async function archivePlan(planId, archive) {
     const label = archive ? 'arquivar' : 'desarquivar';
-    if (!confirm(`Deseja ${label} este plano?`)) return;
+    showConfirmModal(archive ? 'Arquivar Plano' : 'Desarquivar Plano', `Deseja ${label} este plano?`, async () => {
 
     try {
         const updates = archive
@@ -1309,6 +1313,7 @@ async function archivePlan(planId, archive) {
     } catch (err) {
         showToast('Erro: ' + err.message, 'error');
     }
+    });
 }
 
 function clearPlanForm() {
@@ -1523,7 +1528,7 @@ async function _doRevokeSubImmediate(subId) {
 }
 
 async function deleteSubscriptionRow(subId, userEmail) {
-    if (!confirm(`Excluir o registro de assinatura de ${userEmail}?\n\nEsta ação remove apenas o registro no banco. A assinatura já deve estar cancelada no Stripe.`)) return;
+    showConfirmModal('Excluir Registro', `Excluir o registro de assinatura de ${userEmail}?\n\nEsta ação remove apenas o registro no banco. A assinatura já deve estar cancelada no Stripe.`, async () => {
     try {
         const session = await supabase.auth.getSession();
         const res = await callFunction('admin-update-user', {
@@ -1536,6 +1541,7 @@ async function deleteSubscriptionRow(subId, userEmail) {
         renderSubscriptionsTable();
         showToast('Registro de assinatura excluído.', 'success');
     } catch (err) { showToast('Erro: ' + err.message, 'error'); }
+    });
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -1826,7 +1832,7 @@ async function toggleCoupon(couponId, currentActive) {
 
 async function archiveCoupon(couponId, archive) {
     const label = archive ? 'arquivar' : 'desarquivar';
-    if (!confirm(`Deseja ${label} este cupom?`)) return;
+    showConfirmModal(archive ? 'Arquivar Cupom' : 'Desarquivar Cupom', `Deseja ${label} este cupom?`, async () => {
 
     try {
         const updates = archive
@@ -1853,10 +1859,11 @@ async function archiveCoupon(couponId, archive) {
     } catch (err) {
         showToast('Erro: ' + err.message, 'error');
     }
+    });
 }
 
 async function deleteCoupon(couponId, code) {
-    if (!confirm(`Excluir o cupom "${code}" permanentemente?`)) return;
+    showConfirmModal('Excluir Cupom', `Excluir o cupom "${code}" permanentemente?`, async () => {
 
     try {
         const session = await supabase.auth.getSession();
@@ -1876,6 +1883,7 @@ async function deleteCoupon(couponId, code) {
     } catch (err) {
         showToast('Erro: ' + err.message, 'error');
     }
+    });
 }
 
 function toggleCouponTypeHint() {
@@ -2050,7 +2058,7 @@ function notifTargetDesc(n) {
 }
 
 async function deleteNotification(id) {
-    if (!confirm('Excluir esta notificação permanentemente?')) return;
+    showConfirmModal('Excluir Notificação', 'Excluir esta notificação permanentemente?', async () => {
     try {
         const { error } = await supabase
             .from('admin_notifications')
@@ -2064,6 +2072,7 @@ async function deleteNotification(id) {
     } catch (err) {
         showToast('Erro: ' + err.message, 'error');
     }
+    });
 }
 
 async function toggleNotification(id, currentActive) {
@@ -2097,7 +2106,7 @@ function openCreateNotificationModal() {
 function populateNotifPlanCheckboxes() {
     const container = document.getElementById('notifPlanChecks');
     if (!container) return;
-    const plans = allPlans.filter(p => p.is_active && !p.is_archived);
+    const plans = allPlans.filter(p => p.is_active && !p.is_archived).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
     container.innerHTML =
         plans.map(p =>
             `<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" class="notif-tier-check" value="${escHtml(p.id)}" /> ${escHtml(p.name)}</label>`
@@ -2246,6 +2255,28 @@ function closeModal(id) {
     document.getElementById(id)?.classList.remove('open');
 }
 
+function showConfirmModal(title, message, onConfirm, confirmLabel = 'Confirmar', confirmClass = 'btn-danger') {
+    let modal = document.getElementById('genericConfirmModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.id = 'genericConfirmModal';
+        modal.innerHTML = `<div class="modal" role="dialog" aria-modal="true">
+            <div class="modal-header"><h3 class="modal-title" id="gcmTitle"></h3><button class="modal-close-btn" onclick="closeModal('genericConfirmModal')">×</button></div>
+            <div class="modal-body"><p id="gcmMessage" style="white-space:pre-wrap;word-break:break-word;"></p></div>
+            <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('genericConfirmModal')">Cancelar</button><button class="btn" id="gcmConfirmBtn"></button></div>
+        </div>`;
+        document.body.appendChild(modal);
+    }
+    document.getElementById('gcmTitle').textContent = title;
+    document.getElementById('gcmMessage').textContent = message;
+    const btn = document.getElementById('gcmConfirmBtn');
+    btn.textContent = confirmLabel;
+    btn.className = 'btn ' + confirmClass;
+    btn.onclick = () => { closeModal('genericConfirmModal'); onConfirm(); };
+    openModal('genericConfirmModal');
+}
+
 // Close on overlay click
 document.addEventListener('click', e => {
     if (e.target.classList.contains('modal-overlay')) {
@@ -2302,7 +2333,11 @@ function getInitials(name, email) {
 }
 
 function tierLabel(tier) {
-    return { free: 'Free', paid: 'Pagante' }[tier] || tier || '—';
+    if (tier === 'free') {
+        const freePlan = allPlans.find(p => p.is_free);
+        return freePlan ? freePlan.name : 'Gratuito';
+    }
+    return { paid: 'Pagante' }[tier] || tier || '—';
 }
 
 function planNameById(planId) {
