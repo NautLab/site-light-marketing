@@ -34,6 +34,7 @@
             min-height: 100vh;
             display: flex;
             flex-direction: column;
+            padding-top: 70px;
         }
 
         /* ── Layout ─────────────────────────────────────────── */
@@ -65,7 +66,7 @@
             border-radius: var(--radius);
             padding: 28px;
             position: sticky;
-            top: 24px;
+            top: 94px;
         }
 
         .summary-card h2 {
@@ -201,8 +202,10 @@
             flex-shrink: 0;
         }
         .header {
-            position: sticky;
+            position: fixed;
             top: 0;
+            left: 0;
+            right: 0;
             z-index: 1000;
         }
 
@@ -545,6 +548,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 const { data: sub } = await supabase.from('subscriptions').select('plan_id').eq('user_id', userId).in('status', ['active','trialing']).order('created_at',{ascending:false}).limit(1).maybeSingle();
                 planId = sub?.plan_id || null;
             } catch(_){}
+            if (!planId) {
+                try { const { data: fp } = await supabase.from('plans').select('id').eq('is_free', true).eq('is_active', true).maybeSingle(); if (fp) planId = fp.id; } catch(_) {}
+            }
 
             const count = notifs.filter(n => {
                 if (readIds.has(n.id)) return false;

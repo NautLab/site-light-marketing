@@ -596,18 +596,20 @@ function renderBlockedOverlay(waUrl) {
     const overlay = document.createElement('div');
     overlay.className = 'tool-lock-overlay';
     overlay.id = 'blockedOverlay';
-    overlay.style.cssText = 'position:fixed;left:0;right:0;top:70px;z-index:999;border-radius:0;background:rgba(13,16,20,0.92);backdrop-filter:blur(4px);';
-    const footer = document.querySelector('.footer');
-    const footerH = footer ? footer.offsetHeight : 0;
-    overlay.style.bottom = footerH + 'px';
+    overlay.style.cssText = 'position:absolute;left:0;right:0;top:0;bottom:0;z-index:999;border-radius:0;background:rgba(13,16,20,0.92);backdrop-filter:blur(4px);';
     overlay.innerHTML = `<div class="tool-lock-inner">
         <div class="tool-lock-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="5" y="11" width="14" height="10" rx="2" stroke="#0C7E92" stroke-width="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4" stroke="#0C7E92" stroke-width="2" stroke-linecap="round"/></svg></div>
         <h3>Conta temporariamente bloqueada</h3>
         <p>Entre em contato com o suporte para mais informações.</p>
         <a href="${waUrl}" target="_blank" rel="noopener noreferrer" class="tool-lock-btn">Falar com suporte</a>
     </div>`;
-    document.body.appendChild(overlay);
-    document.body.style.overflow = 'hidden';
+    const main = document.querySelector('.plans-page');
+    if (main) {
+        main.style.position = 'relative';
+        main.appendChild(overlay);
+    } else {
+        document.body.appendChild(overlay);
+    }
 }
 
 function setupBlockedProfileListener(userId, waUrl) {
@@ -617,16 +619,36 @@ function setupBlockedProfileListener(userId, waUrl) {
             schema: 'public',
             table: 'profiles',
             filter: `id=eq.${userId}`
-        }, payload => {
-            if (payload.new?.is_blocked) {
+        }, async payload => {
+            const newProfile = payload.new;
+            if (!newProfile) return;
+
+            // Handle block/unblock
+            if (newProfile.is_blocked && !currentProfile?.is_blocked) {
                 renderBlockedOverlay(waUrl);
-            } else if (payload.new && payload.new.is_blocked === false) {
+            } else if (!newProfile.is_blocked && currentProfile?.is_blocked) {
                 const overlay = document.getElementById('blockedOverlay');
-                if (overlay) {
-                    overlay.remove();
-                    document.body.style.overflow = '';
-                }
+                if (overlay) overlay.remove();
             }
+
+            // Update currentProfile and re-render plans on any profile change
+            currentProfile = { ...currentProfile, ...newProfile };
+            // Reload subscription state and re-render
+            await loadActiveSubscription();
+            renderPaidPlans();
+            updateFreePlanBtn();
+        })
+        .on('postgres_changes', {
+            event: '*',
+            schema: 'public',
+            table: 'subscriptions',
+            filter: `user_id=eq.${userId}`
+        }, async () => {
+            // Subscription changed (cancel, revoke, new sub) — reload and re-render
+            currentProfile = await getUserProfile();
+            await loadActiveSubscription();
+            renderPaidPlans();
+            updateFreePlanBtn();
         })
         .subscribe();
 }
@@ -980,9 +1002,7 @@ function buildPlanCard(p) {
     const hasBlockingSubscription = currentSubscription && !currentSubscription.cancel_at_period_end;
     const btnHtml = isCurrent
         ? `<button class="plan-btn plan-btn-current" disabled>✓ Plano atual${subIntervalLabel}</button>${cancelBtnHtml}`
-        : hasBlockingSubscription
-            ? `<div class="plan-cancel-notice">Você já possui uma assinatura ativa. Cancele o plano atual antes de assinar um novo.</div>`
-            : `<button class="plan-btn plan-btn-primary" onclick="handleSubscribe('${p.id}', '${escHtml(p.name)}')">Assinar agora</button>`;
+        : `<button class="plan-btn plan-btn-primary" onclick="handleSubscribe('${p.id}', '${escHtml(p.name)}')">Assinar agora</button>`;
 
     const featuresHtml = features.map(f =>
         `<li class="${f.ok ? '' : 'disabled'}"><span class="check">${f.ok ? '✓' : '✗'}</span> ${f.text}</li>`
@@ -1076,6 +1096,40 @@ async function handleSubscribe(planId, planName) {
         ? currentSubscription.current_period_end
         : null;
 
+    // If user still has active access from a canceled sub, confirm before proceeding
+    if (trialEnd && new Date(trialEnd) > new Date()) {
+        const oldPlanName = currentSubscription.plan_name_snapshot || 'atual';
+        const endDate = new Date(trialEnd).toLocaleDateString('pt-BR');
+        // Fetch the new plan name
+        let newPlanName = planName;
+        showPlanSwitchConfirmModal(oldPlanName, newPlanName, endDate, async () => {
+            // Revoke remaining access immediately via cancel-subscription
+            try {
+                const { data: { session: sess } } = await supabase.auth.getSession();
+                if (sess && currentSubscription?.id) {
+                    const cancelRes = await fetch(`${SUPABASE_FUNCTIONS_URL}/cancel-subscription`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${sess.access_token}`,
+                            'apikey': SUPABASE_ANON_KEY,
+                        },
+                        body: JSON.stringify({ subscription_id: currentSubscription.id, cancel_at_period_end: false }),
+                    });
+                    if (!cancelRes.ok) {
+                        const err = await cancelRes.json();
+                        throw new Error(err.error || 'Erro ao revogar acesso');
+                    }
+                }
+            } catch (err) {
+                console.error('Revoke error:', err);
+            }
+            // Proceed to checkout without trial_end since access was revoked
+            _proceedToCheckout(planId, null);
+        });
+        return;
+    }
+
     _proceedToCheckout(planId, trialEnd);
 }
 
@@ -1156,6 +1210,30 @@ function showAlreadySubscribedModal(currentPlanName) {
         </div>`;
     document.body.appendChild(modal);
     modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+}
+
+function showPlanSwitchConfirmModal(oldPlanName, newPlanName, endDate, onConfirm) {
+    const existing = document.getElementById('planSwitchConfirmModal');
+    if (existing) existing.remove();
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.id = 'planSwitchConfirmModal';
+    modal.innerHTML = `
+        <div class="modal-box">
+            <h3>Trocar de plano?</h3>
+            <p>Você tem acesso ao plano <span class="highlight">${escHtml(oldPlanName)}</span> até <span class="highlight">${endDate}</span>. Se assinar outro plano, seu acesso ao plano ${escHtml(oldPlanName)} será revogado imediatamente para liberar acesso ao plano <span class="highlight">${escHtml(newPlanName)}</span>.</p>
+            <p style="font-size:13px;color:rgba(255,255,255,0.5);">Deseja prosseguir?</p>
+            <div class="modal-actions">
+                <button class="modal-btn-cancel" onclick="document.getElementById('planSwitchConfirmModal')?.remove()">Cancelar</button>
+                <button class="modal-btn-confirm" id="confirmPlanSwitchBtn">Prosseguir</button>
+            </div>
+        </div>`;
+    document.body.appendChild(modal);
+    modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+    document.getElementById('confirmPlanSwitchBtn').addEventListener('click', () => {
+        modal.remove();
+        onConfirm();
+    });
 }
 
 function showDowngradeModal() {

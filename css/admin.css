@@ -995,6 +995,9 @@ textarea.form-control::-webkit-scrollbar-thumb { background: var(--border); bord
     border-radius: 16px;
     width: 100%;
     max-width: 480px;
+    max-height: calc(100vh - 40px);
+    display: flex;
+    flex-direction: column;
     transform: translateY(16px) scale(0.97);
     transition: transform 0.25s;
     box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
@@ -1039,6 +1042,9 @@ textarea.form-control::-webkit-scrollbar-thumb { background: var(--border); bord
     display: flex;
     flex-direction: column;
     gap: 18px;
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
 }
 
 .modal-footer {

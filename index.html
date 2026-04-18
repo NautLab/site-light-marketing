@@ -507,6 +507,14 @@
                                         .order('created_at',{ascending:false}).limit(1).maybeSingle();
                                     planId = sub?.plan_id || null;
                                 } catch(_){}
+                                // Fallback for free-tier users
+                                if (!planId) {
+                                    if (_prof?.free_access && _prof?.free_access_plan_id) {
+                                        planId = _prof.free_access_plan_id;
+                                    } else {
+                                        try { const { data: fp } = await supabase.from('plans').select('id').eq('is_free', true).eq('is_active', true).maybeSingle(); if (fp) planId = fp.id; } catch(_) {}
+                                    }
+                                }
                                 applies = (n.target_tiers || []).some(t => t === tier || (planId && t === planId));
                             }
                             else if (n.target_type === 'specific') {
@@ -578,6 +586,16 @@
                                 document.getElementById('blockedOverlay')?.remove();
                                 const processBtn = document.getElementById('process-btn');
                                 if (processBtn) processBtn.disabled = false;
+                            }
+
+                            // On any profile change (revoke, tier change), reload the page to update screen locks
+                            if (payload.new && payload.old) {
+                                const changed = payload.new.subscription_tier !== payload.old.subscription_tier
+                                    || payload.new.free_access !== payload.old.free_access
+                                    || payload.new.is_blocked !== payload.old.is_blocked;
+                                if (changed) {
+                                    window.location.reload();
+                                }
                             }
                         })
                         .subscribe();

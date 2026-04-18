@@ -192,6 +192,28 @@ async function loadUsers() {
     });
 
     allUsers = (profilesResult.data || []).map(p => ({ ...p, subscriptions: subsMap[p.id] || [] }));
+
+    // Auto-revoke expired free access (server-side via edge function)
+    const expiredUsers = allUsers.filter(u => u.free_access && u.free_access_expires_at && new Date(u.free_access_expires_at) <= new Date());
+    if (expiredUsers.length > 0) {
+        const session = await supabase.auth.getSession();
+        const token = session?.data?.session?.access_token;
+        if (token) {
+            await Promise.all(expiredUsers.map(async u => {
+                try {
+                    const res = await callFunction('admin-update-user', { target_user_id: u.id, action: 'revoke_free_access' }, token);
+                    if (res.ok) {
+                        u.free_access = false;
+                        u.free_access_plan_id = null;
+                        u.free_access_expires_at = null;
+                        u.free_access_granted_by = null;
+                        u.subscription_tier = 'free';
+                    }
+                } catch (_) {}
+            }));
+        }
+    }
+
     filteredUsers = [...allUsers];
     usersCurrentPage = 1;
 
@@ -2146,7 +2168,7 @@ function renderNotifUserList(users) {
         return;
     }
 
-    container.innerHTML = users.slice(0, 100).map(u => `
+    container.innerHTML = users.slice(0, 100).sort((a, b) => (a.full_name || a.email || '').localeCompare(b.full_name || b.email || '', 'pt-BR')).map(u => `
         <label class="notif-user-item">
             <input type="checkbox" class="notif-user-check" value="${u.id}" />
             <div class="notif-user-info">

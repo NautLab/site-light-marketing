@@ -106,6 +106,26 @@ Deno.serve(async (req) => {
           await stripe.prices.update(plan.stripe_price_id, { active: false }).catch(() => {});
         }
         updates.stripe_price_id = newPrice.id;
+
+        // Update existing active monthly subscriptions to the new price
+        const { data: activeSubs } = await adminClient.from('subscriptions')
+          .select('id, stripe_subscription_id')
+          .eq('plan_id', plan_id)
+          .eq('billing_interval', 'month')
+          .in('status', ['active', 'trialing']);
+        if (activeSubs && activeSubs.length > 0) {
+          for (const sub of activeSubs) {
+            try {
+              const stripeSub = await stripe.subscriptions.retrieve(sub.stripe_subscription_id);
+              if (stripeSub.items?.data?.length) {
+                await stripe.subscriptions.update(sub.stripe_subscription_id, {
+                  items: [{ id: stripeSub.items.data[0].id, price: newPrice.id }],
+                  proration_behavior: 'none',
+                });
+              }
+            } catch (_) { /* best-effort per subscription */ }
+          }
+        }
       }
 
       // ── Annual price handling ──
@@ -124,6 +144,28 @@ Deno.serve(async (req) => {
             await stripe.prices.update(plan.annual_stripe_price_id, { active: false }).catch(() => {});
           }
           updates.annual_stripe_price_id = annualPrice.id;
+
+          // Update existing active annual subscriptions to the new price
+          if (annualChanged) {
+            const { data: annualSubs } = await adminClient.from('subscriptions')
+              .select('id, stripe_subscription_id')
+              .eq('plan_id', plan_id)
+              .eq('billing_interval', 'year')
+              .in('status', ['active', 'trialing']);
+            if (annualSubs && annualSubs.length > 0) {
+              for (const sub of annualSubs) {
+                try {
+                  const stripeSub = await stripe.subscriptions.retrieve(sub.stripe_subscription_id);
+                  if (stripeSub.items?.data?.length) {
+                    await stripe.subscriptions.update(sub.stripe_subscription_id, {
+                      items: [{ id: stripeSub.items.data[0].id, price: annualPrice.id }],
+                      proration_behavior: 'none',
+                    });
+                  }
+                } catch (_) { /* best-effort per subscription */ }
+              }
+            }
+          }
         }
       } else if (annual_price_brl === null && plan.annual_stripe_price_id) {
         // Annual removed — archive old annual price
