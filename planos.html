@@ -725,7 +725,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (session) {
             const profile = currentProfile || await getUserProfile();
 
-            // Realtime: show popup instantly for new notifications
+            // Realtime: badge e popup instantâneos para notificações
             const _uid = session.user.id;
             const _prof = profile || currentProfile;
             let _freePlanId = null;
@@ -740,16 +740,24 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }, async (payload) => {
                     const n = payload.new;
                     if (!n || !n.is_active) return;
-                    if (document.getElementById('notifPopupOverlay')) return;
 
                     let applies = false;
                     if (n.target_type === 'all') applies = true;
                     else if (n.target_type === 'role' || n.target_type === 'tier' || n.target_type === 'plan' || n.target_type === 'specific') {
-                        // Notifications are resolved at send time — check target_user_ids
                         applies = (n.target_user_ids || []).includes(_uid);
                     }
 
-                    if (applies && n.show_popup !== false) showNotificationPopup([n], _uid);
+                    if (!applies) return;
+                    // Atualiza badge e mostra popup
+                    checkAdminNotifications(_uid, currentProfile).catch(() => {});
+                })
+                .on('postgres_changes', {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'admin_notifications'
+                }, async () => {
+                    // Notificação foi ativada/desativada — atualiza badge
+                    checkAdminNotifications(_uid, currentProfile).catch(() => {});
                 })
                 .subscribe();
         }
@@ -1661,10 +1669,13 @@ async function checkAdminNotifications(userId, profile) {
             return false;
         });
 
-        if (unread.length === 0) return;
+        if (unread.length === 0) {
+            updateNotifBadge(0);
+            return;
+        }
         updateNotifBadge(unread.length);
         const popupNotifs = unread.filter(n => n.show_popup !== false);
-        if (popupNotifs.length > 0) showNotificationPopup(popupNotifs, userId);
+        if (popupNotifs.length > 0 && !document.getElementById('notifPopupOverlay')) showNotificationPopup(popupNotifs, userId);
     } catch (_) { /* silent */ }
 }
 
