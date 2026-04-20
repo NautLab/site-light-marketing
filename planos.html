@@ -732,16 +732,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                     let applies = false;
                     if (n.target_type === 'all') applies = true;
-                    else if (n.target_type === 'role') {
-                        const r = _prof?.role || 'user';
-                        applies = (n.target_roles || []).some(t => t === r || (t === 'admin' && r === 'super_admin'));
-                    }
-                    else if (n.target_type === 'tier' || n.target_type === 'plan') {
-                        const tier = _prof?.subscription_tier || 'free';
-                        const planId = currentSubscription?.plan_id || _prof?.free_access_plan_id || _freePlanId || null;
-                        applies = (n.target_tiers || []).some(t => t === tier || (planId && t === planId));
-                    }
-                    else if (n.target_type === 'specific') {
+                    else if (n.target_type === 'role' || n.target_type === 'tier' || n.target_type === 'plan' || n.target_type === 'specific') {
+                        // Notifications are resolved at send time — check target_user_ids
                         applies = (n.target_user_ids || []).includes(_uid);
                     }
 
@@ -755,9 +747,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (freePlan) updateFreePlanCard(freePlan);
     renderPaidPlans();
     updateFreePlanBtn();
-    // Fade the grid in now that all cards are ready
+    // Fade the grid in now that all cards are ready (skip if checkout success is pending)
     const grid = document.getElementById('plansGrid');
-    if (grid) { grid.style.transition = 'opacity .2s'; grid.style.opacity = '1'; }
+    if (grid && !_checkoutSuccessPending) { grid.style.transition = 'opacity .2s'; grid.style.opacity = '1'; }
 });
 
 async function initAuthHeader() {
@@ -996,7 +988,7 @@ function buildPlanCard(p) {
     let discountedAnnualTotal = null;
     let couponLabel = '';
     let couponDurationText = '';
-    if (activeCouponData && !isCurrent) {
+    if (activeCouponData) {
         const cd = activeCouponData;
         const basePrice = isAnnual ? annualTotal : monthlyPrice;
         let discountedPrice;
@@ -1352,6 +1344,7 @@ async function confirmDowngrade() {
         currentSubscription.cancel_at_period_end = true;
         closeDowngradeModal();
         renderPaidPlans();
+        updateFreePlanBtn();
         showToast('Assinatura cancelada. Acesso mantido até o fim do período.', 'success');
     } catch (err) {
         showToast('Erro: ' + err.message, 'error');
@@ -1515,11 +1508,19 @@ async function applyCoupon() {
 // Checkout success/cancel feedback
 // ─────────────────────────────────────────────────────────────
 const params = new URLSearchParams(window.location.search);
+let _checkoutSuccessPending = false;
 if (params.get('checkout') === 'success') {
+    _checkoutSuccessPending = true;
     // Clean URL to prevent re-running on refresh
     window.history.replaceState({}, '', window.location.pathname);
 
     const sessionId = params.get('session_id');
+
+    function _fadeGridIn() {
+        _checkoutSuccessPending = false;
+        const g = document.getElementById('plansGrid');
+        if (g) { g.style.transition = 'opacity .2s'; g.style.opacity = '1'; }
+    }
 
     (async function handleCheckoutSuccess() {
         showToast('Pagamento confirmado! Ativando plano…', 'info');
@@ -1544,6 +1545,7 @@ if (params.get('checkout') === 'success') {
                         if (currentSubscription) {
                             renderPaidPlans();
                             updateFreePlanBtn();
+                            _fadeGridIn();
                             document.querySelectorAll('.toast').forEach(t => t.remove());
                             showToast('Plano ativado com sucesso!', 'success');
                             return;
@@ -1562,6 +1564,7 @@ if (params.get('checkout') === 'success') {
             if (currentSubscription) {
                 renderPaidPlans();
                 updateFreePlanBtn();
+                _fadeGridIn();
                 document.querySelectorAll('.toast').forEach(t => t.remove());
                 showToast('Plano ativado com sucesso!', 'success');
             } else if (attempts < 12) {
@@ -1569,6 +1572,7 @@ if (params.get('checkout') === 'success') {
             } else {
                 showToast('Plano ativado! Se não aparecer, recarregue a página.', 'info');
                 renderPaidPlans();
+                _fadeGridIn();
             }
         }
         setTimeout(poll, 2000);
@@ -1627,14 +1631,9 @@ async function checkAdminNotifications(userId, profile) {
         const unread = notifications.filter(n => {
             if (readIds.has(n.id)) return false;
             if (n.target_type === 'all') return true;
-            if (n.target_type === 'role') {
-                const r = profile?.role || 'user';
-                return (n.target_roles || []).some(t => t === r || (t === 'admin' && r === 'super_admin'));
-            }
-            if (n.target_type === 'tier' || n.target_type === 'plan') {
-                const currentTier = profile?.subscription_tier || 'free';
-                const currentPlanId = resolvedPlanId;
-                return (n.target_tiers || []).some(t => t === currentTier || (currentPlanId && t === currentPlanId));
+            if (n.target_type === 'role' || n.target_type === 'tier' || n.target_type === 'plan') {
+                // Notifications are resolved at send time — check target_user_ids
+                return (n.target_user_ids || []).includes(userId);
             }
             if (n.target_type === 'specific') return (n.target_user_ids || []).includes(userId);
             return false;

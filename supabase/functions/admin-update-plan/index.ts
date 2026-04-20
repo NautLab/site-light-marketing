@@ -1,6 +1,6 @@
 // Edge Function: admin-update-plan
-// Edit or delete a plan (admin/super_admin only)
-// Actions: 'edit' | 'delete'
+// Edit, delete, toggle or archive a plan (admin/super_admin only)
+// Actions: 'edit' | 'delete' | 'toggle' | 'archive'
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import Stripe from 'npm:stripe';
@@ -215,6 +215,35 @@ Deno.serve(async (req) => {
 
       if (deleteErr) throw deleteErr;
       return json({ success: true, deleted: true });
+    }
+
+    // ── TOGGLE (activate / deactivate) ────────────────────────
+    if (action === 'toggle') {
+      const newActive = !plan.is_active;
+      const { data: updated, error: toggleErr } = await adminClient
+        .from('plans')
+        .update({ is_active: newActive })
+        .eq('id', plan_id)
+        .select()
+        .single();
+      if (toggleErr) throw toggleErr;
+      return json({ success: true, plan: updated });
+    }
+
+    // ── ARCHIVE / UNARCHIVE ─────────────────────────────────
+    if (action === 'archive') {
+      const archive = !!body.archive;
+      const updates: Record<string, unknown> = archive
+        ? { is_archived: true, is_active: false }
+        : { is_archived: false };
+      const { data: updated, error: archErr } = await adminClient
+        .from('plans')
+        .update(updates)
+        .eq('id', plan_id)
+        .select()
+        .single();
+      if (archErr) throw archErr;
+      return json({ success: true, plan: updated });
     }
 
     return json({ error: 'Unknown action' }, 400);

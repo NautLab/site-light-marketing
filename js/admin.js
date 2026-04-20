@@ -137,11 +137,8 @@ async function initAdmin() {
                 if (document.getElementById('notifPopupOverlay')) return;
                 let applies = false;
                 if (n.target_type === 'all') applies = true;
-                else if (n.target_type === 'role') {
-                    const r = currentProfile?.role || 'user';
-                    applies = (n.target_roles || []).some(t => t === r || (t === 'admin' && r === 'super_admin'));
-                }
-                else if (n.target_type === 'specific') {
+                else if (n.target_type === 'role' || n.target_type === 'tier' || n.target_type === 'plan' || n.target_type === 'specific') {
+                    // Notifications are resolved at send time — check target_user_ids
                     applies = (n.target_user_ids || []).includes(currentUser.id);
                 }
                 if (applies && n.show_popup !== false) showAdminNotificationPopup([n], currentUser.id);
@@ -1342,12 +1339,13 @@ async function deletePlan(planId, planName) {
 
 async function togglePlan(planId, currentActive) {
     try {
-        const { error } = await supabase
-            .from('plans')
-            .update({ is_active: !currentActive })
-            .eq('id', planId);
-
-        if (error) throw error;
+        const session = await supabase.auth.getSession();
+        const res = await callFunction('admin-update-plan', {
+            action: 'toggle',
+            plan_id: planId,
+        }, session.data.session.access_token);
+        const body = await res.json();
+        if (!res.ok) throw new Error(body.error || 'Erro ao alternar plano');
 
         const plan = allPlans.find(p => p.id === planId);
         if (plan) plan.is_active = !currentActive;
@@ -1364,16 +1362,14 @@ async function archivePlan(planId, archive) {
     showConfirmModal(archive ? 'Arquivar Plano' : 'Desarquivar Plano', `Deseja ${label} este plano?`, async () => {
 
     try {
-        const updates = archive
-            ? { is_archived: true, is_active: false }
-            : { is_archived: false };
-
-        const { error } = await supabase
-            .from('plans')
-            .update(updates)
-            .eq('id', planId);
-
-        if (error) throw error;
+        const session = await supabase.auth.getSession();
+        const res = await callFunction('admin-update-plan', {
+            action: 'archive',
+            plan_id: planId,
+            archive,
+        }, session.data.session.access_token);
+        const body = await res.json();
+        if (!res.ok) throw new Error(body.error || `Erro ao ${label} plano`);
 
         const plan = allPlans.find(p => p.id === planId);
         if (plan) { plan.is_archived = archive; if (archive) plan.is_active = false; }
@@ -2037,6 +2033,9 @@ async function loadNotifications() {
     document.getElementById('notificationsContainer').innerHTML =
         `<div class="empty-state"><p class="empty-state-text">Carregando notificações…</p></div>`;
 
+    // Ensure plans are loaded so plan names can be resolved on notification cards
+    if (allPlans.length === 0) await loadPlans();
+
     const { data, error } = await supabase
         .from('admin_notifications')
         .select('*')
@@ -2226,6 +2225,24 @@ function renderNotifUserList(users) {
         </label>`).join('');
 }
 
+// ── Resolve user IDs for notifications at send time ──────────
+function resolveUserIdsForTiers(tierPlanIds) {
+    const freePlan = allPlans.find(p => p.is_free);
+    const freePlanId = freePlan?.id;
+    return allUsers.filter(u => {
+        const activeSub = (u.subscriptions || []).find(s => ['active', 'trialing'].includes(s.status));
+        const userPlanId = activeSub?.plan_id || u.free_access_plan_id || (u.subscription_tier === 'free' ? freePlanId : null);
+        return tierPlanIds.some(t => t === userPlanId);
+    }).map(u => u.id);
+}
+
+function resolveUserIdsForRoles(roles) {
+    return allUsers.filter(u => {
+        const r = u.role || 'user';
+        return roles.some(t => t === r || (t === 'admin' && r === 'super_admin'));
+    }).map(u => u.id);
+}
+
 async function submitCreateNotification() {
     const title   = document.getElementById('notifTitle').value.trim();
     const message = document.getElementById('notifMessage').value.trim();
@@ -2240,13 +2257,17 @@ async function submitCreateNotification() {
     let target_tiers    = [];
     let target_user_ids = [];
 
-    if (type === 'role') {
-        target_roles = [...document.querySelectorAll('.notif-role-check:checked')].map(el => el.value);
-        if (target_roles.length === 0) { showToast('Selecione ao menos uma função.', 'error'); return; }
-    }
     if (type === 'tier') {
         target_tiers = [...document.querySelectorAll('.notif-tier-check:checked')].map(el => el.value);
         if (target_tiers.length === 0) { showToast('Selecione ao menos um plano.', 'error'); return; }
+        // Resolve matching user IDs at send time so notifications are immutable
+        target_user_ids = resolveUserIdsForTiers(target_tiers);
+    }
+    if (type === 'role') {
+        target_roles = [...document.querySelectorAll('.notif-role-check:checked')].map(el => el.value);
+        if (target_roles.length === 0) { showToast('Selecione ao menos uma função.', 'error'); return; }
+        // Resolve matching user IDs at send time so notifications are immutable
+        target_user_ids = resolveUserIdsForRoles(target_roles);
     }
     if (type === 'specific') {
         target_user_ids = [...document.querySelectorAll('.notif-user-check:checked')].map(el => el.value);
@@ -2426,9 +2447,9 @@ async function checkAdminNotificationsPopup(userId, profile) {
         const unread = notifications.filter(n => {
             if (readIds.has(n.id)) return false;
             if (n.target_type === 'all') return true;
-            if (n.target_type === 'role') {
-                const r = profile?.role || 'user';
-                return (n.target_roles || []).some(t => t === r || (t === 'admin' && r === 'super_admin'));
+            if (n.target_type === 'role' || n.target_type === 'tier' || n.target_type === 'plan') {
+                // Notifications are resolved at send time — check target_user_ids
+                return (n.target_user_ids || []).includes(userId);
             }
             if (n.target_type === 'specific') return (n.target_user_ids || []).includes(userId);
             return false;

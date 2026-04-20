@@ -356,13 +356,9 @@ async function loadNotifications() {
         // Filter by target
         allNotifications = (notifications || []).filter(n => {
             if (n.target_type === 'all') return true;
-            if (n.target_type === 'role') {
-                const r = currentProfile?.role || 'user';
-                return (n.target_roles || []).some(t => t === r || (t === 'admin' && r === 'super_admin'));
-            }
-            if (n.target_type === 'tier' || n.target_type === 'plan') {
-                const currentTier = currentProfile?.subscription_tier || 'free';
-                return (n.target_tiers || []).some(t => t === currentTier || (currentPlanId && t === currentPlanId));
+            if (n.target_type === 'role' || n.target_type === 'tier' || n.target_type === 'plan') {
+                // Notifications are resolved at send time — check target_user_ids
+                return (n.target_user_ids || []).includes(currentUserId);
             }
             if (n.target_type === 'specific')
                 return (n.target_user_ids || []).includes(currentUserId);

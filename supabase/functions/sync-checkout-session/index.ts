@@ -63,6 +63,7 @@ Deno.serve(async (req) => {
     const planId  = session.metadata?.plan_id || null;
     const couponCode       = session.metadata?.coupon_code || '';
     const billingInterval  = session.metadata?.billing_interval || 'month';
+    const revokeSubId      = session.metadata?.revoke_sub_id || '';
 
     // Retrieve full subscription details from Stripe
     const stripeSub = await stripe.subscriptions.retrieve(subId);
@@ -106,6 +107,23 @@ Deno.serve(async (req) => {
     }).eq('id', user.id);
 
     if (profileErr) throw profileErr;
+
+    // ── Revoke old subscription if switching plans ───
+    if (revokeSubId) {
+      const { data: oldSub } = await adminClient
+        .from('subscriptions')
+        .select('stripe_subscription_id')
+        .eq('id', revokeSubId)
+        .single();
+      if (oldSub?.stripe_subscription_id) {
+        try { await stripe.subscriptions.cancel(oldSub.stripe_subscription_id); } catch (_) {}
+      }
+      await adminClient.from('subscriptions').update({
+        status: 'canceled',
+        canceled_at: new Date().toISOString(),
+        cancel_at_period_end: false,
+      }).eq('id', revokeSubId);
+    }
 
     // Handle coupon increment (idempotent via unique constraint on coupon_redemptions)
     if (couponCode) {

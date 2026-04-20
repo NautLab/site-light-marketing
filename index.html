@@ -481,7 +481,6 @@
                 // ─── Realtime: show popup instantly for new notifications ───
                 (function setupNotifRealtime() {
                     const _uid = session.user.id;
-                    const _prof = profileResult;
                     supabase.channel('notif-realtime-' + _uid)
                         .on('postgres_changes', {
                             event: 'INSERT',
@@ -494,30 +493,8 @@
 
                             let applies = false;
                             if (n.target_type === 'all') applies = true;
-                            else if (n.target_type === 'role') {
-                                const r = _prof?.role || 'user';
-                                applies = (n.target_roles || []).some(t => t === r || (t === 'admin' && r === 'super_admin'));
-                            }
-                            else if (n.target_type === 'tier' || n.target_type === 'plan') {
-                                const tier = _prof?.subscription_tier || 'free';
-                                let planId = null;
-                                try {
-                                    const { data: sub } = await supabase.from('subscriptions').select('plan_id')
-                                        .eq('user_id', _uid).in('status', ['active','trialing'])
-                                        .order('created_at',{ascending:false}).limit(1).maybeSingle();
-                                    planId = sub?.plan_id || null;
-                                } catch(_){}
-                                // Fallback for free-tier users
-                                if (!planId) {
-                                    if (_prof?.free_access && _prof?.free_access_plan_id) {
-                                        planId = _prof.free_access_plan_id;
-                                    } else {
-                                        try { const { data: fp } = await supabase.from('plans').select('id').eq('is_free', true).eq('is_active', true).maybeSingle(); if (fp) planId = fp.id; } catch(_) {}
-                                    }
-                                }
-                                applies = (n.target_tiers || []).some(t => t === tier || (planId && t === planId));
-                            }
-                            else if (n.target_type === 'specific') {
+                            else if (n.target_type === 'role' || n.target_type === 'tier' || n.target_type === 'plan' || n.target_type === 'specific') {
+                                // Notifications are resolved at send time — check target_user_ids
                                 applies = (n.target_user_ids || []).includes(_uid);
                             }
 
@@ -534,30 +511,8 @@
                     const _waMsg='Ol\u00e1! Minha conta na Light Marketing foi bloqueada. Gostaria de entender o motivo e saber como resolver. Obrigado!';
                     const _waUrl=_waPhone?`https://wa.me/${_waPhone}?text=${encodeURIComponent(_waMsg)}`:'https://wa.link/m1vm4f';
 
-                    // ── Blocked account check (Item 19) ──────────────────
-                    if (profileResult?.is_blocked) {
-                        const toolCard = document.querySelector('.tool-card');
-                        if (toolCard) {
-                            const overlay = document.createElement('div');
-                            overlay.className = 'tool-lock-overlay';
-                            overlay.id = 'blockedOverlay';
-                            overlay.innerHTML = `<div class="tool-lock-inner">
-                                <div class="tool-lock-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="5" y="11" width="14" height="10" rx="2" stroke="#0C7E92" stroke-width="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4" stroke="#0C7E92" stroke-width="2" stroke-linecap="round"/></svg></div>
-                                <h3>Conta temporariamente bloqueada</h3>
-                                <p>Entre em contato com o suporte para mais informações.</p>
-                                <a href="${_waUrl}" target="_blank" rel="noopener noreferrer" class="tool-lock-btn">Falar com suporte</a>
-                               </div>`;
-                            toolCard.style.position = 'relative';
-                            toolCard.appendChild(overlay);
-                            const processBtn = document.getElementById('process-btn');
-                            if (processBtn) processBtn.disabled = true;
-                            const tc2 = document.querySelector('.tool-card');
-                            if (tc2) tc2.style.opacity = '1';
-                        }
-                        return;
-                    }
-
-                    // ── Realtime block listener (Item 19) ────────────────
+                    // ── Realtime block listener ──────────────────────────
+                    // Set up BEFORE blocked check so unblock events are caught even when user is currently blocked
                     supabase.channel('profile-block-' + user.id)
                         .on('postgres_changes', {
                             event: 'UPDATE',
@@ -599,6 +554,29 @@
                             }
                         })
                         .subscribe();
+
+                    // ── Blocked account check ────────────────────────────
+                    if (profileResult?.is_blocked) {
+                        const toolCard = document.querySelector('.tool-card');
+                        if (toolCard) {
+                            const overlay = document.createElement('div');
+                            overlay.className = 'tool-lock-overlay';
+                            overlay.id = 'blockedOverlay';
+                            overlay.innerHTML = `<div class="tool-lock-inner">
+                                <div class="tool-lock-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="5" y="11" width="14" height="10" rx="2" stroke="#0C7E92" stroke-width="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4" stroke="#0C7E92" stroke-width="2" stroke-linecap="round"/></svg></div>
+                                <h3>Conta temporariamente bloqueada</h3>
+                                <p>Entre em contato com o suporte para mais informações.</p>
+                                <a href="${_waUrl}" target="_blank" rel="noopener noreferrer" class="tool-lock-btn">Falar com suporte</a>
+                               </div>`;
+                            toolCard.style.position = 'relative';
+                            toolCard.appendChild(overlay);
+                            const processBtn = document.getElementById('process-btn');
+                            if (processBtn) processBtn.disabled = true;
+                            const tc2 = document.querySelector('.tool-card');
+                            if (tc2) tc2.style.opacity = '1';
+                        }
+                        return;
+                    }
 
                     // Load plan features for paid users
                     let planFeatures = null;
@@ -774,14 +752,9 @@
                 const unread = notifications.filter(n => {
                     if (readIds.has(n.id)) return false;
                     if (n.target_type === 'all') return true;
-                    if (n.target_type === 'role') {
-                        const r = profile?.role || 'user';
-                        // super_admin receives notifications targeting 'admin' too
-                        return (n.target_roles || []).some(t => t === r || (t === 'admin' && r === 'super_admin'));
-                    }
-                    if (n.target_type === 'tier' || n.target_type === 'plan') {
-                        const currentTier = profile?.subscription_tier || 'free';
-                        return (n.target_tiers || []).some(t => t === currentTier || (userPlanId && t === userPlanId));
+                    if (n.target_type === 'role' || n.target_type === 'tier' || n.target_type === 'plan') {
+                        // Notifications are resolved at send time — check target_user_ids
+                        return (n.target_user_ids || []).includes(userId);
                     }
                     if (n.target_type === 'specific') return (n.target_user_ids || []).includes(userId);
                     return false;
