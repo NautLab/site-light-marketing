@@ -2220,7 +2220,7 @@ function renderNotifUserList(users) {
         <label class="notif-user-item">
             <input type="checkbox" class="notif-user-check" value="${u.id}" />
             <div class="notif-user-info">
-                <span class="notif-user-name">${escHtml(u.full_name || u.email)} <span style="font-size:11px;opacity:.45;font-weight:400;">${tierLabel(u.subscription_tier)}</span></span>
+                <span class="notif-user-name">${escHtml(u.full_name || u.email)} <span style="font-size:11px;opacity:.45;font-weight:400;">${userPlanLabel(u)}</span></span>
                 <span class="notif-user-email">${escHtml(u.email)}</span>
             </div>
         </label>`).join('');
@@ -2565,6 +2565,13 @@ function tierLabel(tier) {
         return freePlan ? freePlan.name : 'Gratuito';
     }
     return { paid: 'Pagante' }[tier] || tier || '—';
+}
+
+function userPlanLabel(u) {
+    const activeSub = (u.subscriptions || []).find(s => ['active', 'trialing'].includes(s.status));
+    const planId = activeSub?.plan_id || u.free_access_plan_id;
+    if (planId) return planNameById(planId);
+    return tierLabel(u.subscription_tier);
 }
 
 function planNameById(planId) {
