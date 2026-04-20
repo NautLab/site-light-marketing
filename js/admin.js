@@ -81,7 +81,7 @@ async function initAdmin() {
 
         document.getElementById('sidebarAvatar').textContent = initials;
         document.getElementById('sidebarName').textContent   = profile.full_name || profile.email;
-        document.getElementById('sidebarRole').textContent   = 'Admin';
+        document.getElementById('sidebarRole').textContent   = 'Administrador';
 
         // Hide super_admin option for non-super_admins in role modal
         if (profile.role !== 'super_admin') {
@@ -2581,7 +2581,7 @@ function planNameById(planId) {
 }
 
 function roleLabel(role) {
-    return { user: 'Usuário', admin: 'Admin', super_admin: 'Admin' }[role] || role || '—';
+    return { user: 'Usuário', admin: 'Administrador', super_admin: 'Administrador' }[role] || role || '—';
 }
 
 function roleBadgeClass(role) {
