@@ -520,6 +520,7 @@
                             table: 'profiles',
                             filter: `id=eq.${user.id}`
                         }, payload => {
+                            const prev = profileResult ? { ...profileResult } : null;
                             if (payload.new?.is_blocked) {
                                 const toolCard = document.querySelector('.tool-card');
                                 if (toolCard && !document.getElementById('blockedOverlay')) {
@@ -543,14 +544,19 @@
                                 if (processBtn) processBtn.disabled = false;
                             }
 
+                            if (payload.new) {
+                                profileResult = { ...(profileResult || {}), ...payload.new };
+                            }
+
                             // On any profile change (revoke, tier change), reload the page to update screen locks
-                            if (payload.new && payload.old) {
-                                const changed = payload.new.subscription_tier !== payload.old.subscription_tier
-                                    || payload.new.free_access !== payload.old.free_access
-                                    || payload.new.is_blocked !== payload.old.is_blocked;
-                                if (changed) {
-                                    window.location.reload();
-                                }
+                            if (payload.new) {
+                                const changed = !prev
+                                    || payload.new.subscription_tier !== prev.subscription_tier
+                                    || payload.new.free_access !== prev.free_access
+                                    || payload.new.free_access_plan_id !== prev.free_access_plan_id
+                                    || payload.new.free_access_expires_at !== prev.free_access_expires_at
+                                    || payload.new.is_blocked !== prev.is_blocked;
+                                if (changed) window.location.reload();
                             }
                         })
                         .subscribe();

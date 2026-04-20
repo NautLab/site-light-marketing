@@ -51,6 +51,14 @@ async function signUp(email, password, fullName) {
  */
 async function signIn(email, password, rememberMe = false) {
     try {
+        // Set remember preference before sign-in so storage strategy is applied immediately
+        if (rememberMe) {
+            localStorage.setItem('sb-remember-me', 'true');
+        } else {
+            localStorage.removeItem('sb-remember-me');
+            localStorage.removeItem('sb-auth-token-persistent');
+        }
+
         const { data, error } = await supabase.auth.signInWithPassword({
             email: email,
             password: password
@@ -60,14 +68,14 @@ async function signIn(email, password, rememberMe = false) {
             return { success: false, error: translateAuthError(error.message) };
         }
 
-        // If remember me IS checked, copy session to localStorage for persistence
+        // Keep fallback persistent tokens synced when remember-me is enabled
         if (rememberMe && data.session) {
-            localStorage.setItem('sb-auth-token-persistent', JSON.stringify(data.session));
-            localStorage.setItem('sb-remember-me', 'true');
+            localStorage.setItem('sb-auth-token-persistent', JSON.stringify({
+                access_token: data.session.access_token,
+                refresh_token: data.session.refresh_token,
+            }));
         } else {
-            // Ensure localStorage is clean if not remembering
             localStorage.removeItem('sb-auth-token-persistent');
-            localStorage.removeItem('sb-remember-me');
         }
 
         return { success: true };

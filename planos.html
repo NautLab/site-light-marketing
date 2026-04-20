@@ -414,6 +414,7 @@
             animation: toastIn .3s ease; max-width: 340px;
         }
         @keyframes toastIn { from{opacity:0;transform:translateX(20px)} to{opacity:1;transform:translateX(0)} }
+        @keyframes spinBall { to { transform: rotate(360deg); } }
         .toast-success { background:#052e16; color:#22c55e; border:1px solid rgba(34,197,94,.3); }
         .toast-error   { background:#1c0a0a; color:#ef4444; border:1px solid rgba(239,68,68,.3); }
         .toast-info    { background:#0d1b35; color:#93c5fd; border:1px solid rgba(59,130,246,.3); }
@@ -546,6 +547,10 @@
             </div>
         </div>
 
+        <div id="plansLoadingBall" style="display:none;justify-content:center;align-items:center;padding:18px 0 4px;">
+            <div style="width:26px;height:26px;border:3px solid rgba(12,126,146,.25);border-top-color:#0C7E92;border-radius:50%;animation:spinBall .8s linear infinite;"></div>
+        </div>
+
         <!-- Coupon -->
         <div class="coupon-section">
             <label for="couponInput">Tem um cupom de desconto?</label>
@@ -582,6 +587,12 @@ let allPlans             = [];
 let activeCouponData     = null;
 
 const SUPABASE_FUNCTIONS_URL = `${SUPABASE_URL}/functions/v1`;
+
+function setPlansLoadingBall(show) {
+    const ball = document.getElementById('plansLoadingBall');
+    if (!ball) return;
+    ball.style.display = show ? 'flex' : 'none';
+}
 
 async function getSupportWhatsappUrl() {
     let waPhone = null;
@@ -710,8 +721,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
-            const profile = await getUserProfile();
-            if (profile) checkAdminNotifications(session.user.id, profile);
+            const profile = currentProfile || await getUserProfile();
 
             // Realtime: show popup instantly for new notifications
             const _uid = session.user.id;
@@ -858,6 +868,9 @@ async function initAuthHeader() {
             window.location.href = 'login.html';
         });
 
+        // Carrega badge/popup de notificações junto com o cabeçalho
+        checkAdminNotifications(user.id, currentProfile).catch(() => {});
+
     } catch(e) {
         console.error(e);
         authSection.innerHTML = `<a href="login.html" class="auth-btn-header">Entrar</a>`;
@@ -880,7 +893,7 @@ async function loadActiveSubscription() {
             .order('created_at', { ascending: false })
             .limit(1)
             .maybeSingle();
-        if (data) currentSubscription = data;
+        currentSubscription = data || null;
     } catch(_) {}
 }
 
@@ -1511,6 +1524,7 @@ const params = new URLSearchParams(window.location.search);
 let _checkoutSuccessPending = false;
 if (params.get('checkout') === 'success') {
     _checkoutSuccessPending = true;
+    setPlansLoadingBall(true);
     // Clean URL to prevent re-running on refresh
     window.history.replaceState({}, '', window.location.pathname);
 
@@ -1520,6 +1534,7 @@ if (params.get('checkout') === 'success') {
         _checkoutSuccessPending = false;
         const g = document.getElementById('plansGrid');
         if (g) { g.style.transition = 'opacity .2s'; g.style.opacity = '1'; }
+        setPlansLoadingBall(false);
     }
 
     (async function handleCheckoutSuccess() {
@@ -1578,6 +1593,7 @@ if (params.get('checkout') === 'success') {
         setTimeout(poll, 2000);
     })();
 } else if (params.get('checkout') === 'canceled') {
+    setPlansLoadingBall(false);
     setTimeout(() => showToast('Checkout cancelado. Você não foi cobrado.', 'info'), 500);
 }
 

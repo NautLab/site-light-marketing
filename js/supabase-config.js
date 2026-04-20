@@ -8,19 +8,23 @@ const SUPABASE_URL = 'https://tyymvawnrapoirshxskj.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR5eW12YXducmFwb2lyc2h4c2tqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU0NTc3NzQsImV4cCI6MjA4MTAzMzc3NH0.K43mjTGurBle5cwDjjehX8GRxBFYXKW3V4se4gtHaWc';
 
 // Check if user previously checked "remember me"
-const shouldRemember = localStorage.getItem('sb-remember-me') === 'true';
+function shouldRemember() {
+    return localStorage.getItem('sb-remember-me') === 'true';
+}
 
 // Custom storage that uses sessionStorage by default, but localStorage if "remember me" was checked
 const customStorage = {
     getItem: (key) => {
-        if (shouldRemember) {
+        if (shouldRemember()) {
             return localStorage.getItem(key) || sessionStorage.getItem(key);
         }
         return sessionStorage.getItem(key);
     },
     setItem: (key, value) => {
-        if (shouldRemember) {
+        if (shouldRemember()) {
             localStorage.setItem(key, value);
+        } else {
+            localStorage.removeItem(key);
         }
         sessionStorage.setItem(key, value);
     },
@@ -49,7 +53,7 @@ const SITE_URL = window.location.origin;
 
 // Restore session from persistent storage if "remember me" was checked
 (async function restoreSession() {
-    if (shouldRemember) {
+    if (shouldRemember()) {
         const persistentSession = localStorage.getItem('sb-auth-token-persistent');
         if (persistentSession) {
             try {
@@ -67,4 +71,43 @@ const SITE_URL = window.location.origin;
         }
     }
 })();
+
+// Keep persistent session in sync while "remember me" is enabled
+supabaseClient.auth.onAuthStateChange((event, session) => {
+    if (event === 'SIGNED_OUT') {
+        localStorage.removeItem('sb-auth-token-persistent');
+        return;
+    }
+
+    if (shouldRemember() && session?.access_token && session?.refresh_token) {
+        localStorage.setItem('sb-auth-token-persistent', JSON.stringify({
+            access_token: session.access_token,
+            refresh_token: session.refresh_token,
+        }));
+    } else {
+        localStorage.removeItem('sb-auth-token-persistent');
+    }
+});
+
+// On wake/focus, force a refresh attempt to avoid apparent random logouts after suspend
+async function tryRefreshSessionOnResume() {
+    try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (session?.refresh_token) {
+            await supabaseClient.auth.refreshSession();
+        }
+    } catch (_) {
+        // Silent by design
+    }
+}
+
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+        tryRefreshSessionOnResume();
+    }
+});
+
+window.addEventListener('focus', () => {
+    tryRefreshSessionOnResume();
+});
 

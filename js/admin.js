@@ -37,6 +37,7 @@ let allPlans  = [];
 let allCoupons = [];
 let allNotifications = [];
 let filteredNotifications = [];
+let currentAdminPopupNotifications = [];
 
 // ─────────────────────────────────────────────────────────────
 // Boot
@@ -2446,13 +2447,7 @@ async function checkAdminNotificationsPopup(userId, profile) {
 
         const unread = notifications.filter(n => {
             if (readIds.has(n.id)) return false;
-            if (n.target_type === 'all') return true;
-            if (n.target_type === 'role' || n.target_type === 'tier' || n.target_type === 'plan') {
-                // Notifications are resolved at send time — check target_user_ids
-                return (n.target_user_ids || []).includes(userId);
-            }
-            if (n.target_type === 'specific') return (n.target_user_ids || []).includes(userId);
-            return false;
+            return notificationAppliesToUser(n, userId, profile);
         });
 
         if (unread.length === 0) return;
@@ -2481,6 +2476,7 @@ function updateAdminNotifBadge(count) {
 
 function showAdminNotificationPopup(notifications, userId) {
     if (document.getElementById('notifPopupOverlay')) return;
+    currentAdminPopupNotifications = notifications || [];
     const overlay = document.createElement('div');
     overlay.id = 'notifPopupOverlay';
     overlay.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:20px;';
@@ -2499,18 +2495,50 @@ function showAdminNotificationPopup(notifications, userId) {
     overlay.addEventListener('click', e => { if (e.target === overlay) closeNotifPopup(userId); });
 }
 
-function closeNotifPopup(userId) {
+async function closeNotifPopup(userId) {
     const overlay = document.getElementById('notifPopupOverlay');
     if (!overlay) return;
     overlay.remove();
-    // Mark all popup notifications as read
-    supabase.from('admin_notifications').select('id').eq('is_active', true).then(({ data }) => {
-        if (data && data.length > 0) {
-            const inserts = data.map(n => ({ user_id: userId, notification_id: n.id }));
-            supabase.from('notification_reads').upsert(inserts, { onConflict: 'user_id,notification_id', ignoreDuplicates: true });
+
+    try {
+        let idsToMark = (currentAdminPopupNotifications || []).map(n => n.id);
+
+        // Fallback: if popup cache is empty, resolve unread IDs from DB
+        if (idsToMark.length === 0) {
+            const [notifRes, readRes] = await Promise.all([
+                supabase.from('admin_notifications').select('*').eq('is_active', true),
+                supabase.from('notification_reads').select('notification_id').eq('user_id', userId),
+            ]);
+
+            const notifications = notifRes.data || [];
+            const readIds = new Set((readRes.data || []).map(r => r.notification_id));
+            idsToMark = notifications
+                .filter(n => !readIds.has(n.id) && notificationAppliesToUser(n, userId, currentProfile))
+                .map(n => n.id);
         }
-    });
-    updateAdminNotifBadge(0);
+
+        if (idsToMark.length > 0) {
+            const inserts = idsToMark.map(notification_id => ({ user_id: userId, notification_id }));
+            await supabase.from('notification_reads').upsert(inserts, {
+                onConflict: 'user_id,notification_id',
+                ignoreDuplicates: true,
+            });
+        }
+    } catch (_) {
+        // silent: avoid blocking the close interaction
+    } finally {
+        currentAdminPopupNotifications = [];
+        await checkAdminNotificationsPopup(userId, currentProfile);
+    }
+}
+
+function notificationAppliesToUser(notification, userId, profile) {
+    if (notification.target_type === 'all') return true;
+    if (notification.target_type === 'role' || notification.target_type === 'tier' || notification.target_type === 'plan') {
+        return (notification.target_user_ids || []).includes(userId);
+    }
+    if (notification.target_type === 'specific') return (notification.target_user_ids || []).includes(userId);
+    return false;
 }
 
 function escHtml(str) {
