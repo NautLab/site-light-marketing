@@ -682,6 +682,8 @@ document.addEventListener('DOMContentLoaded', function() {
         overlay.id = 'notifPopupOverlay';
 
         function closePopup() {
+            // Marca a notificação atual como lida para não reaparecer como popup
+            supabase.from('notification_reads').insert({ user_id: userId, notification_id: notifications[current].id }).catch(() => {});
             overlay.remove();
             if (onAllDismissed) onAllDismissed();
         }
