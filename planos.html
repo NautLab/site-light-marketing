@@ -579,6 +579,8 @@ let currentSubscription  = null;
 let activeCouponCode     = null;
 let allPlans             = [];
 
+let activeCouponData     = null;
+
 const SUPABASE_FUNCTIONS_URL = `${SUPABASE_URL}/functions/v1`;
 
 async function getSupportWhatsappUrl() {
@@ -904,13 +906,31 @@ async function loadPlans() {
         .eq('is_active', true)
         .order('display_order', { ascending: true });
 
-    if (error || !data || data.length === 0) {
+    if (error) {
         document.getElementById('paidPlansContainer').innerHTML =
             `<p style="color:rgba(255,255,255,0.4);text-align:center;grid-column:1/-1;">Nenhum plano disponível no momento.</p>`;
         return;
     }
 
-    allPlans = data;
+    allPlans = data || [];
+
+    // If user has an active subscription on an inactive plan, also load that plan
+    if (currentSubscription?.plan_id && !allPlans.find(p => p.id === currentSubscription.plan_id)) {
+        const { data: inactivePlan } = await supabase
+            .from('plans')
+            .select('*')
+            .eq('id', currentSubscription.plan_id)
+            .single();
+        if (inactivePlan) {
+            inactivePlan._user_only = true; // mark so we only show it for this user
+            allPlans.push(inactivePlan);
+        }
+    }
+
+    if (allPlans.length === 0) {
+        document.getElementById('paidPlansContainer').innerHTML =
+            `<p style="color:rgba(255,255,255,0.4);text-align:center;grid-column:1/-1;">Nenhum plano disponível no momento.</p>`;
+    }
 }
 
 function updateFreePlanCard(plan) {
@@ -935,13 +955,19 @@ function updateFreePlanCard(plan) {
 
 function renderPaidPlans() {
     const container = document.getElementById('paidPlansContainer');
-    // When annual toggle is active, only show plans that have annual pricing
     // Exclude the free plan (shown in its own static card)
-    const plans = allPlans.filter(p =>
-        !p.is_free &&
-        p.interval === 'month' &&
-        (currentInterval === 'month' || !!p.annual_price_brl)
-    );
+    // For _user_only (inactive) plans, only show if current interval matches the user's subscription interval
+    const subInterval = currentSubscription?.billing_interval || 'month';
+    const plans = allPlans.filter(p => {
+        if (p.is_free) return false;
+        if (p._user_only) {
+            // Only show the inactive plan in the interval the user actually has
+            return currentInterval === subInterval;
+        }
+        return p.interval === 'month' &&
+            (currentInterval === 'month' || !!p.annual_price_brl);
+    });
+    plans.sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
     container.innerHTML = plans.map(p => buildPlanCard(p)).join('');
 }
 
@@ -964,11 +990,38 @@ function buildPlanCard(p) {
         ? annualMonthly.toFixed(2).replace('.', ',')
         : monthlyPrice.toFixed(2).replace('.', ',');
 
+    // ── Coupon discount calculation ─────────────────
+    let discountedMonthDisplay = null;
+    let discountedAnnualTotal = null;
+    let couponLabel = '';
+    if (activeCouponData && !isCurrent) {
+        const cd = activeCouponData;
+        const basePrice = isAnnual ? annualTotal : monthlyPrice;
+        let discountedPrice;
+        if (cd.discount_type === 'percent') {
+            discountedPrice = basePrice * (1 - cd.discount_value / 100);
+            couponLabel = `-${cd.discount_value}%`;
+        } else {
+            discountedPrice = Math.max(0, basePrice - parseFloat(cd.discount_value));
+            couponLabel = `-R$ ${parseFloat(cd.discount_value).toFixed(2).replace('.', ',')}`;
+        }
+        if (isAnnual) {
+            discountedAnnualTotal = discountedPrice;
+            discountedMonthDisplay = (discountedPrice / 12).toFixed(2).replace('.', ',');
+        } else {
+            discountedMonthDisplay = discountedPrice.toFixed(2).replace('.', ',');
+        }
+    }
+
     const obs = p.observation ? escHtml(p.observation) : '';
 
     let priceNote = '';
     if (isAnnual) {
-        priceNote = `<div class="plan-price-annual">R$ ${annualTotal.toFixed(2).replace('.', ',')} cobrado anualmente</div>`;
+        if (discountedAnnualTotal !== null) {
+            priceNote = `<div class="plan-price-annual"><s style="opacity:0.5">R$ ${annualTotal.toFixed(2).replace('.', ',')}</s> R$ ${discountedAnnualTotal.toFixed(2).replace('.', ',')} cobrado anualmente</div>`;
+        } else {
+            priceNote = `<div class="plan-price-annual">R$ ${annualTotal.toFixed(2).replace('.', ',')} cobrado anualmente</div>`;
+        }
         if (p.annual_observation) {
             priceNote += `<div class="plan-price-annual">${escHtml(p.annual_observation)}</div>`;
         }
@@ -1014,7 +1067,11 @@ function buildPlanCard(p) {
         <div class="plan-name">${escHtml(p.name)}</div>
         <div class="plan-description">${escHtml(p.description || '')}</div>
         <div class="plan-price-block">
-            <div class="plan-price"><sup>R$</sup>${monthDisplay}<sub>/mês</sub></div>
+            ${discountedMonthDisplay
+                ? `<div class="plan-price" style="font-size:14px;text-decoration:line-through;opacity:0.45;margin-bottom:2px;"><sup>R$</sup>${monthDisplay}<sub>/mês</sub></div>
+                   <div class="plan-price" style="color:#0C7E92;"><sup>R$</sup>${discountedMonthDisplay}<sub>/mês</sub></div>
+                   <div style="font-size:11px;color:#0C7E92;font-weight:600;margin-top:2px;">${couponLabel} com cupom</div>`
+                : `<div class="plan-price"><sup>R$</sup>${monthDisplay}<sub>/mês</sub></div>`}
             ${priceNote}
         </div>
         <div class="plan-divider"></div>
@@ -1103,29 +1160,8 @@ async function handleSubscribe(planId, planName) {
         // Fetch the new plan name
         let newPlanName = planName;
         showPlanSwitchConfirmModal(oldPlanName, newPlanName, endDate, async () => {
-            // Revoke remaining access immediately via cancel-subscription
-            try {
-                const { data: { session: sess } } = await supabase.auth.getSession();
-                if (sess && currentSubscription?.id) {
-                    const cancelRes = await fetch(`${SUPABASE_FUNCTIONS_URL}/cancel-subscription`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${sess.access_token}`,
-                            'apikey': SUPABASE_ANON_KEY,
-                        },
-                        body: JSON.stringify({ subscription_id: currentSubscription.id, cancel_at_period_end: false }),
-                    });
-                    if (!cancelRes.ok) {
-                        const err = await cancelRes.json();
-                        throw new Error(err.error || 'Erro ao revogar acesso');
-                    }
-                }
-            } catch (err) {
-                console.error('Revoke error:', err);
-            }
-            // Proceed to checkout without trial_end since access was revoked
-            _proceedToCheckout(planId, null);
+            // Proceed to checkout — old sub will be revoked only after payment is confirmed (via webhook)
+            _proceedToCheckout(planId, null, currentSubscription.id);
         });
         return;
     }
@@ -1133,7 +1169,7 @@ async function handleSubscribe(planId, planName) {
     _proceedToCheckout(planId, trialEnd);
 }
 
-function _proceedToCheckout(planId, trialEndIso = null) {
+function _proceedToCheckout(planId, trialEndIso = null, revokeSubId = null) {
     // Redirect to custom checkout page
     const params = new URLSearchParams({
         plan_id: planId,
@@ -1141,6 +1177,13 @@ function _proceedToCheckout(planId, trialEndIso = null) {
     });
     if (activeCouponCode) params.set('coupon', activeCouponCode);
     if (trialEndIso) params.set('trial_end', trialEndIso);
+    if (revokeSubId) params.set('revoke_sub_id', revokeSubId);
+    if (activeCouponData) {
+        params.set('coupon_discount_type', activeCouponData.discount_type);
+        params.set('coupon_discount_value', activeCouponData.discount_value);
+        params.set('coupon_duration', activeCouponData.duration || 'once');
+        if (activeCouponData.duration_in_months) params.set('coupon_duration_months', activeCouponData.duration_in_months);
+    }
     window.location.href = `checkout.html?${params.toString()}`;
 }
 
@@ -1221,8 +1264,8 @@ function showPlanSwitchConfirmModal(oldPlanName, newPlanName, endDate, onConfirm
     modal.innerHTML = `
         <div class="modal-box">
             <h3>Trocar de plano?</h3>
-            <p>Você tem acesso ao plano <span class="highlight">${escHtml(oldPlanName)}</span> até <span class="highlight">${endDate}</span>. Se assinar outro plano, seu acesso ao plano ${escHtml(oldPlanName)} será revogado imediatamente para liberar acesso ao plano <span class="highlight">${escHtml(newPlanName)}</span>.</p>
-            <p style="font-size:13px;color:rgba(255,255,255,0.5);">Deseja prosseguir?</p>
+            <p>Você tem acesso ao plano <span class="highlight">${escHtml(oldPlanName)}</span> até <span class="highlight">${endDate}</span>. Ao confirmar o pagamento do novo plano <span class="highlight">${escHtml(newPlanName)}</span>, seu acesso ao plano ${escHtml(oldPlanName)} será revogado automaticamente.</p>
+            <p style="font-size:13px;color:rgba(255,255,255,0.5);">O acesso ao plano atual só será revogado após a confirmação do pagamento.</p>
             <div class="modal-actions">
                 <button class="modal-btn-cancel" onclick="document.getElementById('planSwitchConfirmModal')?.remove()">Cancelar</button>
                 <button class="modal-btn-confirm" id="confirmPlanSwitchBtn">Prosseguir</button>
@@ -1383,7 +1426,7 @@ async function applyCoupon() {
 
     const { data, error } = await supabase
         .from('coupons')
-        .select('code, discount_type, discount_value, redeem_by, max_redemptions, times_redeemed, max_redemptions_per_user, id')
+        .select('code, discount_type, discount_value, duration, duration_in_months, redeem_by, max_redemptions, times_redeemed, max_redemptions_per_user, id')
         .eq('code', code)
         .eq('is_active', true)
         .single();
@@ -1392,6 +1435,8 @@ async function applyCoupon() {
         feedback.textContent = '✗ Cupom inválido ou expirado.';
         feedback.className   = 'coupon-feedback error';
         activeCouponCode     = null;
+        activeCouponData     = null;
+        renderPaidPlans();
         return;
     }
 
@@ -1400,6 +1445,8 @@ async function applyCoupon() {
         feedback.textContent = '✗ Este cupom já expirou.';
         feedback.className   = 'coupon-feedback error';
         activeCouponCode     = null;
+        activeCouponData     = null;
+        renderPaidPlans();
         return;
     }
 
@@ -1408,6 +1455,8 @@ async function applyCoupon() {
         feedback.textContent = '✗ Este cupom atingiu o limite de usos.';
         feedback.className   = 'coupon-feedback error';
         activeCouponCode     = null;
+        activeCouponData     = null;
+        renderPaidPlans();
         return;
     }
 
@@ -1424,6 +1473,8 @@ async function applyCoupon() {
                 feedback.textContent = '✗ Você já atingiu o limite individual deste cupom.';
                 feedback.className   = 'coupon-feedback error';
                 activeCouponCode     = null;
+                activeCouponData     = null;
+                renderPaidPlans();
                 return;
             }
         }
@@ -1436,6 +1487,10 @@ async function applyCoupon() {
     feedback.textContent = `✓ Cupom válido — ${discountText} aplicado!`;
     feedback.className   = 'coupon-feedback ok';
     activeCouponCode     = code;
+    activeCouponData     = data;
+
+    // Re-render cards with discounted prices
+    renderPaidPlans();
 }
 
 // ─────────────────────────────────────────────────────────────

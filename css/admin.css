@@ -818,6 +818,21 @@ textarea.form-control::-webkit-scrollbar { width: 6px; }
 textarea.form-control::-webkit-scrollbar-track { background: var(--bg-input); border-radius: 10px; }
 textarea.form-control::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
 
+/* ── Global dark scrollbar for modals & overflowing containers ── */
+.modal-body,
+.modal {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+}
+.modal-body::-webkit-scrollbar,
+.modal::-webkit-scrollbar { width: 6px; }
+.modal-body::-webkit-scrollbar-track,
+.modal::-webkit-scrollbar-track { background: transparent; border-radius: 10px; }
+.modal-body::-webkit-scrollbar-thumb,
+.modal::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+.modal-body::-webkit-scrollbar-thumb:hover,
+.modal::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
 /* ── Screens checkboxes (create / edit plan) ──────── */
 .screens-checkboxes {
     display: flex;

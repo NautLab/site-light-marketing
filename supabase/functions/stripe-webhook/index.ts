@@ -56,6 +56,7 @@ Deno.serve(async (req) => {
         const planId    = session.metadata?.plan_id;
         const couponCode = session.metadata?.coupon_code;
         const billingInterval = session.metadata?.billing_interval || 'month';
+        const revokeSubId = session.metadata?.revoke_sub_id;
         const subId     = session.subscription as string;
         const custId    = session.customer as string;
 
@@ -98,6 +99,23 @@ Deno.serve(async (req) => {
           free_access_granted_by: null,
           free_access_expires_at: null,
         }).eq('id', userId);
+
+        // ── Revoke old subscription if switching plans ───
+        if (revokeSubId) {
+          const { data: oldSub } = await adminClient
+            .from('subscriptions')
+            .select('stripe_subscription_id')
+            .eq('id', revokeSubId)
+            .single();
+          if (oldSub?.stripe_subscription_id) {
+            try { await stripe.subscriptions.cancel(oldSub.stripe_subscription_id); } catch (_) {}
+          }
+          await adminClient.from('subscriptions').update({
+            status: 'canceled',
+            canceled_at: new Date().toISOString(),
+            cancel_at_period_end: false,
+          }).eq('id', revokeSubId);
+        }
 
         // ── Increment coupon usage ───────────────────────
         if (couponCode) {

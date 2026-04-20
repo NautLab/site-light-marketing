@@ -100,6 +100,30 @@ async function initAdmin() {
             document.getElementById('adminApp').style.display    = 'flex';
         }
 
+        // ── Blocked user overlay on admin ─────────────────
+        if (profile.is_blocked) {
+            renderAdminBlockedOverlay();
+        }
+
+        // ── Realtime: block/unblock ───────────────────────
+        supabase.channel('admin-profile-block-' + currentUser.id)
+            .on('postgres_changes', {
+                event: 'UPDATE',
+                schema: 'public',
+                table: 'profiles',
+                filter: `id=eq.${currentUser.id}`
+            }, payload => {
+                const np = payload.new;
+                if (!np) return;
+                if (np.is_blocked && !currentProfile?.is_blocked) renderAdminBlockedOverlay();
+                else if (!np.is_blocked && currentProfile?.is_blocked) {
+                    const ov = document.getElementById('adminBlockedOverlay');
+                    if (ov) ov.remove();
+                }
+                currentProfile = { ...currentProfile, ...np };
+            })
+            .subscribe();
+
         // Load initial section data (plans too, so free_access plan names resolve in users table)
         await Promise.all([loadUsers(), loadPlans()]);
 
@@ -298,8 +322,8 @@ function openUserDetail(userId) {
                 : 'Concedido';
             return `<span class="badge badge-gift">${escHtml(planNameById(u.free_access_plan_id))}</span><span style="font-size:10px;color:var(--text-dim);display:block;margin-top:2px;">${expiryText}</span>`;
         }
-        if (activeSub?.plan_name_snapshot)
-            return `<span class="badge badge-paid">${escHtml(activeSub.plan_name_snapshot)}</span>`;
+        if (activeSub?.plan_id)
+            return `<span class="badge badge-paid">${escHtml(planNameById(activeSub.plan_id) || activeSub.plan_name_snapshot)}</span>`;
         return `<span class="badge badge-${u.subscription_tier}">${tierLabel(u.subscription_tier)}</span>`;
     })();
     const roleBadge = `<span class="badge ${roleBadgeClass(u.role)}">${roleLabel(u.role)}</span>`;
@@ -405,8 +429,8 @@ function buildUserRow(u) {
                 : 'Concedido';
             return `<span class="badge badge-gift">${escHtml(planNameById(u.free_access_plan_id))}</span><span style="font-size:10px;color:var(--text-dim);display:block;margin-top:2px;">${expiryText}</span>`;
         }
-        if (activeSub?.plan_name_snapshot)
-            return `<span class="badge badge-paid">${escHtml(activeSub.plan_name_snapshot)}</span>`;
+        if (activeSub?.plan_id)
+            return `<span class="badge badge-paid">${escHtml(planNameById(activeSub.plan_id) || activeSub.plan_name_snapshot)}</span>`;
         return `<span class="badge badge-${u.subscription_tier}">${tierLabel(u.subscription_tier)}</span>`;
     })();
     const roleBadge = `<span class="badge ${roleBadgeClass(u.role)}">${roleLabel(u.role)}</span>`;
@@ -2335,6 +2359,27 @@ function showToast(message, type = 'info') {
 // ─────────────────────────────────────────────────────────────
 // ██  HELPERS  ██
 // ─────────────────────────────────────────────────────────────
+
+async function renderAdminBlockedOverlay() {
+    if (document.getElementById('adminBlockedOverlay')) return;
+    let waUrl = 'https://wa.link/m1vm4f';
+    try {
+        const { data } = await supabase.from('site_settings').select('value').eq('key', 'phone').maybeSingle();
+        if (data?.value) { const p = String(data.value).replace(/\D/g, ''); if (p) waUrl = `https://wa.me/${p}?text=${encodeURIComponent('Olá! Minha conta na Light Marketing foi bloqueada. Gostaria de entender o motivo e saber como resolver. Obrigado!')}`; }
+    } catch(_){}
+    const ov = document.createElement('div');
+    ov.id = 'adminBlockedOverlay';
+    ov.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(10,10,10,0.96);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;';
+    ov.innerHTML = `<div style="text-align:center;max-width:420px;padding:32px;">
+        <div style="width:56px;height:56px;border-radius:50%;background:rgba(12,126,146,.12);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="5" y="11" width="14" height="10" rx="2" stroke="#0C7E92" stroke-width="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4" stroke="#0C7E92" stroke-width="2" stroke-linecap="round"/></svg>
+        </div>
+        <h3 style="font-family:Poppins,sans-serif;font-size:18px;font-weight:600;color:#fff;margin:0 0 8px;">Conta temporariamente bloqueada</h3>
+        <p style="font-family:Poppins,sans-serif;font-size:14px;color:#aaa;margin:0 0 24px;">Entre em contato com o suporte para mais informações.</p>
+        <a href="${waUrl}" target="_blank" rel="noopener noreferrer" style="display:inline-block;background:#0C7E92;color:#fff;text-decoration:none;border-radius:10px;padding:10px 24px;font-family:Poppins,sans-serif;font-size:14px;font-weight:500;">Falar com suporte</a>
+    </div>`;
+    document.body.appendChild(ov);
+}
 
 function escHtml(str) {
     return (str || '')

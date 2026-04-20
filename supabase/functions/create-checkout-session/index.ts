@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
     const { data: { user } } = await callerClient.auth.getUser();
     if (!user) return json({ error: 'Unauthorized' }, 401);
 
-    const { plan_id, coupon_code, billing_interval, ui_mode, trial_end } = await req.json();
+    const { plan_id, coupon_code, billing_interval, ui_mode, trial_end, revoke_sub_id } = await req.json();
     if (!plan_id) return json({ error: 'Missing plan_id' }, 400);
 
     // Load plan from DB
@@ -82,21 +82,25 @@ Deno.serve(async (req) => {
         }
         // Already-scheduled subs: leave them running until period end
       } else {
-        if (blocking.length > 0) {
+        if (blocking.length > 0 && !revoke_sub_id) {
           return json({
             error: 'Você já possui uma assinatura ativa. Cancele o plano atual antes de assinar um novo.',
           }, 409);
         }
 
-        // Only subs already scheduled to cancel — cancel them immediately and proceed
-        for (const sub of existingSubs) {
-          if (sub.stripe_subscription_id) {
-            try { await stripe.subscriptions.cancel(sub.stripe_subscription_id); } catch (_) {}
+        // If revoke_sub_id is provided, the old sub will be revoked by webhook after payment
+        // Don't cancel it now — just proceed
+        if (!revoke_sub_id) {
+          // Only subs already scheduled to cancel — cancel them immediately and proceed
+          for (const sub of existingSubs) {
+            if (sub.stripe_subscription_id) {
+              try { await stripe.subscriptions.cancel(sub.stripe_subscription_id); } catch (_) {}
+            }
+            await adminClient.from('subscriptions').update({
+              status: 'canceled',
+              canceled_at: new Date().toISOString(),
+            }).eq('id', sub.id);
           }
-          await adminClient.from('subscriptions').update({
-            status: 'canceled',
-            canceled_at: new Date().toISOString(),
-          }).eq('id', sub.id);
         }
       }
     }
@@ -164,9 +168,10 @@ Deno.serve(async (req) => {
         plan_id,
         coupon_code: coupon_code || '',
         billing_interval: billing_interval || 'month',
+        revoke_sub_id: revoke_sub_id || '',
       },
       subscription_data: {
-        metadata: { user_id: user.id, plan_id, coupon_code: coupon_code || '', billing_interval: billing_interval || 'month' },
+        metadata: { user_id: user.id, plan_id, coupon_code: coupon_code || '', billing_interval: billing_interval || 'month', revoke_sub_id: revoke_sub_id || '' },
         ...(trial_end ? (() => {
           const trialEndTs = Math.floor(new Date(trial_end).getTime() / 1000);
           const nowTs      = Math.floor(Date.now() / 1000);
