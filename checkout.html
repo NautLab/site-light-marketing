@@ -630,7 +630,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                     else if (n.target_type === 'specific') applies = (n.target_user_ids || []).includes(userId);
 
-                    if (applies && n.show_popup !== false) showNotificationPopup([n], userId);
+                    if (applies && n.show_popup !== false) showNotificationPopup([n], userId, () => checkAdminNotifications(userId, profile).catch(()=>{}));
                 })
                 .subscribe();
 
@@ -664,7 +664,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (unread.length === 0) return;
             updateNotifBadge(unread.length);
             const popupNotifs = unread.filter(n => n.show_popup !== false);
-            if (popupNotifs.length > 0) showNotificationPopup(popupNotifs, userId);
+            if (popupNotifs.length > 0) showNotificationPopup(popupNotifs, userId, () => checkAdminNotifications(userId, profile).catch(()=>{}));
         } catch(_){}
     }
 
@@ -675,7 +675,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (nl) { let d = nl.querySelector('.notif-dropdown-count'); if (count > 0) { if (!d) { d = document.createElement('span'); d.className = 'notif-dropdown-count'; d.style.cssText = 'margin-left:auto;background:#ef4444;color:#fff;font-size:10px;font-weight:700;min-width:18px;height:18px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;padding:0 5px;'; nl.appendChild(d); } d.textContent = count > 99 ? '99+' : count; } else if (d) d.remove(); }
     }
 
-    function showNotificationPopup(notifications, userId) {
+    function showNotificationPopup(notifications, userId, onAllDismissed) {
         let current = 0;
         const overlay = document.createElement('div');
         overlay.id = 'notifPopupOverlay';
@@ -703,9 +703,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>`;
             overlay.querySelector('#notifDismissBtn').onclick = async () => {
                 await supabase.from('notification_reads').insert({ user_id: userId, notification_id: n.id }).then(() => {});
-                updateNotifBadge(notifications.length - current - 1);
                 current++;
-                if (current < notifications.length) render(); else overlay.remove();
+                if (current < notifications.length) render();
+                else {
+                    overlay.remove();
+                    if (onAllDismissed) onAllDismissed();
+                }
             };
         }
         document.body.appendChild(overlay);

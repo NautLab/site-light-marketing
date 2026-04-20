@@ -748,8 +748,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
 
                     if (!applies) return;
-                    // Atualiza badge e mostra popup
-                    checkAdminNotifications(_uid, currentProfile).catch(() => {});
+                    if (n.show_popup !== false && !document.getElementById('notifPopupOverlay')) {
+                        // Mostra popup; badge atualiza somente após clicar Entendido
+                        showNotificationPopup([n], _uid, () => checkAdminNotifications(_uid, currentProfile).catch(() => {}));
+                    } else {
+                        // Sem popup — atualiza badge agora
+                        checkAdminNotifications(_uid, currentProfile).catch(() => {});
+                    }
                 })
                 .on('postgres_changes', {
                     event: 'UPDATE',
@@ -1675,7 +1680,8 @@ async function checkAdminNotifications(userId, profile) {
         }
         updateNotifBadge(unread.length);
         const popupNotifs = unread.filter(n => n.show_popup !== false);
-        if (popupNotifs.length > 0 && !document.getElementById('notifPopupOverlay')) showNotificationPopup(popupNotifs, userId);
+        if (popupNotifs.length > 0 && !document.getElementById('notifPopupOverlay'))
+            showNotificationPopup(popupNotifs, userId, () => checkAdminNotifications(userId, currentProfile).catch(() => {}));
     } catch (_) { /* silent */ }
 }
 
@@ -1704,7 +1710,7 @@ function updateNotifBadge(count) {
     }
 }
 
-function showNotificationPopup(notifications, userId) {
+function showNotificationPopup(notifications, userId, onAllDismissed) {
     let current = 0;
 
     const overlay = document.createElement('div');
