@@ -2505,17 +2505,35 @@ function showAdminNotificationPopup(notifications, userId) {
     overlay.id = 'notifPopupOverlay';
     overlay.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:20px;';
 
-    const n = notifications[0];
-    overlay.innerHTML = `<div style="background:#161616;border:1px solid rgba(12,126,146,0.3);border-radius:16px;max-width:440px;width:100%;padding:32px 28px;text-align:center;position:relative;">
-        <button onclick="suppressAdminNotifPopup('${userId}')" style="position:absolute;top:12px;right:12px;background:none;border:none;color:#888;font-size:20px;cursor:pointer;padding:4px 8px;">&times;</button>
-        <div style="width:48px;height:48px;border-radius:50%;background:rgba(12,126,146,0.12);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" stroke="#0C7E92" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M13.73 21a2 2 0 0 1-3.46 0" stroke="#0C7E92" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </div>
-        <h3 style="font-family:Poppins,sans-serif;font-size:16px;font-weight:600;color:#fff;margin:0 0 8px;word-break:break-word;overflow-wrap:anywhere;">${escHtml(n.title)}</h3>
-        <p style="font-family:Poppins,sans-serif;font-size:13px;color:#aaa;margin:0 0 20px;line-height:1.6;white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere;">${escHtml(n.message)}</p>
-        <button onclick="closeNotifPopup('${userId}')" style="background:#0C7E92;color:#fff;border:none;border-radius:10px;padding:10px 28px;font-family:Poppins,sans-serif;font-size:14px;font-weight:500;cursor:pointer;">Entendi</button>
-    </div>`;
+    let current = 0;
+
+    function render() {
+        const n = notifications[current];
+        const isLast = current === notifications.length - 1;
+        overlay.innerHTML = `<div style="background:#161616;border:1px solid rgba(12,126,146,0.3);border-radius:16px;max-width:440px;width:100%;padding:32px 28px;text-align:center;position:relative;">
+            <button id="adminNotifCloseBtn" style="position:absolute;top:12px;right:12px;background:none;border:none;color:#888;font-size:20px;cursor:pointer;padding:4px 8px;">&times;</button>
+            <div style="width:48px;height:48px;border-radius:50%;background:rgba(12,126,146,0.12);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" stroke="#0C7E92" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M13.73 21a2 2 0 0 1-3.46 0" stroke="#0C7E92" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            ${notifications.length > 1 ? `<div style="font-size:12px;color:#666;margin-bottom:8px;">${current + 1} / ${notifications.length}</div>` : ''}
+            <h3 style="font-family:Poppins,sans-serif;font-size:16px;font-weight:600;color:#fff;margin:0 0 8px;word-break:break-word;overflow-wrap:anywhere;">${escHtml(n.title)}</h3>
+            <p style="font-family:Poppins,sans-serif;font-size:13px;color:#aaa;margin:0 0 20px;line-height:1.6;white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere;text-align:left;">${escHtml(n.message)}</p>
+            <button id="adminNotifDismissBtn" style="background:#0C7E92;color:#fff;border:none;border-radius:10px;padding:10px 28px;font-family:Poppins,sans-serif;font-size:14px;font-weight:500;cursor:pointer;">${isLast ? 'Entendi' : 'Próxima →'}</button>
+        </div>`;
+
+        overlay.querySelector('#adminNotifCloseBtn').onclick = () => suppressAdminNotifPopup(userId);
+        overlay.querySelector('#adminNotifDismissBtn').onclick = () => {
+            current++;
+            if (current < notifications.length) {
+                render();
+            } else {
+                closeNotifPopup(userId);
+            }
+        };
+    }
+
     document.body.appendChild(overlay);
+    render();
     overlay.addEventListener('click', e => { if (e.target === overlay) suppressAdminNotifPopup(userId); });
 }
 
