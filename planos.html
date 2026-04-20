@@ -858,6 +858,10 @@ async function initAuthHeader() {
 
         authSection.style.display = 'block';
 
+        // Apply cached notification badge instantly (refreshed after DB call below)
+        const _cachedNotif = parseInt(sessionStorage.getItem('lm_notif_count') || '0', 10);
+        if (_cachedNotif > 0) updateNotifBadge(_cachedNotif);
+
         document.getElementById('user-account-btn').addEventListener('click', e => {
             e.stopPropagation();
             document.getElementById('user-dropdown').classList.toggle('active');
@@ -1665,6 +1669,7 @@ async function checkAdminNotifications(userId, profile) {
 }
 
 function updateNotifBadge(count) {
+    sessionStorage.setItem('lm_notif_count', count);
     const avatar = document.querySelector('.user-avatar');
     if (avatar) {
         let badge = avatar.querySelector('.notif-badge');

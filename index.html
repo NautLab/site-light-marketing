@@ -422,6 +422,10 @@
                 `;
                 
                 authSection.style.display = 'block';
+
+                // Apply cached notification badge instantly (refreshed after DB call below)
+                const _cachedNotif = parseInt(sessionStorage.getItem('lm_notif_count') || '0', 10);
+                if (_cachedNotif > 0) updateNotifBadge(_cachedNotif);
                 
                 // Toggle dropdown
                 const accountBtn = document.getElementById('user-account-btn');
@@ -736,8 +740,8 @@
 
                 // For free-tier or free-access users, also resolve their plan ID
                 if (!userPlanId) {
-                    if (profileResult?.free_access && profileResult?.free_access_plan_id) {
-                        userPlanId = profileResult.free_access_plan_id;
+                    if (profile?.free_access && profile?.free_access_plan_id) {
+                        userPlanId = profile.free_access_plan_id;
                     } else {
                         try {
                             const { data: fp } = await supabase.from('plans').select('id').eq('is_free', true).eq('is_active', true).maybeSingle();
@@ -777,6 +781,7 @@
         }
 
         function updateNotifBadge(count) {
+            sessionStorage.setItem('lm_notif_count', count);
             // Badge on avatar
             const avatar = document.querySelector('.user-avatar');
             if (avatar) {
