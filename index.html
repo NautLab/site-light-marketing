@@ -792,7 +792,8 @@
                 // Show badge on user avatar
                 updateNotifBadge(unread.length);
 
-                const popupNotifs = unread.filter(n => n.show_popup !== false);
+                const _suppressed = new Set(JSON.parse(sessionStorage.getItem('lm_notif_popup_suppressed') || '[]'));
+                const popupNotifs = unread.filter(n => n.show_popup !== false && !_suppressed.has(n.id));
                 if (popupNotifs.length > 0 && !document.getElementById('notifPopupOverlay'))
                     showNotificationPopup(popupNotifs, userId, () => checkAdminNotifications(userId, profile).catch(() => {}));
             } catch (_) { /* silent */ }
@@ -835,8 +836,10 @@
                 display:flex;align-items:center;justify-content:center;padding:16px;`;
 
             function closePopup() {
-                // Marca a notificação atual como lida para não reaparecer como popup
-                supabase.from('notification_reads').insert({ user_id: userId, notification_id: notifications[current].id }).catch(() => {});
+                // Suprime popup nesta sessão sem marcar como lida
+                const _sup = JSON.parse(sessionStorage.getItem('lm_notif_popup_suppressed') || '[]');
+                notifications.forEach(n => { if (!_sup.includes(n.id)) _sup.push(n.id); });
+                sessionStorage.setItem('lm_notif_popup_suppressed', JSON.stringify(_sup));
                 overlay.remove();
                 if (onAllDismissed) onAllDismissed();
             }

@@ -2468,7 +2468,8 @@ async function checkAdminNotificationsPopup(userId, profile) {
             updateAdminNotifBadge(0);
             return;
         }
-        const popupNotifs = unread.filter(n => n.show_popup !== false);
+        const _suppressed = new Set(JSON.parse(sessionStorage.getItem('lm_notif_popup_suppressed') || '[]'));
+        const popupNotifs = unread.filter(n => n.show_popup !== false && !_suppressed.has(n.id));
         if (popupNotifs.length > 0 && !document.getElementById('notifPopupOverlay')) {
             // Mostra popup — badge atualiza após fechar via closeNotifPopup
             showAdminNotificationPopup(popupNotifs, userId);
@@ -2505,7 +2506,7 @@ function showAdminNotificationPopup(notifications, userId) {
 
     const n = notifications[0];
     overlay.innerHTML = `<div style="background:#161616;border:1px solid rgba(12,126,146,0.3);border-radius:16px;max-width:440px;width:100%;padding:32px 28px;text-align:center;position:relative;">
-        <button onclick="closeNotifPopup('${userId}')" style="position:absolute;top:12px;right:12px;background:none;border:none;color:#888;font-size:20px;cursor:pointer;padding:4px 8px;">&times;</button>
+        <button onclick="suppressAdminNotifPopup('${userId}')" style="position:absolute;top:12px;right:12px;background:none;border:none;color:#888;font-size:20px;cursor:pointer;padding:4px 8px;">&times;</button>
         <div style="width:48px;height:48px;border-radius:50%;background:rgba(12,126,146,0.12);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" stroke="#0C7E92" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M13.73 21a2 2 0 0 1-3.46 0" stroke="#0C7E92" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </div>
@@ -2514,7 +2515,20 @@ function showAdminNotificationPopup(notifications, userId) {
         <button onclick="closeNotifPopup('${userId}')" style="background:#0C7E92;color:#fff;border:none;border-radius:10px;padding:10px 28px;font-family:Poppins,sans-serif;font-size:14px;font-weight:500;cursor:pointer;">Entendi</button>
     </div>`;
     document.body.appendChild(overlay);
-    overlay.addEventListener('click', e => { if (e.target === overlay) closeNotifPopup(userId); });
+    overlay.addEventListener('click', e => { if (e.target === overlay) suppressAdminNotifPopup(userId); });
+}
+
+function suppressAdminNotifPopup(userId) {
+    const overlay = document.getElementById('notifPopupOverlay');
+    if (!overlay) return;
+    // Salva IDs no sessionStorage para não exibir popup novamente nesta sessão
+    const _sup = JSON.parse(sessionStorage.getItem('lm_notif_popup_suppressed') || '[]');
+    (currentAdminPopupNotifications || []).forEach(n => { if (!_sup.includes(n.id)) _sup.push(n.id); });
+    sessionStorage.setItem('lm_notif_popup_suppressed', JSON.stringify(_sup));
+    currentAdminPopupNotifications = [];
+    overlay.remove();
+    // Atualiza badge sem re-mostrar popup
+    checkAdminNotificationsPopup(userId, currentProfile);
 }
 
 async function closeNotifPopup(userId) {
