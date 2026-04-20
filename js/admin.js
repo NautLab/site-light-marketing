@@ -135,14 +135,24 @@ async function initAdmin() {
             }, async (payload) => {
                 const n = payload.new;
                 if (!n || !n.is_active) return;
-                if (document.getElementById('notifPopupOverlay')) return;
                 let applies = false;
                 if (n.target_type === 'all') applies = true;
                 else if (n.target_type === 'role' || n.target_type === 'tier' || n.target_type === 'plan' || n.target_type === 'specific') {
-                    // Notifications are resolved at send time — check target_user_ids
                     applies = (n.target_user_ids || []).includes(currentUser.id);
                 }
-                if (applies && n.show_popup !== false) showAdminNotificationPopup([n], currentUser.id);
+                if (!applies) return;
+                if (n.show_popup !== false && !document.getElementById('notifPopupOverlay')) {
+                    showAdminNotificationPopup([n], currentUser.id);
+                } else {
+                    checkAdminNotificationsPopup(currentUser.id, currentProfile);
+                }
+            })
+            .on('postgres_changes', {
+                event: 'UPDATE',
+                schema: 'public',
+                table: 'admin_notifications'
+            }, async () => {
+                checkAdminNotificationsPopup(currentUser.id, currentProfile);
             })
             .subscribe();
 
@@ -2436,7 +2446,11 @@ async function checkAdminNotificationsPopup(userId, profile) {
             .eq('is_active', true)
             .order('created_at', { ascending: true });
 
-        if (nErr || !notifications || notifications.length === 0) return;
+        if (nErr) return;
+        if (!notifications || notifications.length === 0) {
+            updateAdminNotifBadge(0);
+            return;
+        }
 
         const { data: reads } = await supabase
             .from('notification_reads')
@@ -2450,10 +2464,18 @@ async function checkAdminNotificationsPopup(userId, profile) {
             return notificationAppliesToUser(n, userId, profile);
         });
 
-        if (unread.length === 0) return;
-        updateAdminNotifBadge(unread.length);
+        if (unread.length === 0) {
+            updateAdminNotifBadge(0);
+            return;
+        }
         const popupNotifs = unread.filter(n => n.show_popup !== false);
-        if (popupNotifs.length > 0) showAdminNotificationPopup(popupNotifs, userId);
+        if (popupNotifs.length > 0 && !document.getElementById('notifPopupOverlay')) {
+            // Mostra popup — badge atualiza após fechar via closeNotifPopup
+            showAdminNotificationPopup(popupNotifs, userId);
+        } else {
+            // Sem popup para mostrar — atualiza badge agora
+            updateAdminNotifBadge(unread.length);
+        }
     } catch (_) { /* silent */ }
 }
 
