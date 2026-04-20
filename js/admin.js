@@ -1013,7 +1013,7 @@ async function confirmRoleChange() {
 
 async function loadPlans() {
     document.getElementById('plansContainer').innerHTML =
-        `<div class="empty-state"><p class="empty-state-text">Carregando planos…</p></div>`;
+        `<div class="loading-state"><span class="spinner-lg"></span></div>`;
 
     const { data, error } = await supabase
         .from('plans')
@@ -1627,7 +1627,7 @@ async function deleteSubscriptionRow(subId, userEmail) {
 
 async function loadCoupons() {
     document.getElementById('couponsContainer').innerHTML =
-        `<div class="empty-state"><p class="empty-state-text">Carregando cupons…</p></div>`;
+        `<div class="loading-state"><span class="spinner-lg"></span></div>`;
 
     const { data, error } = await supabase
         .from('coupons')
@@ -2042,7 +2042,7 @@ function clearCouponForm() {
 
 async function loadNotifications() {
     document.getElementById('notificationsContainer').innerHTML =
-        `<div class="empty-state"><p class="empty-state-text">Carregando notificações…</p></div>`;
+        `<div class="loading-state"><span class="spinner-lg"></span></div>`;
 
     // Ensure plans are loaded so plan names can be resolved on notification cards
     if (allPlans.length === 0) await loadPlans();
