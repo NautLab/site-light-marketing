@@ -1257,9 +1257,10 @@ function openEditPlanModal(planId) {
     // Update helper text with calculated value
     if (annualPriceEl?.value) updateAnnualHelper('editPlanAnnualPrice', 'editAnnualHelper');
 
-    // Free plan: lock price and annual section
+    // Free plan: hide price and annual section
     const isFree = !!p.is_free;
-    document.getElementById('editPlanPrice').disabled = isFree;
+    const priceGroup = document.getElementById('editPlanPrice')?.closest('.form-group');
+    if (priceGroup) priceGroup.style.display = isFree ? 'none' : '';
     const annualSection = document.getElementById('editAnnualSection');
     if (annualSection) annualSection.style.display = isFree ? 'none' : '';
 
