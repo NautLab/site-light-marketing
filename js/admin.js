@@ -124,6 +124,30 @@ async function initAdmin() {
             })
             .subscribe();
 
+        // ── Notification badge + popup ────────────────────
+        checkAdminNotificationsPopup(currentUser.id, currentProfile);
+        supabase.channel('notif-realtime-admin-' + currentUser.id)
+            .on('postgres_changes', {
+                event: 'INSERT',
+                schema: 'public',
+                table: 'admin_notifications'
+            }, async (payload) => {
+                const n = payload.new;
+                if (!n || !n.is_active) return;
+                if (document.getElementById('notifPopupOverlay')) return;
+                let applies = false;
+                if (n.target_type === 'all') applies = true;
+                else if (n.target_type === 'role') {
+                    const r = currentProfile?.role || 'user';
+                    applies = (n.target_roles || []).some(t => t === r || (t === 'admin' && r === 'super_admin'));
+                }
+                else if (n.target_type === 'specific') {
+                    applies = (n.target_user_ids || []).includes(currentUser.id);
+                }
+                if (applies && n.show_popup !== false) showAdminNotificationPopup([n], currentUser.id);
+            })
+            .subscribe();
+
         // Load initial section data (plans too, so free_access plan names resolve in users table)
         await Promise.all([loadUsers(), loadPlans()]);
 
@@ -2369,7 +2393,7 @@ async function renderAdminBlockedOverlay() {
     } catch(_){}
     const ov = document.createElement('div');
     ov.id = 'adminBlockedOverlay';
-    ov.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(10,10,10,0.96);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;';
+    ov.style.cssText = 'position:fixed;top:var(--header-height,60px);bottom:0;right:0;left:var(--sidebar-width,240px);z-index:90;background:rgba(10,10,10,0.96);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;';
     ov.innerHTML = `<div style="text-align:center;max-width:420px;padding:32px;">
         <div style="width:56px;height:56px;border-radius:50%;background:rgba(12,126,146,.12);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="5" y="11" width="14" height="10" rx="2" stroke="#0C7E92" stroke-width="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4" stroke="#0C7E92" stroke-width="2" stroke-linecap="round"/></svg>
@@ -2379,6 +2403,93 @@ async function renderAdminBlockedOverlay() {
         <a href="${waUrl}" target="_blank" rel="noopener noreferrer" style="display:inline-block;background:#0C7E92;color:#fff;text-decoration:none;border-radius:10px;padding:10px 24px;font-family:Poppins,sans-serif;font-size:14px;font-weight:500;">Falar com suporte</a>
     </div>`;
     document.body.appendChild(ov);
+}
+
+// ── Admin Notification Popup + Badge ─────────────────────────
+async function checkAdminNotificationsPopup(userId, profile) {
+    try {
+        const { data: notifications, error: nErr } = await supabase
+            .from('admin_notifications')
+            .select('*')
+            .eq('is_active', true)
+            .order('created_at', { ascending: true });
+
+        if (nErr || !notifications || notifications.length === 0) return;
+
+        const { data: reads } = await supabase
+            .from('notification_reads')
+            .select('notification_id')
+            .eq('user_id', userId);
+
+        const readIds = new Set((reads || []).map(r => r.notification_id));
+
+        const unread = notifications.filter(n => {
+            if (readIds.has(n.id)) return false;
+            if (n.target_type === 'all') return true;
+            if (n.target_type === 'role') {
+                const r = profile?.role || 'user';
+                return (n.target_roles || []).some(t => t === r || (t === 'admin' && r === 'super_admin'));
+            }
+            if (n.target_type === 'specific') return (n.target_user_ids || []).includes(userId);
+            return false;
+        });
+
+        if (unread.length === 0) return;
+        updateAdminNotifBadge(unread.length);
+        const popupNotifs = unread.filter(n => n.show_popup !== false);
+        if (popupNotifs.length > 0) showAdminNotificationPopup(popupNotifs, userId);
+    } catch (_) { /* silent */ }
+}
+
+function updateAdminNotifBadge(count) {
+    const avatar = document.getElementById('sidebarAvatar');
+    if (avatar) {
+        avatar.style.position = 'relative';
+        let badge = avatar.querySelector('.notif-badge');
+        if (count > 0) {
+            if (!badge) {
+                badge = document.createElement('span');
+                badge.className = 'notif-badge';
+                badge.style.cssText = 'position:absolute;top:-4px;right:-6px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;min-width:17px;height:17px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px;pointer-events:none;z-index:1;border:2px solid #111;line-height:1;';
+                avatar.appendChild(badge);
+            }
+            badge.textContent = count > 99 ? '99+' : count;
+        } else if (badge) { badge.remove(); }
+    }
+}
+
+function showAdminNotificationPopup(notifications, userId) {
+    if (document.getElementById('notifPopupOverlay')) return;
+    const overlay = document.createElement('div');
+    overlay.id = 'notifPopupOverlay';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:20px;';
+
+    const n = notifications[0];
+    overlay.innerHTML = `<div style="background:#161616;border:1px solid rgba(12,126,146,0.3);border-radius:16px;max-width:440px;width:100%;padding:32px 28px;text-align:center;position:relative;">
+        <button onclick="closeNotifPopup('${userId}')" style="position:absolute;top:12px;right:12px;background:none;border:none;color:#888;font-size:20px;cursor:pointer;padding:4px 8px;">&times;</button>
+        <div style="width:48px;height:48px;border-radius:50%;background:rgba(12,126,146,0.12);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" stroke="#0C7E92" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M13.73 21a2 2 0 0 1-3.46 0" stroke="#0C7E92" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <h3 style="font-family:Poppins,sans-serif;font-size:16px;font-weight:600;color:#fff;margin:0 0 8px;">${escHtml(n.title)}</h3>
+        <p style="font-family:Poppins,sans-serif;font-size:13px;color:#aaa;margin:0 0 20px;line-height:1.5;">${escHtml(n.message)}</p>
+        <button onclick="closeNotifPopup('${userId}')" style="background:#0C7E92;color:#fff;border:none;border-radius:10px;padding:10px 28px;font-family:Poppins,sans-serif;font-size:14px;font-weight:500;cursor:pointer;">Entendi</button>
+    </div>`;
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', e => { if (e.target === overlay) closeNotifPopup(userId); });
+}
+
+function closeNotifPopup(userId) {
+    const overlay = document.getElementById('notifPopupOverlay');
+    if (!overlay) return;
+    overlay.remove();
+    // Mark all popup notifications as read
+    supabase.from('admin_notifications').select('id').eq('is_active', true).then(({ data }) => {
+        if (data && data.length > 0) {
+            const inserts = data.map(n => ({ user_id: userId, notification_id: n.id }));
+            supabase.from('notification_reads').upsert(inserts, { onConflict: 'user_id,notification_id', ignoreDuplicates: true });
+        }
+    });
+    updateAdminNotifBadge(0);
 }
 
 function escHtml(str) {

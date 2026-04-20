@@ -41,7 +41,7 @@ Deno.serve(async (req) => {
 
     const isAdmin = ['admin', 'super_admin'].includes(callerProfile?.role ?? '');
 
-    const { subscription_id, cancel_at_period_end = true, resume = false } = await req.json();
+    const { subscription_id, cancel_at_period_end = true, resume = false, coupon_code } = await req.json();
     if (!subscription_id) return json({ error: 'Missing subscription_id' }, 400);
 
     // Get Stripe subscription ID from DB
@@ -66,9 +66,24 @@ Deno.serve(async (req) => {
 
     if (resume) {
       // Reactivate: remove scheduled cancellation
-      await stripe.subscriptions.update(sub.stripe_subscription_id, {
-        cancel_at_period_end: false,
-      });
+      const updateParams: any = { cancel_at_period_end: false };
+
+      // Apply coupon if provided
+      if (coupon_code) {
+        try {
+          const { data: couponRow } = await adminClient
+            .from('coupons')
+            .select('stripe_coupon_id')
+            .eq('code', coupon_code.toUpperCase())
+            .eq('is_active', true)
+            .maybeSingle();
+          if (couponRow?.stripe_coupon_id) {
+            updateParams.coupon = couponRow.stripe_coupon_id;
+          }
+        } catch (_) { /* silent – resume without coupon */ }
+      }
+
+      await stripe.subscriptions.update(sub.stripe_subscription_id, updateParams);
 
       await adminClient
         .from('subscriptions')
