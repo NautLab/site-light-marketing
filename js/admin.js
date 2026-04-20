@@ -81,7 +81,7 @@ async function initAdmin() {
 
         document.getElementById('sidebarAvatar').textContent = initials;
         document.getElementById('sidebarName').textContent   = profile.full_name || profile.email;
-        document.getElementById('sidebarRole').textContent   = profile.role === 'super_admin' ? 'Super Admin' : 'Admin';
+        document.getElementById('sidebarRole').textContent   = 'Admin';
 
         // Hide super_admin option for non-super_admins in role modal
         if (profile.role !== 'super_admin') {

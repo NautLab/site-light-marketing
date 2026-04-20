@@ -925,7 +925,7 @@ try {
     if ((_r === 'admin' || _r === 'super_admin') && (_ui || _un || _ue)) {
         document.getElementById('sidebarAvatar').textContent = _ui || (_un || _ue || '?').charAt(0).toUpperCase();
         document.getElementById('sidebarName').textContent   = _un || _ue || '—';
-        document.getElementById('sidebarRole').textContent   = _r === 'super_admin' ? 'Super Admin' : 'Admin';
+        document.getElementById('sidebarRole').textContent   = 'Admin';
         // Apply correct section from URL hash BEFORE making app visible (no flash)
         var _hash = location.hash.slice(1);
         var _secTitles = {users:'Usuários',plans:'Planos',subscriptions:'Assinaturas',coupons:'Cupons',notifications:'Notificações','site-data':'Dados do site'};
