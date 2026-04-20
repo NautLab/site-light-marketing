@@ -2512,7 +2512,7 @@ function showAdminNotificationPopup(notifications, userId) {
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" stroke="#0C7E92" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M13.73 21a2 2 0 0 1-3.46 0" stroke="#0C7E92" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </div>
         <h3 style="font-family:Poppins,sans-serif;font-size:16px;font-weight:600;color:#fff;margin:0 0 8px;">${escHtml(n.title)}</h3>
-        <p style="font-family:Poppins,sans-serif;font-size:13px;color:#aaa;margin:0 0 20px;line-height:1.5;">${escHtml(n.message)}</p>
+        <p style="font-family:Poppins,sans-serif;font-size:13px;color:#aaa;margin:0 0 20px;line-height:1.6;white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere;">${escHtml(n.message)}</p>
         <button onclick="closeNotifPopup('${userId}')" style="background:#0C7E92;color:#fff;border:none;border-radius:10px;padding:10px 28px;font-family:Poppins,sans-serif;font-size:14px;font-weight:500;cursor:pointer;">Entendi</button>
     </div>`;
     document.body.appendChild(overlay);

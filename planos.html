@@ -504,7 +504,7 @@
 
         <div class="plans-header">
             <h1>Escolha o plano <span>ideal para você</span></h1>
-            <p>Automatize o processamento de etiquetas para todos os seus marketplaces. Cancele quando quiser.</p>
+            <p>Automatize o processamento de etiquetas para os seus marketplaces. Cancele quando quiser.</p>
         </div>
 
         <!-- Interval toggle -->
@@ -971,6 +971,7 @@ function updateFreePlanCard(plan) {
         <div class="plan-description">${escHtml(plan.description || '')}</div>
         <div class="plan-price-block">
             <div class="plan-price"><sup>R$</sup>0<sub>/mês</sub></div>
+            ${plan.observation ? `<div class="plan-price-obs">${escHtml(plan.observation)}</div>` : ''}
         </div>
         <div class="plan-divider"></div>
         <ul class="plan-features">${featuresHtml}</ul>
