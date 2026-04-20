@@ -2522,12 +2522,15 @@ function showAdminNotificationPopup(notifications, userId) {
         </div>`;
 
         overlay.querySelector('#adminNotifCloseBtn').onclick = () => suppressAdminNotifPopup(userId);
-        overlay.querySelector('#adminNotifDismissBtn').onclick = () => {
+        overlay.querySelector('#adminNotifDismissBtn').onclick = async () => {
+            await supabase.from('notification_reads').upsert({ user_id: userId, notification_id: n.id }, { onConflict: 'user_id,notification_id' });
             current++;
             if (current < notifications.length) {
                 render();
             } else {
-                closeNotifPopup(userId);
+                overlay.remove();
+                currentAdminPopupNotifications = [];
+                checkAdminNotificationsPopup(userId, currentProfile);
             }
         };
     }
