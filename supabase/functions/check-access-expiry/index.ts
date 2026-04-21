@@ -56,7 +56,48 @@ Deno.serve(async (req) => {
       return json({ expired: false });
     }
 
-    // Expired — full revoke
+    // Expired — check if there are remaining days from the original paid plan.
+    // When free access was granted, the paid subscription was cancelled and its
+    // period_end was stored in free_access_prev_period_end. On expiry, those
+    // remaining days should be given back starting from now (same logic as manual revoke).
+    const prevPeriodEnd = profile.free_access_prev_period_end ?? null;
+    const prevPlanId    = profile.free_access_prev_plan_id ?? profile.free_access_plan_id ?? null;
+    const hasRemaining  = prevPeriodEnd && new Date(prevPeriodEnd) > new Date();
+
+    if (hasRemaining && prevPlanId) {
+      // Calculate how many days were remaining in the original plan when free access
+      // was granted (approximated by free_access_expires_at as the cancellation date),
+      // then shift those days from now so the user doesn't lose any paid time.
+      // e.g., sub ends May 20, free access granted Apr 20 → 30 days remaining.
+      //       On Apr 21, restored end = Apr 21 + 30 days = May 21.
+      let restoredEnd: string = prevPeriodEnd;
+      if (profile.free_access_expires_at) {
+        const grantTs     = new Date(profile.free_access_expires_at).getTime();
+        const prevEndTs   = new Date(prevPeriodEnd).getTime();
+        const remainingMs = prevEndTs - grantTs;
+        if (remainingMs > 0) {
+          restoredEnd = new Date(Date.now() + remainingMs).toISOString();
+        }
+      }
+
+      const { error } = await adminClient
+        .from('profiles')
+        .update({
+          free_access: true,
+          free_access_plan_id: prevPlanId,
+          free_access_granted_by: null,
+          free_access_expires_at: restoredEnd,
+          free_access_prev_period_end: null,
+          free_access_prev_plan_id: null,
+          subscription_tier: 'paid',
+        })
+        .eq('id', user.id);
+
+      if (error) throw error;
+      return json({ expired: true, revoked: false, has_remaining_days: true, expires_at: restoredEnd, plan_id: prevPlanId });
+    }
+
+    // No remaining days — full revoke to free plan
     const { error } = await adminClient
       .from('profiles')
       .update({
@@ -71,8 +112,7 @@ Deno.serve(async (req) => {
       .eq('id', user.id);
 
     if (error) throw error;
-
-    return json({ expired: true, revoked: true });
+    return json({ expired: true, revoked: true, has_remaining_days: false });
   } catch (err) {
     console.error('check-access-expiry error:', err);
     return json({ error: 'Internal server error' }, 500);
