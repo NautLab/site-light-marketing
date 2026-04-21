@@ -876,6 +876,15 @@ async function confirmFreeAccess() {
             user.free_access_plan_id  = planId;
             user.free_access_expires_at = expiresAt || null;
             user.subscription_tier    = 'paid';
+            // Revoke any active subscriptions locally (edge function already cancelled them)
+            if (user.subscriptions) {
+                user.subscriptions.forEach(s => {
+                    if (s.status === 'active' || s.status === 'trialing') {
+                        s.status = 'canceled';
+                        s.canceled_at = new Date().toISOString();
+                    }
+                });
+            }
         }
 
         closeModal('freeAccessModal');
