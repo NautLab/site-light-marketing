@@ -815,9 +815,10 @@ async function openFreeAccessModal(userId, userName) {
     selectedUserName = userName;
     document.getElementById('freeAccessUserName').textContent = userName;
     document.getElementById('freeAccessExpiresAt').value = '';
-    // Prevent selecting past dates/times — use local datetime to avoid UTC offset issues (BRT = UTC-3)
+    document.getElementById('freeAccessExpiresTime').value = '';
+    // Prevent selecting past dates — use local date to avoid UTC offset issues (BRT = UTC-3)
     const _now = new Date(); _now.setMinutes(_now.getMinutes() - _now.getTimezoneOffset());
-    document.getElementById('freeAccessExpiresAt').min = _now.toISOString().slice(0, 16);
+    document.getElementById('freeAccessExpiresAt').min = _now.toISOString().split('T')[0];
 
     // Ensure plans are loaded (not loaded if Plans section was never visited)
     if (allPlans.length === 0) await loadPlans();
@@ -840,17 +841,24 @@ async function openFreeAccessModal(userId, userName) {
 
 async function confirmFreeAccess() {
     const planId    = document.getElementById('freeAccessPlanSelect').value;
-    // expiresAtRaw is YYYY-MM-DDTHH:MM from datetime-local input (treated as BRT = UTC-3)
-    const expiresAtRaw = document.getElementById('freeAccessExpiresAt').value || null;
-    if (expiresAtRaw) {
-        // Parse as BRT and compare to now
-        const expiresDate = new Date(expiresAtRaw + ':00.000-03:00');
+    const expiresDateRaw = document.getElementById('freeAccessExpiresAt').value || null;
+    const expiresTimeRaw = document.getElementById('freeAccessExpiresTime').value || null;
+    if (expiresDateRaw && !expiresTimeRaw) {
+        showToast('Informe também o horário de expiração.', 'error');
+        return;
+    }
+    if (!expiresDateRaw && expiresTimeRaw) {
+        showToast('Informe também a data de expiração.', 'error');
+        return;
+    }
+    if (expiresDateRaw && expiresTimeRaw) {
+        const expiresDate = new Date(expiresDateRaw + 'T' + expiresTimeRaw + ':00.000-03:00');
         if (expiresDate <= new Date()) {
             showToast('A data/hora de expiração não pode ser anterior ao momento atual.', 'error');
             return;
         }
     }
-    const expiresAt = expiresAtRaw ? expiresAtRaw + ':00.000-03:00' : null;
+    const expiresAt = expiresDateRaw ? (expiresDateRaw + 'T' + expiresTimeRaw + ':00.000-03:00') : null;
     if (!planId) { showToast('Selecione um plano.', 'error'); return; }
     const btn  = document.getElementById('freeAccessConfirmBtn');
 

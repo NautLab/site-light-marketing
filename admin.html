@@ -396,8 +396,11 @@
                 </select>
             </div>
             <div class="form-group">
-                <label class="form-label" for="freeAccessExpiresAt">Data e hora de expiração (opcional)</label>
-                <input class="form-control" id="freeAccessExpiresAt" type="datetime-local" />
+                <label class="form-label">Data e hora de expiração (opcional)</label>
+                <div style="display:flex;gap:8px;">
+                    <input class="form-control" id="freeAccessExpiresAt" type="date" style="flex:1.6" />
+                    <input class="form-control" id="freeAccessExpiresTime" type="time" style="flex:1" />
+                </div>
             </div>
             <div class="info-row warning">O acesso pode ter prazo de expiração ou ser permanente até revogação manual. Não gera cobrança no Stripe.
             </div>
