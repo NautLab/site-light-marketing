@@ -349,9 +349,13 @@ function openUserDetail(userId) {
             return `<span class="badge badge-warning" style="background:rgba(234,179,8,0.15);color:#b45309;border:1px solid rgba(234,179,8,0.4)">⚠ Inconsistente</span><span style="font-size:10px;color:#b45309;display:block;margin-top:2px;">Acesso concedido mas sem permissão ativa</span>`;
         }
         if (u.free_access) {
-            const expiryText = u.free_access_expires_at
-                ? `Concedido até ${new Date(u.free_access_expires_at).toLocaleDateString('pt-BR', {timeZone:'America/Sao_Paulo'})}`
-                : 'Concedido';
+            let expiryText = 'Concedido';
+            if (u.free_access_expires_at) {
+                const _d = new Date(u.free_access_expires_at);
+                const _h = _d.toLocaleTimeString('pt-BR', {timeZone:'America/Sao_Paulo', hour:'2-digit', minute:'2-digit', second:'2-digit'});
+                const _date = _d.toLocaleDateString('pt-BR', {timeZone:'America/Sao_Paulo'});
+                expiryText = `Concedido até ${_date}` + (_h === '23:59:59' ? '' : ` às ${_h.slice(0,5)}`);
+            }
             return `<span class="badge badge-gift">${escHtml(planNameById(u.free_access_plan_id))}</span><span style="font-size:10px;color:var(--text-dim);display:block;margin-top:2px;">${expiryText}</span>`;
         }
         if (activeSub?.plan_id)
@@ -456,9 +460,13 @@ function buildUserRow(u) {
             return `<span class="badge badge-warning" style="background:rgba(234,179,8,0.15);color:#b45309;border:1px solid rgba(234,179,8,0.4)">⚠ Inconsistente</span><span style="font-size:10px;color:#b45309;display:block;margin-top:2px;">Acesso inválido</span>`;
         }
         if (u.free_access) {
-            const expiryText = u.free_access_expires_at
-                ? `Concedido até ${new Date(u.free_access_expires_at).toLocaleDateString('pt-BR', {timeZone:'America/Sao_Paulo'})}`
-                : 'Concedido';
+            let expiryText = 'Concedido';
+            if (u.free_access_expires_at) {
+                const _d = new Date(u.free_access_expires_at);
+                const _h = _d.toLocaleTimeString('pt-BR', {timeZone:'America/Sao_Paulo', hour:'2-digit', minute:'2-digit', second:'2-digit'});
+                const _date = _d.toLocaleDateString('pt-BR', {timeZone:'America/Sao_Paulo'});
+                expiryText = `Concedido até ${_date}` + (_h === '23:59:59' ? '' : ` às ${_h.slice(0,5)}`);
+            }
             return `<span class="badge badge-gift">${escHtml(planNameById(u.free_access_plan_id))}</span><span style="font-size:10px;color:var(--text-dim);display:block;margin-top:2px;">${expiryText}</span>`;
         }
         if (activeSub?.plan_id)
