@@ -2537,7 +2537,6 @@ function showAdminNotificationPopup(notifications, userId) {
 
     document.body.appendChild(overlay);
     render();
-    overlay.addEventListener('click', e => { if (e.target === overlay) suppressAdminNotifPopup(userId); });
 }
 
 function suppressAdminNotifPopup(userId) {
