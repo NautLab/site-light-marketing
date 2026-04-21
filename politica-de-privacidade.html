@@ -46,7 +46,7 @@
         <div class="container">
             <div class="legal-content">
                 <h1>Política de Privacidade</h1>
-                <p class="legal-date">Última atualização: <span data-config="legal.dataPolitica">27/03/2026</span></p>
+                <p class="legal-date">Última atualização: <span data-config="legal.dataPolitica">20/04/2026</span></p>
 
                 <p>A <strong data-config="empresa.nomeFantasia">Light Marketing</strong> está comprometida com a proteção dos dados pessoais de seus usuários, em conformidade com a Lei Geral de Proteção de Dados Pessoais (LGPD — Lei nº 13.709/2018) e demais normas aplicáveis.</p>
 
@@ -65,14 +65,18 @@
                 <h3>2.1. Dados fornecidos diretamente pelo Usuário</h3>
                 <ul>
                     <li><strong>Cadastro:</strong> nome completo e endereço de e-mail;</li>
-                    <li><strong>Autenticação:</strong> senha (armazenada de forma criptografada com hash bcrypt).</li>
+                    <li><strong>Autenticação:</strong> senha (armazenada de forma criptografada com algoritmo bcrypt — nunca acessível em texto simples).</li>
                 </ul>
 
-                <h3>2.2. Dados coletados automaticamente</h3>
+                <h3>2.2. Dados coletados automaticamente pelo sistema</h3>
                 <ul>
                     <li><strong>Dados de uso:</strong> contador de processamentos realizados (usage_count);</li>
-                    <li><strong>Dados de sessão:</strong> tokens de autenticação (armazenados no navegador do Usuário);</li>
-                    <li><strong>Dados técnicos:</strong> endereço IP, tipo de navegador, sistema operacional (coletados automaticamente pelo provedor de infraestrutura).</li>
+                    <li><strong>Dados de plano e assinatura:</strong> nível de assinatura (subscription_tier: gratuito, básico ou premium), identificador de cliente no Stripe (stripe_customer_id), identificador de assinatura (stripe_subscription_id), data de término do período vigente e status de cancelamento agendado;</li>
+                    <li><strong>Dados de perfil administrativo:</strong> papel do usuário no sistema (role: usuário comum, administrador ou super administrador); indicador de acesso cortesia concedido administrativamente (free_access) com respectiva data de validade (free_access_expires_at);</li>
+                    <li><strong>Dados de moderação:</strong> indicador de bloqueio de conta (is_blocked) e motivo do bloqueio (blocked_reason), quando aplicável;</li>
+                    <li><strong>Dados comportamentais de notificação:</strong> registro de quais notificações institucionais foram visualizadas pelo Usuário (tabela notification_reads), contendo o identificador do Usuário e da notificação e o momento da leitura;</li>
+                    <li><strong>Dados de sessão:</strong> tokens de autenticação (armazenados no navegador do Usuário via localStorage e sessionStorage);</li>
+                    <li><strong>Dados técnicos:</strong> endereço IP, tipo de navegador, sistema operacional (coletados automaticamente pelo provedor de infraestrutura Supabase).</li>
                 </ul>
 
                 <h3>2.3. Dados NÃO coletados</h3>
@@ -93,8 +97,12 @@
                     <li>Criação e gerenciamento da conta do Usuário;</li>
                     <li>Prestação dos serviços de formatação de etiquetas;</li>
                     <li>Controle de acesso e autenticação;</li>
-                    <li>Gerenciamento de planos e assinaturas;</li>
-                    <li>Envio de comunicações transacionais (confirmação de conta, recuperação de senha);</li>
+                    <li>Gerenciamento de planos, assinaturas e cobrança recorrente via Stripe;</li>
+                    <li>Aplicação e validação de cupons de desconto durante o processo de assinatura;</li>
+                    <li>Concessão e controle de acessos administrativos por cortesia, incluindo expiração automática;</li>
+                    <li>Controle de bloqueios de conta por violação dos Termos de Uso;</li>
+                    <li>Registro de leitura de notificações institucionais para garantir que comunicações importantes sejam entregues ao Usuário;</li>
+                    <li>Envio de comunicações transacionais (confirmação de conta, recuperação de senha, notificações da plataforma);</li>
                     <li>Monitoramento do uso para melhoria dos serviços;</li>
                     <li>Cumprimento de obrigações legais e regulatórias;</li>
                     <li>Segurança e prevenção contra fraudes.</li>
@@ -103,8 +111,8 @@
                 <h2>5. Compartilhamento de Dados</h2>
                 <p>Os dados pessoais podem ser compartilhados com:</p>
                 <ul>
-                    <li><strong>Supabase Inc.</strong> — operador/processador de dados, responsável pela infraestrutura de autenticação e banco de dados. Os dados são armazenados em servidores seguros com criptografia em trânsito e em repouso;</li>
-                    <li><strong>Provedores de pagamento</strong> — quando aplicável, para processamento de assinaturas (dados de pagamento são tratados diretamente pelo provedor, sem que a Light Marketing tenha acesso a dados completos de cartão);</li>
+                    <li><strong>Supabase Inc.</strong> — operador/processador de dados, responsável pela infraestrutura de autenticação, banco de dados e funções de backend. Os dados são armazenados em servidores seguros com criptografia em trânsito (TLS) e em repouso (AES-256);</li>
+                    <li><strong>Stripe Inc.</strong> — processador de pagamentos responsável pela cobrança recorrente de assinaturas. A Light Marketing repassa ao Stripe apenas o identificador interno do Usuário (user_id) e o e-mail para criação do cliente. Dados completos de cartão de crédito são inseridos diretamente no ambiente seguro do Stripe e <strong>nunca trafegam ou são armazenados nos servidores da Light Marketing</strong>;</li>
                     <li><strong>Autoridades legais</strong> — quando exigido por lei, ordem judicial ou determinação de autoridade competente.</li>
                 </ul>
                 <p>A Light Marketing <strong>não vende, aluga ou comercializa</strong> dados pessoais de seus Usuários.</p>
@@ -138,11 +146,13 @@
                     <li>Processamento local de arquivos sensíveis (sem envio para servidores).</li>
                 </ul>
 
-                <h2>9. Cookies e Tecnologias de Rastreamento</h2>
-                <p>A plataforma utiliza armazenamento local (localStorage e sessionStorage) para:</p>
+                <h2>9. Armazenamento Local (localStorage e sessionStorage)</h2>
+                <p>A plataforma utiliza armazenamento local do navegador para as seguintes finalidades:</p>
                 <ul>
-                    <li>Manutenção da sessão de autenticação do Usuário;</li>
-                    <li>Preferência de "Lembrar de mim" no login.</li>
+                    <li><strong>Sessão de autenticação:</strong> token de acesso e refresh token do Supabase (localStorage), necessários para manter o Usuário autenticado;</li>
+                    <li><strong>Preferência de login:</strong> e-mail salvo pela opção "Lembrar de mim" (localStorage);</li>
+                    <li><strong>Dados de sessão temporários:</strong> iniciais do nome, nome completo, e-mail, papel (role) e identificador do Usuário (sessionStorage) — utilizados para exibição imediata na interface sem nova consulta ao banco, eliminados ao fechar o navegador;</li>
+                    <li><strong>Controle de popups de notificação:</strong> identificadores de notificações suprimidas durante a sessão atual (sessionStorage: <code>lm_notif_popup_suppressed</code>) — utilizados para não reexibir um popup já fechado pelo Usuário na mesma sessão, sem afetar o registro de leitura definitiva no banco de dados.</li>
                 </ul>
                 <p>Não utilizamos cookies de rastreamento de terceiros, cookies de publicidade ou ferramentas de analytics que identifiquem individualmente o Usuário.</p>
 
