@@ -843,22 +843,22 @@ async function confirmFreeAccess() {
     const planId    = document.getElementById('freeAccessPlanSelect').value;
     const expiresDateRaw = document.getElementById('freeAccessExpiresAt').value || null;
     const expiresTimeRaw = document.getElementById('freeAccessExpiresTime').value || null;
-    if (expiresDateRaw && !expiresTimeRaw) {
-        showToast('Informe também o horário de expiração.', 'error');
-        return;
-    }
     if (!expiresDateRaw && expiresTimeRaw) {
         showToast('Informe também a data de expiração.', 'error');
         return;
     }
-    if (expiresDateRaw && expiresTimeRaw) {
-        const expiresDate = new Date(expiresDateRaw + 'T' + expiresTimeRaw + ':00.000-03:00');
+    if (expiresDateRaw) {
+        // Se hora não informada, usa fim do dia (23:59:59); senão adiciona segundos ao HH:MM
+        const time = expiresTimeRaw ? expiresTimeRaw + ':00' : '23:59:59';
+        const expiresDate = new Date(expiresDateRaw + 'T' + time + '.000-03:00');
         if (expiresDate <= new Date()) {
             showToast('A data/hora de expiração não pode ser anterior ao momento atual.', 'error');
             return;
         }
     }
-    const expiresAt = expiresDateRaw ? (expiresDateRaw + 'T' + expiresTimeRaw + ':00.000-03:00') : null;
+    const expiresAt = expiresDateRaw
+        ? (expiresDateRaw + 'T' + (expiresTimeRaw ? expiresTimeRaw + ':00' : '23:59:59') + '.000-03:00')
+        : null;
     if (!planId) { showToast('Selecione um plano.', 'error'); return; }
     const btn  = document.getElementById('freeAccessConfirmBtn');
 
