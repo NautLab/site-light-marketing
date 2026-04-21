@@ -815,8 +815,9 @@ async function openFreeAccessModal(userId, userName) {
     selectedUserName = userName;
     document.getElementById('freeAccessUserName').textContent = userName;
     document.getElementById('freeAccessExpiresAt').value = '';
-    // Prevent selecting past dates (Item 1)
-    document.getElementById('freeAccessExpiresAt').min = new Date().toISOString().split('T')[0];
+    // Prevent selecting past dates — use local date to avoid UTC offset issues (BRT = UTC-3)
+    const _today = new Date(); _today.setMinutes(_today.getMinutes() - _today.getTimezoneOffset());
+    document.getElementById('freeAccessExpiresAt').min = _today.toISOString().split('T')[0];
 
     // Ensure plans are loaded (not loaded if Plans section was never visited)
     if (allPlans.length === 0) await loadPlans();
@@ -842,9 +843,10 @@ async function confirmFreeAccess() {
     // Convert YYYY-MM-DD to end-of-day in BRT so the day itself is still valid (Item 2)
     const expiresAtRaw = document.getElementById('freeAccessExpiresAt').value || null;
     if (expiresAtRaw) {
-        const today = new Date().toISOString().split('T')[0];
+        const _d = new Date(); _d.setMinutes(_d.getMinutes() - _d.getTimezoneOffset());
+        const today = _d.toISOString().split('T')[0];
         if (expiresAtRaw < today) {
-            showToast('A data de expiração não pode ser anterior ao dia atual.', 'error');
+            showToast('A data de expiração não pode ser anterior a hoje.', 'error');
             return;
         }
     }
