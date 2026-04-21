@@ -120,6 +120,35 @@
         .empty-notif svg { opacity: .3; margin-bottom: 16px; }
         .empty-notif p { font-size: 15px; }
 
+        /* ── Search bar ───────────────────────────────── */
+        .notif-search-wrap {
+            max-width: 700px;
+            margin: 0 auto 24px;
+            position: relative;
+        }
+        .notif-search-wrap svg {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            pointer-events: none;
+            color: var(--text-dim);
+        }
+        .notif-search-input {
+            width: 100%;
+            padding: 11px 16px 11px 42px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: #fff;
+            font-family: Poppins, sans-serif;
+            font-size: 14px;
+            outline: none;
+            transition: border-color .2s;
+        }
+        .notif-search-input::placeholder { color: var(--text-dim); }
+        .notif-search-input:focus { border-color: rgba(12,126,146,.6); }
+
         /* ── Fixed header + body offset ──────────────── */
         body { padding-top: 70px; }
         @keyframes spin { to { transform: rotate(360deg); } }
@@ -167,6 +196,12 @@
         <div class="notif-page-header">
             <h1>Notificações</h1>
             <p>Avisos e comunicados enviados pela equipe Light Marketing.</p>
+        </div>
+        <div class="notif-search-wrap">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <input type="text" class="notif-search-input" id="notifSearch" placeholder="Buscar notificações..." oninput="filterNotifications()" />
         </div>
         <div class="notif-list" id="notifList">
             <div class="empty-notif">
@@ -377,11 +412,24 @@ async function loadNotifications() {
 }
 
 // ── Render ────────────────────────────────────────────────────
-function renderNotifications() {
+function filterNotifications() {
+    const q = (document.getElementById('notifSearch')?.value || '').toLowerCase().trim();
+    if (!q) { renderNotifications(allNotifications); return; }
+    const filtered = allNotifications.filter(n =>
+        (n.title || '').toLowerCase().includes(q) ||
+        (n.message || '').toLowerCase().includes(q)
+    );
+    renderNotifications(filtered);
+}
+
+function renderNotifications(list) {
+    const items = list !== undefined ? list : allNotifications;
     const container = document.getElementById('notifList');
-    if (allNotifications.length === 0) {
-        container.innerHTML = `
-            <div class="empty-notif">
+    if (items.length === 0) {
+        const q = (document.getElementById('notifSearch')?.value || '').trim();
+        container.innerHTML = q
+            ? `<div class="empty-notif"><p>Nenhum resultado para "${escHtml(q)}".</p></div>`
+            : `<div class="empty-notif">
                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5">
                     <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
                     <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
@@ -391,7 +439,7 @@ function renderNotifications() {
         return;
     }
 
-    container.innerHTML = allNotifications.map(n => {
+    container.innerHTML = items.map(n => {
         const isUnread = !readIds.has(n.id);
         const date = n.created_at
             ? new Date(n.created_at).toLocaleDateString('pt-BR', { day:'2-digit', month:'short', year:'numeric' })
@@ -429,7 +477,7 @@ async function markRead(notificationId) {
             notification_id: notificationId
         });
         readIds.add(notificationId);
-        renderNotifications();
+        filterNotifications();
         updateNotifBadge();
     } catch(err) {
         showToast('Erro ao marcar como lida.', 'error');
