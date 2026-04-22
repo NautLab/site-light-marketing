@@ -187,14 +187,16 @@ Deno.serve(async (req) => {
 
       if (hasRemaining && prevPlanId) {
         // Instead of fully revoking, give the remaining days from the original subscription.
-        // Keep free_access=true but with expiry = original period_end.
+        // Normalize to end-of-day in BRT so no specific time is shown to the user.
+        const restoredDate = new Date(prevPeriodEnd).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }); // YYYY-MM-DD
+        const restoredEnd  = `${restoredDate}T23:59:59.000-03:00`;
         const { error } = await adminClient
           .from('profiles')
           .update({
             free_access: true,
             free_access_plan_id:    prevPlanId,
             free_access_granted_by: null,
-            free_access_expires_at: prevPeriodEnd,
+            free_access_expires_at: restoredEnd,
             free_access_prev_period_end: null,
             free_access_prev_plan_id:    null,
             subscription_tier: 'paid',
@@ -202,7 +204,7 @@ Deno.serve(async (req) => {
           .eq('id', target_user_id);
 
         if (error) throw error;
-        return json({ success: true, free_access: true, has_remaining_days: true, expires_at: prevPeriodEnd, plan_id: prevPlanId });
+        return json({ success: true, free_access: true, has_remaining_days: true, expires_at: restoredEnd, plan_id: prevPlanId });
       }
 
       // No remaining days — full revoke

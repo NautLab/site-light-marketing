@@ -79,6 +79,9 @@ Deno.serve(async (req) => {
           restoredEnd = new Date(Date.now() + remainingMs).toISOString();
         }
       }
+      // Normalize to end-of-day in BRT (23:59:59-03:00) so no specific time is shown
+      const restoredDate = new Date(restoredEnd).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }); // YYYY-MM-DD
+      restoredEnd = `${restoredDate}T23:59:59.000-03:00`;
 
       const { error } = await adminClient
         .from('profiles')
