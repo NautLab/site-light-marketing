@@ -43,7 +43,7 @@ Deno.serve(async (req) => {
 
     const { data: profile } = await adminClient
       .from('profiles')
-      .select('free_access, free_access_expires_at, free_access_prev_period_end, free_access_prev_plan_id, free_access_plan_id')
+      .select('free_access, free_access_expires_at, free_access_prev_period_end, free_access_prev_plan_id, free_access_plan_id, free_access_granted_at')
       .eq('id', user.id)
       .single();
 
@@ -62,36 +62,34 @@ Deno.serve(async (req) => {
     // remaining days should be given back starting from now (same logic as manual revoke).
     const prevPeriodEnd = profile.free_access_prev_period_end ?? null;
     const prevPlanId    = profile.free_access_prev_plan_id ?? profile.free_access_plan_id ?? null;
-    const hasRemaining  = prevPeriodEnd && new Date(prevPeriodEnd) > new Date();
+    const grantedAt     = profile.free_access_granted_at ?? null;
+
+    // Calculate remaining days at the time of grant: remaining = prev_period_end − granted_at
+    // Restore from now: restored = now + remaining
+    let remainingMs = 0;
+    if (prevPeriodEnd && grantedAt) {
+      remainingMs = new Date(prevPeriodEnd).getTime() - new Date(grantedAt).getTime();
+    } else if (prevPeriodEnd) {
+      // Fallback (no granted_at): remaining = period_end - now
+      remainingMs = new Date(prevPeriodEnd).getTime() - Date.now();
+    }
+    const hasRemaining = remainingMs > 0 && !!prevPlanId;
 
     if (hasRemaining && prevPlanId) {
-      // Calculate how many days were remaining in the original plan when free access
-      // was granted (approximated by free_access_expires_at as the cancellation date),
-      // then shift those days from now so the user doesn't lose any paid time.
-      // e.g., sub ends May 20, free access granted Apr 20 → 30 days remaining.
-      //       On Apr 21, restored end = Apr 21 + 30 days = May 21.
-      let restoredEnd: string = prevPeriodEnd;
-      if (profile.free_access_expires_at) {
-        const grantTs     = new Date(profile.free_access_expires_at).getTime();
-        const prevEndTs   = new Date(prevPeriodEnd).getTime();
-        const remainingMs = prevEndTs - grantTs;
-        if (remainingMs > 0) {
-          restoredEnd = new Date(Date.now() + remainingMs).toISOString();
-        }
-      }
-      // Normalize to end-of-day in BRT (23:59:59-03:00) so no specific time is shown
-      const restoredDate = new Date(restoredEnd).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }); // YYYY-MM-DD
-      restoredEnd = `${restoredDate}T23:59:59.000-03:00`;
+      // Restore: now + remaining paid days
+      const restoredDate = new Date(Date.now() + remainingMs).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }); // YYYY-MM-DD
+      const restoredEnd  = `${restoredDate}T23:59:59.000-03:00`;
 
       const { error } = await adminClient
         .from('profiles')
         .update({
           free_access: true,
-          free_access_plan_id: prevPlanId,
-          free_access_granted_by: null,
-          free_access_expires_at: restoredEnd,
+          free_access_plan_id:         prevPlanId,
+          free_access_granted_by:      null,
+          free_access_granted_at:      null,
+          free_access_expires_at:      restoredEnd,
           free_access_prev_period_end: null,
-          free_access_prev_plan_id: null,
+          free_access_prev_plan_id:    null,
           subscription_tier: 'paid',
         })
         .eq('id', user.id);
@@ -107,6 +105,7 @@ Deno.serve(async (req) => {
         free_access: false,
         free_access_plan_id: null,
         free_access_granted_by: null,
+        free_access_granted_at: null,
         free_access_expires_at: null,
         free_access_prev_period_end: null,
         free_access_prev_plan_id: null,

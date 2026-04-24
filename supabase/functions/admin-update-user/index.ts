@@ -131,6 +131,7 @@ Deno.serve(async (req) => {
           // Clear any leftover prev fields from a prior grant cycle
           free_access_prev_period_end: null,
           free_access_prev_plan_id: null,
+          free_access_granted_at: null,
         })
         .eq('id', target_user_id);
 
@@ -150,10 +151,14 @@ Deno.serve(async (req) => {
 
       if (activeSubs && activeSubs.length > 0) {
         const mostRecent = activeSubs[0];
-        // Store remaining period for restoration on revoke
+        // Store remaining period and grant timestamp for correct restoration on revoke.
+        // granted_at marks when the subscription was cancelled so we can calculate:
+        //   remaining = prev_period_end - granted_at → restored = now + remaining
+        const grantedAt = new Date().toISOString();
         await adminClient.from('profiles').update({
           free_access_prev_period_end: mostRecent.current_period_end,
           free_access_prev_plan_id:    mostRecent.plan_id,
+          free_access_granted_at:      grantedAt,
         }).eq('id', target_user_id);
 
         for (const sub of activeSubs) {
@@ -177,26 +182,39 @@ Deno.serve(async (req) => {
       // that was cancelled at that time — on revoke, we restore those remaining days.
       const { data: currentProf } = await adminClient
         .from('profiles')
-        .select('free_access_prev_period_end, free_access_prev_plan_id, free_access_plan_id')
+        .select('free_access_prev_period_end, free_access_prev_plan_id, free_access_plan_id, free_access_granted_at')
         .eq('id', target_user_id)
         .single();
 
       const prevPeriodEnd = currentProf?.free_access_prev_period_end ?? null;
       const prevPlanId    = currentProf?.free_access_prev_plan_id ?? currentProf?.free_access_plan_id ?? null;
-      const hasRemaining  = prevPeriodEnd && new Date(prevPeriodEnd) > new Date();
+      const grantedAt     = currentProf?.free_access_granted_at ?? null;
+
+      // Calculate remaining days at the time of grant: remaining = prev_period_end − granted_at
+      // Then restore from now: restored = now + remaining
+      // This ensures the user gets exactly the days they paid for, regardless of how long
+      // the free access lasted.
+      let remainingMs = 0;
+      if (prevPeriodEnd && grantedAt) {
+        remainingMs = new Date(prevPeriodEnd).getTime() - new Date(grantedAt).getTime();
+      } else if (prevPeriodEnd) {
+        // Fallback (no granted_at stored): remaining = period_end - now
+        remainingMs = new Date(prevPeriodEnd).getTime() - Date.now();
+      }
+      const hasRemaining = remainingMs > 0 && !!prevPlanId;
 
       if (hasRemaining && prevPlanId) {
-        // Instead of fully revoking, give the remaining days from the original subscription.
-        // Normalize to end-of-day in BRT so no specific time is shown to the user.
-        const restoredDate = new Date(prevPeriodEnd).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }); // YYYY-MM-DD
+        // Restore: now + remaining days (paid days the user didn't use during free access)
+        const restoredDate = new Date(Date.now() + remainingMs).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }); // YYYY-MM-DD
         const restoredEnd  = `${restoredDate}T23:59:59.000-03:00`;
         const { error } = await adminClient
           .from('profiles')
           .update({
             free_access: true,
-            free_access_plan_id:    prevPlanId,
-            free_access_granted_by: null,
-            free_access_expires_at: restoredEnd,
+            free_access_plan_id:         prevPlanId,
+            free_access_granted_by:      null,
+            free_access_granted_at:      null,
+            free_access_expires_at:      restoredEnd,
             free_access_prev_period_end: null,
             free_access_prev_plan_id:    null,
             subscription_tier: 'paid',
@@ -214,6 +232,7 @@ Deno.serve(async (req) => {
           free_access: false,
           free_access_plan_id:         null,
           free_access_granted_by:      null,
+          free_access_granted_at:      null,
           free_access_expires_at:      null,
           free_access_prev_period_end: null,
           free_access_prev_plan_id:    null,
