@@ -156,7 +156,7 @@ async function initAdmin() {
             })
             .subscribe();
 
-        // Load plans first so plan names resolve correctly when renderUsersTable runs
+        // Load plans first so plan names are available when users table renders
         await loadPlans();
         await loadUsers();
 
@@ -260,23 +260,11 @@ async function loadUsers() {
                 try {
                     const res = await callFunction('admin-update-user', { target_user_id: u.id, action: 'revoke_free_access' }, token);
                     if (res.ok) {
-                        const body = await res.json();
-                        // Update local state based on what the server returned
-                        if (body.has_remaining_days) {
-                            // Restored to remaining paid days
-                            u.free_access = true;
-                            u.free_access_expires_at = body.expires_at;
-                            u.free_access_plan_id = body.plan_id;
-                            u.free_access_granted_by = null;
-                            u.subscription_tier = 'paid';
-                        } else {
-                            // Full revoke to free
-                            u.free_access = false;
-                            u.free_access_plan_id = null;
-                            u.free_access_expires_at = null;
-                            u.free_access_granted_by = null;
-                            u.subscription_tier = 'free';
-                        }
+                        u.free_access = false;
+                        u.free_access_plan_id = null;
+                        u.free_access_expires_at = null;
+                        u.free_access_granted_by = null;
+                        u.subscription_tier = 'free';
                     }
                 } catch (_) {}
             }));
