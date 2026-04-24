@@ -62,22 +62,13 @@ Deno.serve(async (req) => {
     // remaining days should be given back starting from now (same logic as manual revoke).
     const prevPeriodEnd = profile.free_access_prev_period_end ?? null;
     const prevPlanId    = profile.free_access_prev_plan_id ?? profile.free_access_plan_id ?? null;
-    const grantedAt     = profile.free_access_granted_at ?? null;
-
-    // Calculate remaining days at the time of grant: remaining = prev_period_end − granted_at
-    // Restore from now: restored = now + remaining
-    let remainingMs = 0;
-    if (prevPeriodEnd && grantedAt) {
-      remainingMs = new Date(prevPeriodEnd).getTime() - new Date(grantedAt).getTime();
-    } else if (prevPeriodEnd) {
-      // Fallback (no granted_at): remaining = period_end - now
-      remainingMs = new Date(prevPeriodEnd).getTime() - Date.now();
-    }
-    const hasRemaining = remainingMs > 0 && !!prevPlanId;
+    // Using prev_period_end directly: the user gets access until the original sub end date.
+    // This correctly accounts for days consumed during free access without extra calculation.
+    const hasRemaining  = prevPeriodEnd && new Date(prevPeriodEnd) > new Date();
 
     if (hasRemaining && prevPlanId) {
-      // Restore: now + remaining paid days
-      const restoredDate = new Date(Date.now() + remainingMs).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }); // YYYY-MM-DD
+      // Normalize to end-of-day BRT so no specific time is shown
+      const restoredDate = new Date(prevPeriodEnd).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
       const restoredEnd  = `${restoredDate}T23:59:59.000-03:00`;
 
       const { error } = await adminClient
