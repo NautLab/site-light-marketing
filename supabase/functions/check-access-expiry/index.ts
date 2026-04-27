@@ -62,13 +62,14 @@ Deno.serve(async (req) => {
     // remaining days should be given back starting from now (same logic as manual revoke).
     const prevPeriodEnd = profile.free_access_prev_period_end ?? null;
     const prevPlanId    = profile.free_access_prev_plan_id ?? profile.free_access_plan_id ?? null;
-    // Using prev_period_end directly: the user gets access until the original sub end date.
-    // This correctly accounts for days consumed during free access without extra calculation.
-    const hasRemaining  = prevPeriodEnd && new Date(prevPeriodEnd) > new Date();
+
+    // Restore exactly to the original subscription end date — no more, no less.
+    // The user paid for days up to prev_period_end; free access was a bonus on top.
+    const hasRemaining = !!prevPeriodEnd && new Date(prevPeriodEnd) > new Date() && !!prevPlanId;
 
     if (hasRemaining && prevPlanId) {
-      // Normalize to end-of-day BRT so no specific time is shown
-      const restoredDate = new Date(prevPeriodEnd).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+      // Use prev_period_end directly, normalized to end-of-day BRT
+      const restoredDate = new Date(prevPeriodEnd).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }); // YYYY-MM-DD
       const restoredEnd  = `${restoredDate}T23:59:59.000-03:00`;
 
       const { error } = await adminClient

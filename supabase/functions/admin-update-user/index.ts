@@ -188,24 +188,14 @@ Deno.serve(async (req) => {
 
       const prevPeriodEnd = currentProf?.free_access_prev_period_end ?? null;
       const prevPlanId    = currentProf?.free_access_prev_plan_id ?? currentProf?.free_access_plan_id ?? null;
-      const grantedAt     = currentProf?.free_access_granted_at ?? null;
 
-      // Calculate remaining days at the time of grant: remaining = prev_period_end − granted_at
-      // Then restore from now: restored = now + remaining
-      // This ensures the user gets exactly the days they paid for, regardless of how long
-      // the free access lasted.
-      let remainingMs = 0;
-      if (prevPeriodEnd && grantedAt) {
-        remainingMs = new Date(prevPeriodEnd).getTime() - new Date(grantedAt).getTime();
-      } else if (prevPeriodEnd) {
-        // Fallback (no granted_at stored): remaining = period_end - now
-        remainingMs = new Date(prevPeriodEnd).getTime() - Date.now();
-      }
-      const hasRemaining = remainingMs > 0 && !!prevPlanId;
+      // Restore exactly to the original subscription end date.
+      // The user paid for days up to prev_period_end; free access was a bonus on top.
+      const hasRemaining = !!prevPeriodEnd && new Date(prevPeriodEnd) > new Date() && !!prevPlanId;
 
       if (hasRemaining && prevPlanId) {
-        // Restore: now + remaining days (paid days the user didn't use during free access)
-        const restoredDate = new Date(Date.now() + remainingMs).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }); // YYYY-MM-DD
+        // Use prev_period_end directly, normalized to end-of-day BRT
+        const restoredDate = new Date(prevPeriodEnd).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }); // YYYY-MM-DD
         const restoredEnd  = `${restoredDate}T23:59:59.000-03:00`;
         const { error } = await adminClient
           .from('profiles')
